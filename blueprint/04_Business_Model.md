@@ -55,7 +55,7 @@ NMD의 BM은 단계적으로 발전한다.
 
 # Phase 1
 
-# Furnished Living Operator
+# Partner Inventory
 
 초기 단계
 
@@ -98,7 +98,7 @@ NMD가 공간을 확보하고,
 
 # Phase 2
 
-# Corporate Housing Solution
+# Managed Inventory
 
 성장 단계
 
@@ -140,7 +140,7 @@ NMD 입장:
 
 # Phase 3
 
-# Asset-Light Operation Platform
+# Master Lease
 
 확장 단계
 
@@ -179,7 +179,7 @@ Revenue:
 
 # Phase 4
 
-# Living Infrastructure Platform
+# BTR / Institutional Partnership
 
 장기 단계
 
