@@ -62,7 +62,7 @@ NMD는 서울에서 일하고 머무는 사람들을 위한 신뢰 가능한 주
 
 가구와 생활 인프라가 준비된 유연한 거주 공간을 필요로 하는 개인 및 전문인력 대상 주거 서비스
 
-초기에는 Corporate Housing과 Furnished Living을 50:50의 전략 축으로 본다.
+NMD는 Corporate Housing을 핵심 수요 전략으로 삼되, 초기 공급 확보와 운영 표준화를 위해 Furnished Living-ready inventory를 함께 구축한다. 즉, 수요 측면에서는 Corporate First, 공급 측면에서는 Partner Inventory First 전략을 따른다.
 
 장기적으로는 Furnished Living 공급망과 운영 시스템을 기반으로 Corporate Housing B2B 계약을 확대한다.
 
