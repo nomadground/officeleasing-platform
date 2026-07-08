@@ -484,8 +484,6 @@ NMD Residence는 NMD의 기업 신뢰와 프리미엄 브랜드 가치를 만드
 
 ## 8. Premium Use Case: Executive Stay
 
-기존 초안의 NMD Executive Collection은 초기 Product Line으로 사용하지 않는다.
-
 초기에는 Executive 수요를 NMD Residence 안의 Premium Use Case로 다룬다.
 
 향후 명확한 고객 수요, 운영 기준, 브랜드 필요성, 수익성이 검증될 경우 NMD Signature 또는 NMD Collection 등 별도 확장을 검토할 수 있다.
@@ -1500,7 +1498,6 @@ AI 도구는 NMD 관련 Business Plan, IR 자료, Pitch Deck, 홈페이지 구�
 * NMD의 Solution은 Property Search가 아니라 Living Solution Recommendation이다.
 * 초기 Product Line은 NMD Nest와 NMD Residence 투트랙이다.
 * NMD Collection은 초기 전략에서 제외한다.
-* NMD Executive Collection은 초기 Product Line으로 사용하지 않는다.
 * Executive Stay는 NMD Residence 안의 Premium Use Case로 다룬다.
 * NMD Nest는 Efficient Furnished Living으로 설명한다.
 * NMD Residence는 Premium Corporate Housing으로 설명한다.
