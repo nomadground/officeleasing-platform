@@ -96,8 +96,6 @@ NMD의 Product Architecture는 다음 원칙을 따른다.
 1. NMD Nest
 2. NMD Residence
 
-NMD Collection은 초기 전략에서 제외한다.
-
 상품명이 많아지면 고객 이해, 홈페이지 구조, 관리자 입력, AI 매칭, 운영 기준이 모두 복잡해진다.
 
 초기에는 Nest와 Residence 투트랙을 명확하게 만드는 것이 우선이다.
