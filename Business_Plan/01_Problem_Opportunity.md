@@ -954,8 +954,6 @@ NMD Nest는 Efficient Furnished Living으로 확장성과 운영 효율을 담�
 
 NMD Residence는 Premium Corporate Housing으로 기업 신뢰와 프리미엄 수요를 담당한다.
 
-NMD Collection은 초기 전략에서 제외한다.
-
 ---
 
 ### 13.2 Operation Implication
@@ -1037,7 +1035,6 @@ AI 도구는 NMD 관련 Business Plan, IR 자료, Pitch Deck, 홈페이지 문�
 * B2C는 무시하지 않되, 단기 여행객이나 초저가 숙박 고객이 아니라 청년 전문인력, 외국인 직원, 장기 체류 고객 중심으로 이해한다.
 * 공급 전략은 Partner First Supply이다.
 * 초기 상품 구조는 NMD Nest와 NMD Residence 투트랙이다.
-* NMD Collection은 초기 전략에서 제외한다.
 * Medical Stay, Academic Stay, Startup Stay 등은 초기 Product Line이 아니라 향후 확장 가능한 Service Segment 또는 Use Case로 다룬다.
 * 한국 주거 행정, 법인 임대차, 전입신고, 거소등록, 비자 관련 주거 증빙, 전세권, 보증보험, 보증금 안정성은 Korea Housing Trust Layer로 다룬다.
 * 법률·세무·행정 대행 자격이 필요한 영역은 전문가 협력 또는 전문기관 안내로 처리한다.
