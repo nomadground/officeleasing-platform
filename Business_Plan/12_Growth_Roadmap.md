@@ -167,8 +167,6 @@ Global Mobility Housing Partner
 
 ## 5. Phase 1: Seoul Corporate Housing Platform
 
-## Foundation Stage
-
 Phase 1의 핵심 목표는 서울 주요 업무지구에서 Corporate Housing & Furnished Living 수요와 운영 모델을 검증하는 것이다.
 
 이 단계는 Launch Stage이자 Market Validation Stage이다.
@@ -346,8 +344,6 @@ Can NMD create a repeatable living experience?
 
 ## 6. Phase 2: Korea Furnished Living Network
 
-## Operation Expansion Stage
-
 Phase 2의 핵심 목표는 Phase 1에서 검증한 운영 모델을 서울 주요 업무지구와 한국 주요 비즈니스 지역으로 확장하는 것이다.
 
 이 단계는 Marketplace에서 Operator로 발전하는 단계다.
@@ -487,8 +483,6 @@ Can NMD scale without losing quality?
 
 ## 7. Phase 3: Asia Corporate Living Infrastructure
 
-## Platform Stage
-
 Phase 3의 핵심 목표는 NMD를 운영 회사에서 Corporate Living Platform으로 발전시키는 것이다.
 
 이 단계에서는 한국에서 검증한 모델을 기반으로 아시아 주요 비즈니스 도시 확장 가능성을 검토한다.
@@ -621,8 +615,6 @@ Can others grow through NMD?
 
 ## 8. Phase 4: Global Mobility Housing Partner
 
-## Infrastructure Stage
-
 Phase 4의 핵심 목표는 NMD가 글로벌 인재 이동을 지원하는 Corporate Housing Partner가 되는 것이다.
 
 이 단계에서 NMD는 단순한 주거 운영사나 플랫폼을 넘어, 글로벌 기업과 전문인력이 도시 간 이동 시 사용하는 Living Infrastructure가 되는 것을 목표로 한다.
@@ -707,7 +699,7 @@ NMD의 지역 확장은 수요, 공급, 운영 가능성을 기준으로 한다.
 
 ---
 
-### 9.1 Stage 1: Seoul Business Districts
+### 9.1 Geographic Step 1: Seoul Business Districts
 
 초기 Focus는 다음과 같다.
 
@@ -721,7 +713,7 @@ NMD는 GBD에서 Corporate Housing & Furnished Living 브랜드 인식을 먼저
 
 ---
 
-### 9.2 Stage 2: Korea Major Cities
+### 9.2 Geographic Step 2: Korea Major Cities
 
 확장 후보는 다음과 같다.
 
@@ -743,7 +735,7 @@ NMD는 GBD에서 Corporate Housing & Furnished Living 브랜드 인식을 먼저
 
 ---
 
-### 9.3 Stage 3: Asia Business Cities
+### 9.3 Geographic Step 3: Asia Business Cities
 
 장기 확장 후보는 다음과 같다.
 
@@ -836,7 +828,7 @@ NMD의 기술은 단계적으로 발전한다.
 
 ---
 
-### 12.1 Stage 1: Digital Foundation
+### 12.1 Technology Step 1: Digital Foundation
 
 구축 항목은 다음과 같다.
 
@@ -856,7 +848,7 @@ NMD의 기술은 단계적으로 발전한다.
 
 ---
 
-### 12.2 Stage 2: Operation Automation
+### 12.2 Technology Step 2: Operation Automation
 
 구축 항목은 다음과 같다.
 
@@ -872,7 +864,7 @@ NMD의 기술은 단계적으로 발전한다.
 
 ---
 
-### 12.3 Stage 3: Platform Intelligence
+### 12.3 Technology Step 3: Platform Intelligence
 
 구축 항목은 다음과 같다.
 
@@ -895,7 +887,7 @@ NMD의 조직은 단계별로 성장해야 한다.
 
 ---
 
-### 13.1 Early Stage
+### 13.1 Early Organization Phase
 
 초기에는 작은 Expert Team으로 시작한다.
 
@@ -913,7 +905,7 @@ NMD의 조직은 단계별로 성장해야 한다.
 
 ---
 
-### 13.2 Growth Stage
+### 13.2 Growth Organization Phase
 
 성장 단계에서는 다음 팀이 필요하다.
 
@@ -927,7 +919,7 @@ NMD의 조직은 단계별로 성장해야 한다.
 
 ---
 
-### 13.3 Scale Stage
+### 13.3 Scale Organization Phase
 
 확장 단계에서는 다음 역량이 필요하다.
 
