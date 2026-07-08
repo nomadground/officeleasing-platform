@@ -1049,8 +1049,6 @@ Executive Stay는 NMD Residence 안의 Premium Use Case이다.
 * 고품질 서비스
 * 높은 객단가
 
-Executive Stay는 초기 Product Line이 아니며, NMD Executive Collection은 초기 전략에서 사용하지 않는다.
-
 ---
 
 ### 15.5 Medical / Academic / Startup Stay
@@ -1129,10 +1127,6 @@ Young Professional Stay
 GBD Furnished Living
 ↓
 Move-in Support
-
-AI는 NMD Executive Collection을 추천하지 않는다.
-
-Executive 수요는 NMD Residence 안의 Executive Stay로 분류한다.
 
 ---
 
@@ -1734,8 +1728,6 @@ AI 도구는 NMD 관련 Business Plan, IR 자료, Pitch Deck, Financial Model, R
 * 공급 전략은 Partner First Supply이다.
 * Master Lease는 기본 전략이 아니라 수요 검증 후 선택하는 Strategic Model이다.
 * 초기 Product Line은 NMD Nest와 NMD Residence 투트랙이다.
-* NMD Collection은 초기 전략에서 제외한다.
-* Executive Collection은 초기 Product Line 또는 Collection으로 사용하지 않는다.
 * Executive Stay는 NMD Residence 안의 Premium Use Case로 다룬다.
 * NMD Nest는 Efficient Furnished Living으로 설명한다.
 * NMD Residence는 Premium Corporate Housing으로 설명한다.
