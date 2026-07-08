@@ -568,10 +568,6 @@ NMD Residence Page는 다음을 설명한다.
 * 프리미엄 주거 경험
 * Korea Housing Trust Layer
 
-NMD Collection은 초기 상품 페이지로 만들지 않는다.
-
-Executive Stay는 NMD Residence 안의 Premium Use Case로 다룬다.
-
 ---
 
 ## 10. CMS & Property Data System
@@ -941,10 +937,6 @@ Young Professional Stay
 GBD Furnished Living
 ↓
 Move-in Support
-
-AI는 NMD Executive Collection을 추천하지 않는다.
-
-Executive 수요는 NMD Residence 안의 Executive Stay로 분류한다.
 
 ---
 
@@ -1940,8 +1932,6 @@ AI 도구는 NMD 관련 Business Plan, IR 자료, Pitch Deck, 홈페이지 구�
 * 초기 기술 스택은 WordPress + GeneratePress + ACF 기반을 고려한다.
 * WordPress는 단순 블로그가 아니라 초기 Product Platform으로 설계한다.
 * 초기 Product Line은 NMD Nest와 NMD Residence 투트랙이다.
-* NMD Collection은 초기 전략에서 제외한다.
-* Executive Collection은 초기 Product Line 또는 Collection으로 사용하지 않는다.
 * Executive Stay는 NMD Residence 안의 Premium Use Case로 다룬다.
 * NMD Nest는 Efficient Furnished Living으로 설명한다.
 * NMD Residence는 Premium Corporate Housing으로 설명한다.
