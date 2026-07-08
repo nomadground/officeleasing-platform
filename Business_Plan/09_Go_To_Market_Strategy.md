@@ -1828,8 +1828,6 @@ AI 도구는 NMD 관련 Business Plan, IR 자료, Pitch Deck, Sales Strategy, Ma
 * B2C는 무시하지 않되, 단기 여행객이나 초저가 숙박 고객이 아니라 청년 전문인력, 외국인 직원, 장기 체류 고객 중심으로 이해한다.
 * 공급 전략은 Partner First Supply이다.
 * 초기 Product Line은 NMD Nest와 NMD Residence 투트랙이다.
-* NMD Collection은 초기 전략에서 제외한다.
-* Executive Collection은 초기 Product Line 또는 Collection으로 사용하지 않는다.
 * Executive Stay는 NMD Residence 안의 Premium Use Case로 다룬다.
 * Medical Stay, Academic Stay, Startup Stay는 초기 Product Line이 아니라 향후 확장 가능한 Service Segment 또는 Use Case로 다룬다.
 * NMD Nest는 Efficient Furnished Living으로 설명한다.
