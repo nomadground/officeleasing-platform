@@ -247,12 +247,6 @@ NMD Nest는 Efficient Furnished Living이다.
 
 NMD Residence는 Premium Corporate Housing이다.
 
-NMD Collection은 초기 전략에서 제외한다.
-
-Executive Collection은 초기 Product Line 또는 Collection으로 사용하지 않는다.
-
-Executive Stay는 NMD Residence 안의 Premium Use Case로 다룬다.
-
 ---
 
 ### 5.6 Service Focus
@@ -569,8 +563,6 @@ Product Line은 여전히 단순하게 유지한다.
 * Startup Stay
 * Enterprise Housing Program
 
-Executive Collection은 초기 또는 기본 Product Line으로 사용하지 않는다.
-
 필요 시 향후 별도 프리미엄 상품은 수요와 운영 기준이 검증된 뒤 검토한다.
 
 ---
@@ -808,12 +800,6 @@ NMD는 불필요한 상품명을 만들지 않는다.
 
 ### 10.3 Collection Policy
 
-NMD Collection은 초기 전략에서 제외한다.
-
-Executive Collection은 초기 Product Line 또는 Collection으로 사용하지 않는다.
-
-Executive Stay는 NMD Residence 안의 Premium Use Case로 다룬다.
-
 향후 프리미엄 상품군이 필요해질 경우 NMD Signature 또는 NMD Collection 등 별도 상품 확장을 검토할 수 있다.
 
 단, 이는 수요, 운영 기준, 가격 구조, 브랜드 필요성이 검증된 후에만 가능하다.
@@ -1046,7 +1032,6 @@ NMD가 피해야 할 것은 다음과 같다.
 * Losing Corporate Housing identity
 * Overusing Master Lease before validation
 * Creating too many product names
-* Launching NMD Collection too early
 * Treating Medical Stay as the main identity
 * Competing only on price
 * Becoming a short-term accommodation brand
@@ -1137,9 +1122,6 @@ AI 도구는 NMD 관련 Business Plan, IR 자료, Pitch Deck, Roadmap, Product S
 * 공급 전략은 Partner First Supply이다.
 * Master Lease는 기본 전략이 아니라 수요 검증 후 선택하는 Strategic Model이다.
 * 초기 Product Line은 NMD Nest와 NMD Residence 투트랙이다.
-* NMD Collection은 초기 전략에서 제외한다.
-* Executive Collection은 초기 Product Line 또는 Collection으로 사용하지 않는다.
-* Executive Stay는 NMD Residence 안의 Premium Use Case로 다룬다.
 * NMD Nest는 Efficient Furnished Living으로 설명한다.
 * NMD Residence는 Premium Corporate Housing으로 설명한다.
 * Medical Stay, Academic Stay, Startup Stay는 초기 Product Line이 아니라 향후 확장 가능한 Service Segment 또는 Use Case로 다룬다.
