@@ -1116,65 +1116,7 @@ Global Living Infrastructure Platform으로 확장 가능한 구조를 유지해
 
 
 
-# 15. Product Principle Statement
-
-
-
-NMD Product는
-
-
-
-단순한 부동산 웹사이트가 아니라,
-
-
-
-기업과 전문인력을 위한
-
-
-
-Corporate Housing &
-
-Furnished Living 경험을 설계하고 운영하는
-
-
-
-확장 가능한
-
-
-
-Living Infrastructure Platform이다.
-
-
-
-모든 Product 의사결정은
-
-
-
-사용자 경험,
-
-
-
-운영 효율,
-
-
-
-데이터 구조,
-
-
-
-AI 활용,
-
-
-
-장기 확장성을 기준으로 이루어진다.
-
-
-
----
-
-
-
-# 16. MVP Principles
+# 15. MVP Principles
 
 
 
@@ -1242,7 +1184,7 @@ Maintainable
 
 
 
-# 17. User Experience Principles
+# 16. User Experience Principles
 
 
 
@@ -1302,7 +1244,7 @@ NMD를 방문한다.
 
 
 
-# 18. Content Principles
+# 17. Content Principles
 
 
 
@@ -1348,7 +1290,7 @@ NMD를 방문한다.
 
 
 
-# 19. Data Ownership Principles
+# 18. Data Ownership Principles
 
 
 
@@ -1418,7 +1360,7 @@ NMD의 가장 중요한 자산은
 
 
 
-# 20. AI Collaboration Principles
+# 19. AI Collaboration Principles
 
 
 
@@ -1518,7 +1460,7 @@ Development
 
 
 
-# 21. Evolution Principles
+# 20. Evolution Principles
 
 
 
@@ -1609,175 +1551,172 @@ Infrastructure
 계속 진화하는 것을 전제로 설계한다.
 
 
+---
 
-# 22. Product Decision Hierarchy
 
+# 21. Product Decision Hierarchy# 20. Evolution Principles
 
+NMD Product는
 
-제품 개발 과정에서 판단이 어려운 경우
+완성된 제품을 만드는 것이 목표가 아니다.
 
+지속적으로 발전하는 제품을 만드는 것이 목표이다.
 
+초기 제품은
 
-항상 다음 우선순위를 따른다.
+현재의 문제를 해결해야 한다.
 
+동시에
 
-
-1. Blueprint
-
-
-
-Vision & Mission
-
-
-
-↓
-
-
-
-2. Business Plan
-
-
-
-Business Strategy
-
-
-
-↓
-
-
-
-3. Product Principles
-
-
-
-Product Philosophy
-
-
-
-↓
-
-
-
-4. Product Architecture
-
-
-
-System Structure
-
-
-
-↓
-
-
-
-5. UX/UI
-
-
-
-User Experience
-
-
-
-↓
-
-
-
-6. Implementation
-
-
-
-Development
-
-
-
-상위 문서가 항상 하위 문서보다 우선한다.
-
-
-
-구현의 편의성을 위해
-
-
-
-Vision을 변경해서는 안 된다.
-
-
-
-Business Strategy를 위해
-
-
-
-Product Identity를 훼손해서는 안 된다.
-
-
-
-모든 Product 의사결정은
-
-
-
-Blueprint에서 시작하여
-
-
-
-Development로 이어져야 한다.
+미래의 확장을 막아서는 안 된다.
 
 모든 Product는
 
+Versioning을 전제로 한다.
 
+v0.1
 
-Module 기반으로 설계한다.
+↓
 
+v0.2
 
+↓
 
-각 Module은
+v1.0
 
+↓
 
+v2.0
 
-독립적으로 개발,
+↓
 
+Platform
 
+↓
 
-수정,
-
-
-
-확장 가능해야 한다.
-
-
+Infrastructure
 
 제품은
 
+계속 진화하는 것을 전제로 설계한다.
 
+---
+
+# 21. Product Architecture Principles
+
+모든 NMD Product는
+
+Module 기반으로 설계한다.
+
+각 Module은
+
+독립적으로 개발,
+
+수정,
+
+확장 가능해야 한다.
+
+제품은
 
 Homepage가 아니라
 
-
-
 Platform을 만드는 것을 목표로 한다.
-
-
 
 새로운 기능은
 
-
-
 기존 구조를 변경하기보다
-
-
 
 새로운 Module을 추가하는 방식으로 확장한다.
 
-
-
 Loose Coupling
-
-
 
 High Cohesion
 
-
-
 원칙을 유지한다.
 
+---
 
+# 22. Product Decision Hierarchy
+
+제품 개발 과정에서 판단이 어려운 경우
+
+항상 다음 우선순위를 따른다.
+
+1. Blueprint
+
+Vision & Mission
+
+↓
+
+2. Business Plan
+
+Business Strategy
+
+↓
+
+3. Product Principles
+
+Product Philosophy
+
+↓
+
+4. Product Architecture
+
+System Structure
+
+↓
+
+5. UX/UI
+
+User Experience
+
+↓
+
+6. Implementation
+
+Development
+
+상위 문서가 항상 하위 문서보다 우선한다.
+
+구현의 편의성을 위해
+
+Vision을 변경해서는 안 된다.
+
+Business Strategy를 위해
+
+Product Identity를 훼손해서는 안 된다.
+
+모든 Product 의사결정은
+
+Blueprint에서 시작하여
+
+Development로 이어져야 한다.
 
 ---
+
+# Product Principle Statement
+
+NMD Product는
+
+단순한 부동산 웹사이트가 아니라,
+
+기업과 전문인력을 위한
+
+Corporate Housing &
+Furnished Living 경험을 설계하고 운영하는
+
+확장 가능한
+
+Living Infrastructure Platform이다.
+
+모든 Product 의사결정은
+
+사용자 경험,
+
+운영 효율,
+
+데이터 구조,
+
+AI 활용,
+
+장기 확장성을 기준으로 이루어진다.
