@@ -442,12 +442,6 @@ Property는 다음 Product Line 중 하나로 분류한다.
 * NMD Nest
 * NMD Residence
 
-NMD Collection은 초기 전략에서 제외한다.
-
-Executive Collection은 초기 Product Line 또는 Collection으로 사용하지 않는다.
-
-Executive 수요는 NMD Residence 안의 Executive Stay, 즉 Premium Use Case로 다룬다.
-
 ---
 
 ### 8.3 Step 3: Service Segment Fit
@@ -1835,8 +1829,6 @@ AI 도구는 NMD 관련 Business Plan, Operation SOP, Admin System, AI Agent, CR
 * 서비스 경험은 Resident-Centered Experience를 기준으로 설계한다.
 * 공급 전략은 Partner First Supply이다.
 * 초기 Product Line은 NMD Nest와 NMD Residence 투트랙이다.
-* NMD Collection은 초기 전략에서 제외한다.
-* Executive Collection은 초기 Product Line 또는 Collection으로 사용하지 않는다.
 * Executive Stay는 NMD Residence 안의 Premium Use Case로 다룬다.
 * NMD Nest는 Efficient Furnished Living으로 설명한다.
 * NMD Residence는 Premium Corporate Housing으로 설명한다.
