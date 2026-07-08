@@ -530,8 +530,6 @@ NMD Residence는 NMD의 Corporate Housing 전문성과 프리미엄 신뢰를 �
 
 초기 NMD Product Architecture에서는 Collection Layer를 공식 상품 구조로 사용하지 않는다.
 
-기존 초안의 Executive Collection은 초기 Product Line 또는 Collection으로 사용하지 않는다.
-
 이유는 다음과 같다.
 
 * 초기 상품 구조가 복잡해진다.
@@ -1599,12 +1597,6 @@ Products:
 * NMD Nest
 * NMD Residence
 
-Collection:
-
-* 초기에는 사용하지 않음
-* NMD Collection은 제외
-* Executive Collection은 초기 제외
-
 Services:
 
 * Corporate Stay
@@ -1768,7 +1760,6 @@ AI 도구는 NMD 관련 Business Plan, IR 자료, Pitch Deck, 홈페이지 구�
 * Option Layer는 고객 경험을 조정한다.
 * 초기 Product Line은 NMD Nest와 NMD Residence 투트랙이다.
 * NMD Collection은 초기 전략에서 제외한다.
-* Executive Collection은 초기 Product Line 또는 Collection으로 사용하지 않는다.
 * Executive Stay는 NMD Residence 안의 Premium Use Case로 다룬다.
 * NMD Nest는 Efficient Furnished Living으로 설명한다.
 * NMD Residence는 Premium Corporate Housing으로 설명한다.
