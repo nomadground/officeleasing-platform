@@ -623,11 +623,17 @@ NMD Nest는 새로운 도시에서 시작하는 첫 번째 안정적인 생활 �
 
 Nest는 작지만 안전하고, 준비되어 있으며, 바로 생활을 시작할 수 있는 공간을 상징한다.
 
+Your first ground in a new city.
+
 ---
 
 ### 12.2 Position
 
 ## Efficient Furnished Living
+
+Strategic Role:
+Scalable Compact Housing Network
+
 
 NMD Nest는 합리적인 비용, 빠른 입주, 업무지구 접근성, 준비된 생활 인프라를 중시하는 고객을 위한 상품이다.
 
@@ -699,7 +705,10 @@ Residence는 단순한 집이 아니라, 안정적인 생활과 기업 신뢰를
 
 ### 13.2 Position
 
-## Premium Corporate Living
+## Premium Corporate Housing
+
+Strategic Role:
+Enterprise-ready Residential Solution
 
 NMD Residence는 외국인 주재원, 임원, 가족 동반 장기 체류자, 고소득 전문직, 기업 핵심 인력을 위한 상품이다.
 
