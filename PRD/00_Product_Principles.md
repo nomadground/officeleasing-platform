@@ -146,11 +146,9 @@ NMD Product는 다음 세 가지 역할을 수행한다.
 
 
 
-## Infrastructure(Intelligence)
+## Infrastructure
 
-
-
-AI를 활용하여 고객과 운영자의 의사결정을 지원한다.
+주거 Discovery와 Operation이 축적되며 장기적으로 Living Infrastructure로 확장된다.
 
 
 
@@ -1554,7 +1552,7 @@ Infrastructure
 ---
 
 
-# 21. Product Decision Hierarchy# 20. Evolution Principles
+# 21. Product Decision Hierarchy#
 
 NMD Product는
 
