@@ -305,8 +305,6 @@ Services define the purpose.
 1. NMD Nest
 2. NMD Residence
 
-NMD Collection은 초기 전략에서 제외한다.
-
 상품 구조가 복잡해지면 고객 이해, 홈페이지 구조, 운영 기준, 관리자 시스템, AI 매칭 로직이 모두 복잡해진다.
 
 따라서 초기에는 NMD Nest와 NMD Residence의 투트랙 구조를 명확히 정립한다.
@@ -1422,7 +1420,6 @@ NMD는 Solution & Service 운영에서 다음 리스크를 관리해야 한다.
 관리 기준은 다음과 같다.
 
 * 초기 Product Line은 NMD Nest / NMD Residence만 유지
-* NMD Collection 초기 제외
 * Service Segment와 Product Line 구분
 * 홈페이지와 AI Agent에서 상품 구조 단순화
 
@@ -1497,7 +1494,6 @@ AI 도구는 NMD 관련 Business Plan, IR 자료, Pitch Deck, 홈페이지 구�
 * NMD는 단순 임대 플랫폼, 숙박업체, Airbnb 호스트, 일반 임대관리 회사, 단순 부동산 중개 플랫폼으로 설명하지 않는다.
 * NMD의 Solution은 Property Search가 아니라 Living Solution Recommendation이다.
 * 초기 Product Line은 NMD Nest와 NMD Residence 투트랙이다.
-* NMD Collection은 초기 전략에서 제외한다.
 * Executive Stay는 NMD Residence 안의 Premium Use Case로 다룬다.
 * NMD Nest는 Efficient Furnished Living으로 설명한다.
 * NMD Residence는 Premium Corporate Housing으로 설명한다.
