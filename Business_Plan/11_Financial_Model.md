@@ -680,12 +680,6 @@ Nest와 Residence는 가격대, 고객군, 세팅비, 유지보수, 공실 리�
 * NMD Nest
 * NMD Residence
 
-NMD Collection은 초기 전략에서 제외한다.
-
-Executive Collection은 초기 Product Line 또는 Collection으로 사용하지 않는다.
-
-Executive Stay는 NMD Residence 안의 Premium Use Case로 다룬다.
-
 ---
 
 ### 16.1 NMD Nest Economics
@@ -1550,8 +1544,6 @@ AI 도구는 NMD 관련 Business Plan, IR 자료, Pitch Deck, Financial Model, K
 * 초기에는 Partner Inventory와 Managed Inventory 중심으로 수요와 데이터, 운영 기준을 검증한다.
 * Master Lease는 기본 전략이 아니라 수요 검증 후 선택하는 Strategic Model이다.
 * 초기 Product Line은 NMD Nest와 NMD Residence 투트랙이다.
-* NMD Collection은 초기 전략에서 제외한다.
-* Executive Collection은 초기 Product Line 또는 Collection으로 사용하지 않는다.
 * Executive Stay는 NMD Residence 안의 Premium Use Case로 다룬다.
 * NMD Nest는 Efficient Furnished Living으로 설명한다.
 * NMD Residence는 Premium Corporate Housing으로 설명한다.
