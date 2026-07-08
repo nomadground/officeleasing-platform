@@ -218,6 +218,12 @@ NMD Nest는 B2B 수요와 B2C 수요를 모두 수용할 수 있다.
 
 NMD Nest의 포지션은 다음과 같다.
 
+Product Positioning:
+Efficient Furnished Living
+
+Strategic Role:
+Scalable Compact Housing Network
+
 ## Scalable Compact Furnished Living
 
 NMD Nest는 합리적인 비용, 빠른 입주, 기본 생활 완비, 업무지구 접근성을 중시하는 고객을 위한 상품이다.
@@ -392,6 +398,12 @@ NMD Residence는 기업 고객이 신뢰할 수 있는 위치, 품질, 계약 �
 ### 6.2 Positioning
 
 NMD Residence의 포지션은 다음과 같다.
+
+Product Positioning:
+Premium Corporate Housing
+
+Strategic Role:
+Enterprise-ready Residential Solution
 
 ## Premium Enterprise-ready Corporate Housing
 
