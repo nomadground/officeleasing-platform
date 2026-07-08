@@ -6,57 +6,31 @@ Corporate Housing & Furnished Living Platform
 
 ---
 
-## Vision
+## Purpose
 
-NMD is building a Corporate Housing &
-Furnished Living Platform for companies,
-expatriates, and professional workers.
+This repository is the Single Source of Truth for NMD.
+
+It contains the strategic, product, technical, and operational documentation required to build and scale NMD.
+
+All decisions must be aligned with the documents defined in this repository.
+
+---
+
+# Vision
+
+NMD (Nomad Ground) is building a Corporate Housing & Furnished Living Platform for companies, expatriates, and professional workers.
 
 Starting from Seoul Business Districts:
 
-- GBD
-- CBD
-- YBD
+- GBD (Gangnam Business District)
+- CBD (Central Business District)
+- YBD (Yeouido Business District)
 
-Expanding toward Global Mobility Living Infrastructure.
-
----
-
-## Document Hierarchy
-
-All decisions must follow this order:
-
-1. Blueprint
-   - Vision
-   - Mission
-   - Principles
-
-↓
-
-2. Business Plan
-   - Strategy
-   - Business Model
-   - Growth
-
-↓
-
-3. PRD
-   - Product
-   - UX
-   - AI
-   - System Architecture
-
-↓
-
-4. Design System
-
-↓
-
-5. Development
+NMD aims to evolve into a Global Mobility Living Infrastructure Platform.
 
 ---
 
-## Product Direction
+# Product Positioning
 
 NMD is not:
 
@@ -69,71 +43,243 @@ NMD is:
 Corporate Housing &
 Furnished Living Infrastructure
 
+The product is designed to solve mobility and housing problems for companies and professional workers.
+
 ---
 
-## Product Brands
+# Document Hierarchy
 
-Current:
+All strategy, product, and development decisions must follow this order.
 
-- NMD Nest
-- NMD Residence
+## 1. Blueprint
 
-Future:
+Defines:
+
+- Vision
+- Mission
+- Brand Principles
+- Long-term Direction
+
+Why NMD exists.
+
+↓
+
+## 2. Business Plan
+
+Defines:
+
+- Business Strategy
+- Business Model
+- Operation Strategy
+- Growth Strategy
+
+How NMD grows.
+
+↓
+
+## 3. PRD (Product Requirement Documents)
+
+Defines:
+
+- Product Strategy
+- UX/UI
+- Information Architecture
+- CMS
+- Admin Dashboard
+- AI Agent
+- Data Architecture
+
+How NMD becomes a product.
+
+↓
+
+## 4. Design System
+
+Defines:
+
+- Brand Experience
+- Visual System
+- UI Components
+- Interaction Rules
+
+↓
+
+## 5. Development
+
+Defines:
+
+- Implementation
+- Engineering
+- Infrastructure
+
+---
+
+# Product Brands
+
+Initial Product Structure:
+
+## NMD Nest
+
+Compact Furnished Living
+
+Examples:
+
+- Multi-family Housing
+- Small Residential Units
+- Officetel
+
+---
+
+## NMD Residence
+
+Premium Corporate Housing
+
+Examples:
+
+- Premium Officetel
+- High-end Residence
+- Two-bedroom / Three-bedroom Homes
+
+---
+
+Future Expansion:
 
 - NMD Town
 - NMD Tower
 
 ---
 
-## AI Collaboration Rules
+# Product Principles
 
-All AI tools must:
+All products must follow:
 
-1. Read Blueprint first
-2. Follow Business Plan strategy
-3. Implement based on PRD
-
-Do not redefine existing concepts.
-
-Extend existing architecture.
-
-Maintain:
-
-- Brand consistency
-- Data scalability
-- Operational efficiency
-- Corporate Housing positioning
+- Corporate First
+- Curated Inventory
+- Simple Experience
+- Operation First
+- AI Native
+- Scalable Architecture
+- Trust Before Conversion
 
 ---
 
-## AI Tool Roles
+# Technology Principles
 
-ChatGPT
+Technology decisions must follow:
 
-- Strategy Review
-- Product Review
+Data First
+
+↓
+
+Architecture First
+
+↓
+
+Interface Second
+
+↓
+
+Implementation Last
+
+Technology must support:
+
+- Scalability
+- Maintainability
+- Operational Efficiency
+- AI Integration
+
+---
+
+# AI Collaboration Rules
+
+All AI tools must understand and follow the NMD document hierarchy.
+
+AI must review:
+
+1. Blueprint
+2. Business Plan
+3. PRD
+
+before making decisions.
+
+AI should not redefine existing concepts.
+
+AI should extend existing architecture.
+
+Consistency is more important than creating new ideas.
+
+---
+
+# AI Tool Roles
+
+## ChatGPT
+
+Role:
+
+Strategic Partner & Product Reviewer
+
+Responsibilities:
+
+- Business Strategy Review
+- Product Direction Review
+- UX Review
 - Architecture Review
+- Decision Support
 
-Claude
+---
+
+## Claude
+
+Role:
+
+Product Architect & Development Partner
+
+Responsibilities:
 
 - Documentation
-- Development Planning
+- Product Specification
+- Technical Planning
 - Code Generation
-
-Cursor
-
-- Implementation
-- Refactoring
-- Debugging
+- Implementation Support
 
 ---
 
-## Development Principle
+# Development Philosophy
 
-Build:
+NMD builds:
 
 Simple MVP
 
 with
 
 Scalable Architecture
+
+The goal is not to build many features.
+
+The goal is to build the right foundation.
+
+---
+
+# Evolution
+
+NMD evolves through:
+
+Blueprint
+
+↓
+
+Business Plan
+
+↓
+
+Product
+
+↓
+
+Platform
+
+↓
+
+Infrastructure
+
+Every decision should support the transition from a Seoul Corporate Housing Platform into a Global Mobility Living Infrastructure Platform.
