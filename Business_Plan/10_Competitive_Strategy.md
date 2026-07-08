@@ -774,12 +774,6 @@ NMD는 초기 Product Line을 단순하게 유지한다.
 * NMD Nest
 * NMD Residence
 
-NMD Collection은 초기 전략에서 제외한다.
-
-Executive Collection은 초기 Product Line 또는 Collection으로 사용하지 않는다.
-
-Executive Stay는 NMD Residence 안의 Premium Use Case로 다룬다.
-
 이 단순성은 경쟁우위가 된다.
 
 상품 구조가 단순해야 고객이 이해하고, 운영팀이 관리하고, AI가 추천하고, 홈페이지가 전환될 수 있다.
@@ -1190,8 +1184,6 @@ NMD가 단기 숙박, 여행, 파티 숙소, 일반 중개 플랫폼처럼 보�
 
 * Corporate Housing & Furnished Living 포지션 유지
 * NMD Nest / Residence 투트랙 유지
-* NMD Collection 초기 제외
-* Executive Collection 초기 제외
 * Medical / Academic / Startup은 Use Case로 관리
 * Professional / Reliable / Calm 브랜드 톤 유지
 
@@ -1355,9 +1347,6 @@ AI 도구는 NMD 관련 Business Plan, IR 자료, Pitch Deck, 경쟁 분석, 브
 * 서비스 경험은 Resident-Centered Experience를 기준으로 설계한다.
 * 공급 전략은 Partner First Supply이다.
 * 초기 Product Line은 NMD Nest와 NMD Residence 투트랙이다.
-* NMD Collection은 초기 전략에서 제외한다.
-* Executive Collection은 초기 Product Line 또는 Collection으로 사용하지 않는다.
-* Executive Stay는 NMD Residence 안의 Premium Use Case로 다룬다.
 * NMD Nest는 Efficient Furnished Living으로 설명한다.
 * NMD Residence는 Premium Corporate Housing으로 설명한다.
 * Medical Stay, Academic Stay, Startup Stay는 초기 Product Line이 아니라 향후 확장 가능한 Service Segment 또는 Use Case로 다룬다.
