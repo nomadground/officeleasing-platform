@@ -1222,7 +1222,6 @@ AI 도구는 NMD 관련 Business Plan, IR 자료, Pitch Deck, 홈페이지 문�
 * Executive Customers는 초기에는 NMD Residence 안의 Premium Use Case로 다룬다.
 * Medical Stay, Academic Stay, Startup Stay 등은 초기 Product Line이 아니라 향후 확장 가능한 Service Segment 또는 Use Case로 다룬다.
 * 초기 상품 구조는 NMD Nest와 NMD Residence 투트랙이다.
-* NMD Collection은 초기 전략에서 제외한다.
 * NMD Nest는 Efficient Furnished Living, NMD Residence는 Premium Corporate Housing으로 설명한다.
 * 한국 주거 행정, 법인 임대차, 전입신고, 거소등록, 비자 관련 주거 증빙, 전세권, 보증보험, 보증금 안정성은 Korea Housing Trust Layer로 다룬다.
 * 법률·세무·행정 대행 자격이 필요한 영역은 전문가 협력 또는 전문기관 안내로 처리한다.
