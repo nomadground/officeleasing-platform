@@ -542,8 +542,6 @@ Executive & Premium Customers의 Needs는 다음과 같다.
 
 Executive & Premium Customers는 주로 NMD Residence와 연결된다.
 
-기존 초안의 NMD Executive Collection은 초기 Product Line으로 사용하지 않는다.
-
 Executive 수요는 초기에는 NMD Residence 안에서 Premium Use Case로 다룬다.
 
 향후 수요 데이터, 운영 기준, 브랜드 필요성이 명확해질 경우 NMD Signature 또는 NMD Collection 등 별도 상품 확장을 검토할 수 있다.
@@ -1222,7 +1220,6 @@ AI 도구는 NMD 관련 Business Plan, IR 자료, Pitch Deck, 홈페이지 문�
 * 실제 브랜드 경험의 핵심은 B2B2C Resident이다.
 * Foreign Professionals와 Young Professionals는 중요한 Resident 세그먼트다.
 * Executive Customers는 초기에는 NMD Residence 안의 Premium Use Case로 다룬다.
-* NMD Executive Collection은 초기 Product Line으로 사용하지 않는다.
 * Medical Stay, Academic Stay, Startup Stay 등은 초기 Product Line이 아니라 향후 확장 가능한 Service Segment 또는 Use Case로 다룬다.
 * 초기 상품 구조는 NMD Nest와 NMD Residence 투트랙이다.
 * NMD Collection은 초기 전략에서 제외한다.
