@@ -1,0 +1,5 @@
+/*
+ * HLF 관리자 화면 스타일 (Phase 1 골격). 실제 등록/OCR/이미지 관리자 UI는 Phase 3~4에서.
+ * .hlf- 네임스페이스 유지. 지금은 자리표시자.
+ */
+.hlf-admin-placeholder { padding: 16px; color: #687780; }
