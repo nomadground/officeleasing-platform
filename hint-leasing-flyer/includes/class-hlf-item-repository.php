@@ -93,6 +93,15 @@ final class HLF_Item_Repository {
 			);
 		}
 
+		// wp_insert_post() 이전에 기존 item들의 display_order 최댓값을 구한다 — 삭제로 중간 번호가
+		// 빈 상태에서 "전체 개수"로 새 순번을 매기면 남아있는 item과 값이 겹칠 수 있다(예: 0,1,2 중
+		// 1번 삭제 후 재추가 시 "개수-1"=1이 남아있는 2번과 충돌). 최댓값+1이면 항상 유일하다.
+		$max_existing_order = -1;
+		foreach ( self::get_items( $flyer_id ) as $existing_item ) {
+			$max_existing_order = max( $max_existing_order, (int) get_post_meta( $existing_item->ID, 'display_order', true ) );
+		}
+		$next_display_order = $max_existing_order + 1; // 기존 item이 없으면 -1 + 1 = 0.
+
 		$item_id = wp_insert_post( array(
 			'post_type'   => HLF_Post_Types::ITEM,
 			'post_parent' => $flyer_id,
@@ -105,12 +114,10 @@ final class HLF_Item_Repository {
 		}
 		$item_id = (int) $item_id;
 
-		// 불변 item_number(원자적) + display_order(맨 뒤).
+		// 불변 item_number(원자적) + display_order(맨 뒤, 위에서 미리 계산한 값).
 		$seq = self::next_sequence( $flyer_id );
 		update_post_meta( $item_id, 'item_number', self::format_item_number( $seq ) );
-
-		$existing_count = max( 0, count( self::get_items( $flyer_id ) ) - 1 );
-		update_post_meta( $item_id, 'display_order', $existing_count );
+		update_post_meta( $item_id, 'display_order', $next_display_order );
 
 		self::apply_fields( $item_id, $fields );
 		return $item_id;
@@ -136,16 +143,33 @@ final class HLF_Item_Repository {
 	/**
 	 * 표시 순서 재정렬. $ordered_item_ids 순서대로 display_order를 0..n-1로 부여한다.
 	 * item_number는 건드리지 않는다(상세 URL 불변).
+	 *
+	 * 저장 전에 요청 배열 전체를 검증한다 — 중복 ID가 없어야 하고, ID 집합이 이 Flyer의
+	 * 현재 item ID 집합과 정확히 일치해야 한다(누락도, 타 Flyer item 포함도 거부).
+	 * 검증에 실패하면 아무 것도 저장하지 않고 즉시 400을 반환한다(부분 반영 금지).
 	 */
 	public static function reorder( int $flyer_id, array $ordered_item_ids ): bool|WP_Error {
-		$valid_ids = wp_list_pluck( self::get_items( $flyer_id ), 'ID' );
-		$order     = 0;
+		$requested_ids = array_map( 'intval', $ordered_item_ids );
+
+		if ( count( $requested_ids ) !== count( array_unique( $requested_ids ) ) ) {
+			return new WP_Error( 'hlf_reorder_invalid', '순서 목록에 중복된 항목이 있습니다.', array( 'status' => 400 ) );
+		}
+
+		$valid_ids = array_map( 'intval', wp_list_pluck( self::get_items( $flyer_id ), 'ID' ) );
+		sort( $requested_ids );
+		$sorted_valid_ids = $valid_ids;
+		sort( $sorted_valid_ids );
+		if ( $requested_ids !== $sorted_valid_ids ) {
+			return new WP_Error(
+				'hlf_reorder_invalid',
+				'순서 목록이 이 Flyer의 현재 항목 구성과 일치하지 않습니다(누락되었거나 다른 Flyer의 항목이 포함됨).',
+				array( 'status' => 400 )
+			);
+		}
+
+		$order = 0;
 		foreach ( $ordered_item_ids as $item_id ) {
-			$item_id = (int) $item_id;
-			if ( ! in_array( $item_id, $valid_ids, true ) ) {
-				return new WP_Error( 'hlf_reorder_invalid', '순서 목록에 이 Flyer 소속이 아닌 항목이 있습니다.', array( 'status' => 400 ) );
-			}
-			update_post_meta( $item_id, 'display_order', $order++ );
+			update_post_meta( (int) $item_id, 'display_order', $order++ );
 		}
 		return true;
 	}
