@@ -42,6 +42,7 @@ add_action( 'plugins_loaded', array( 'HLF_Plugin', 'boot' ) );
  */
 register_activation_hook( __FILE__, function () {
 	HLF_Post_Types::register();
+	HLF_Meta_Schema::register();
 	HLF_Routes::add_rewrite_rules();
 	HLF_Capabilities::add_caps();
 	update_option( 'hlf_rewrite_version', HLF_REWRITE_VERSION );

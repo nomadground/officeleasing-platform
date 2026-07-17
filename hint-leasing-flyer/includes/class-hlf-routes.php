@@ -85,10 +85,10 @@ final class HLF_Routes {
 			return;
 		}
 
-		$status = HLF_Flyer_Repository::status_label( $flyer->post_status );
-
-		// draft는 권한 있는 사용자만 미리보기.
-		if ( 'draft' === $status && ! current_user_can( 'edit_post', $flyer->ID ) ) {
+		// fail-closed: publish/archived로 명시되지 않은 모든 상태(draft/pending/future/trash/
+		// auto-draft 등)는 비공개로 간주하고 edit_post 권한이 있을 때만 미리보기를 허용한다.
+		$is_public = in_array( $flyer->post_status, array( 'publish', HLF_Post_Types::STATUS_ARCHIVED ), true );
+		if ( ! $is_public && ! current_user_can( 'edit_post', $flyer->ID ) ) {
 			self::send_404();
 			return;
 		}
