@@ -53,7 +53,9 @@ body.hlf-public {
 .hlf-basic-item dt { color: var(--hlf-muted); font-size: 13px; }
 .hlf-basic-item dd { margin: 0; color: var(--hlf-ink); font-size: 14px; font-weight: 700; text-align: right; }
 .hlf-contact { color: var(--hlf-primary); font-weight: 700; }
-.hlf-footer { margin-top: 28px; padding-top: 14px; border-top: 1px solid var(--hlf-line); color: var(--hlf-muted); font-size: 12px; }
+.hlf-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-top: 28px; padding-top: 14px; border-top: 1px solid var(--hlf-line); color: var(--hlf-muted); font-size: 12px; }
+.hlf-footer-contact a { color: var(--hlf-primary); font-weight: 700; text-decoration: none; }
+.hlf-footer-contact a:hover { text-decoration: underline; }
 
 @media (max-width: 700px) {
 	.hlf-listing-link { grid-template-columns: 28px 1fr; }

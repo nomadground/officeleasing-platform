@@ -32,6 +32,7 @@ require_once HLF_DIR . 'includes/class-hlf-item-repository.php';
 require_once HLF_DIR . 'includes/class-hlf-officeleasing-mapper.php';
 require_once HLF_DIR . 'includes/class-hlf-routes.php';
 require_once HLF_DIR . 'includes/class-hlf-rest-controller.php';
+require_once HLF_DIR . 'includes/class-hlf-admin-ui.php';
 require_once HLF_DIR . 'includes/class-hlf-plugin.php';
 
 add_action( 'plugins_loaded', array( 'HLF_Plugin', 'boot' ) );

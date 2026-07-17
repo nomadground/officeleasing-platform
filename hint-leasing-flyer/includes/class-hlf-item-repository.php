@@ -15,6 +15,9 @@ defined( 'ABSPATH' ) || exit;
 
 final class HLF_Item_Repository {
 
+	/** Flyer 하나에 담을 수 있는 최대 항목 수. 관리자 UI도 같은 값을 안내로 쓰되, 기준은 서버다. */
+	const MAX_ITEMS_PER_FLYER = 10;
+
 	public static function format_item_number( int $seq ): string {
 		return 'I' . sprintf( '%04d', $seq );
 	}
@@ -79,6 +82,15 @@ final class HLF_Item_Repository {
 	public static function create_item( int $flyer_id, array $fields ): int|WP_Error {
 		if ( HLF_Post_Types::FLYER !== get_post_type( $flyer_id ) ) {
 			return new WP_Error( 'hlf_not_flyer', '대상이 Flyer가 아닙니다.', array( 'status' => 404 ) );
+		}
+
+		// 클라이언트 우회(직접 REST 호출 등) 방지 — 서버가 최종 기준. UI는 안내만 표시한다.
+		if ( count( self::get_items( $flyer_id ) ) >= self::MAX_ITEMS_PER_FLYER ) {
+			return new WP_Error(
+				'hlf_item_limit_reached',
+				sprintf( 'Flyer 하나에는 최대 %d개의 매물만 담을 수 있습니다.', self::MAX_ITEMS_PER_FLYER ),
+				array( 'status' => 400 )
+			);
 		}
 
 		$item_id = wp_insert_post( array(

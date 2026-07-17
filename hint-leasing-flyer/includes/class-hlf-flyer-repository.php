@@ -11,6 +11,19 @@ final class HLF_Flyer_Repository {
 
 	const NUMBER_PREFIX = 'LF-';
 
+	/** Flyer contact_phone이 비어있을 때 공개 템플릿·관리자 UI가 공통으로 쓰는 대표번호(단일 출처). */
+	const DEFAULT_PHONE = '02-553-5988';
+
+	/**
+	 * 공개 화면 문의처. 우선순위: item 레벨 override(있으면) → flyer 레벨 기본값(있으면) → 대표번호.
+	 * $item 을 넘기지 않으면 목록 화면처럼 flyer 레벨만으로 계산한다.
+	 */
+	public static function public_contact( array $flyer, ?array $item = null ): array {
+		$name  = ( $item['contact_name'] ?? '' ) ?: ( $flyer['contact_name'] ?? '' );
+		$phone = ( $item['contact_phone'] ?? '' ) ?: ( ( $flyer['contact_phone'] ?? '' ) ?: self::DEFAULT_PHONE );
+		return array( 'name' => $name, 'phone' => $phone );
+	}
+
 	public static function format_number( int $flyer_id ): string {
 		return self::NUMBER_PREFIX . sprintf( '%06d', $flyer_id );
 	}
@@ -47,24 +60,37 @@ final class HLF_Flyer_Repository {
 		if ( is_wp_error( $flyer_id ) ) {
 			return $flyer_id;
 		}
+		$flyer_id = (int) $flyer_id;
 		// item 시퀀스 시드(0). item 추가 전에 행이 존재해야 원자적 증가가 안전하다.
 		add_post_meta( $flyer_id, HLF_Meta_Schema::FLYER_ITEM_SEQ, 0, true );
-		return (int) $flyer_id;
+		self::apply_meta_fields( $flyer_id, $data );
+		return $flyer_id;
 	}
 
 	public static function update( int $flyer_id, array $data ): int|WP_Error {
 		if ( HLF_Post_Types::FLYER !== get_post_type( $flyer_id ) ) {
 			return new WP_Error( 'hlf_not_flyer', '대상이 Flyer가 아닙니다.', array( 'status' => 404 ) );
 		}
-		$postarr = array( 'ID' => $flyer_id );
 		if ( isset( $data['title'] ) ) {
-			$postarr['post_title'] = sanitize_text_field( $data['title'] );
+			$result = wp_update_post( array( 'ID' => $flyer_id, 'post_title' => sanitize_text_field( $data['title'] ) ), true );
+			if ( is_wp_error( $result ) ) {
+				return $result;
+			}
 		}
-		if ( count( $postarr ) === 1 ) {
-			return $flyer_id;
+		self::apply_meta_fields( $flyer_id, $data );
+		return $flyer_id;
+	}
+
+	/** contact_name/contact_phone 등 flyer 레벨 메타를 화이트리스트로만 반영(제목/상태는 여기서 다루지 않음). */
+	private static function apply_meta_fields( int $flyer_id, array $data ): void {
+		$schema   = HLF_Meta_Schema::flyer_fields();
+		$writable = HLF_Meta_Schema::flyer_writable_fields();
+		foreach ( $data as $key => $value ) {
+			if ( ! in_array( $key, $writable, true ) ) {
+				continue;
+			}
+			update_post_meta( $flyer_id, $key, HLF_Meta_Schema::sanitize( $schema[ $key ]['type'], $value ) );
 		}
-		$result = wp_update_post( $postarr, true );
-		return is_wp_error( $result ) ? $result : (int) $flyer_id;
 	}
 
 	public static function delete( int $flyer_id, bool $force = false ): bool|WP_Error {
@@ -106,7 +132,7 @@ final class HLF_Flyer_Repository {
 
 	/** REST/템플릿 공용 직렬화. */
 	public static function to_array( WP_Post $flyer ): array {
-		return array(
+		$base = array(
 			'id'           => $flyer->ID,
 			'flyer_number' => self::format_number( $flyer->ID ),
 			'title'        => get_the_title( $flyer ),
@@ -117,6 +143,7 @@ final class HLF_Flyer_Repository {
 			'url'          => HLF_Routes::flyer_url( $flyer->ID ),
 			'item_count'   => count( HLF_Item_Repository::get_items( $flyer->ID ) ),
 		);
+		return array_merge( $base, HLF_Meta_Schema::read_flyer( $flyer->ID ) );
 	}
 
 	public static function list( array $args = array() ): array {

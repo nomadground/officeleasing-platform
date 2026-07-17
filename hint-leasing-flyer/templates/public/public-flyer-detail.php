@@ -69,17 +69,20 @@ $basic = array(
 			<?php endforeach; ?>
 		</dl>
 
-		<?php if ( $item['contact_name'] || $item['contact_phone'] ) : ?>
-			<p class="hlf-contact">
-				담당: <?php echo esc_html( $item['contact_name'] ); ?>
-				<?php if ( $item['contact_phone'] ) : ?>
-					<a href="<?php echo esc_attr( 'tel:' . preg_replace( '/[^0-9+]/', '', $item['contact_phone'] ) ); ?>"><?php echo esc_html( $item['contact_phone'] ); ?></a>
-				<?php endif; ?>
-			</p>
-		<?php endif; ?>
-
+		<?php
+		// 문의처 우선순위: 이 매물의 개별 담당자(override, item_fields의 contact_name/contact_phone)
+		// → Flyer 기본 담당자(flyer_fields) → 대표번호. HLF_Flyer_Repository::public_contact()가
+		// 단일 기준으로 계산한다(목록/상세 화면이 서로 다른 규칙을 갖지 않도록).
+		$contact = HLF_Flyer_Repository::public_contact( $flyer, $item );
+		?>
 		<footer class="hlf-footer">
 			<span>© HINT <?php echo esc_html( gmdate( 'Y' ) ); ?> · <?php echo esc_html( $flyer['flyer_number'] ); ?></span>
+			<span class="hlf-footer-contact">
+				<?php if ( $contact['name'] ) : ?>
+					<?php echo esc_html( $contact['name'] ); ?> ·
+				<?php endif; ?>
+				<a href="<?php echo esc_attr( 'tel:' . preg_replace( '/[^0-9+]/', '', $contact['phone'] ) ); ?>"><?php echo esc_html( $contact['phone'] ); ?></a>
+			</span>
 		</footer>
 	</div>
 </body>

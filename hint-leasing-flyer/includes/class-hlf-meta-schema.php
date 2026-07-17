@@ -74,6 +74,27 @@ final class HLF_Meta_Schema {
 		return array_values( array_diff( array_keys( self::item_fields() ), $exclude ) );
 	}
 
+	/**
+	 * Flyer(발행 단위) 레벨 메타. 요청서 Phase 2-1: 담당자 기본값.
+	 *
+	 * 용도: Flyer 전체의 기본 문의처(공개 템플릿 하단에 표시, 비어있으면 대표번호로 폴백).
+	 * Item의 contact_name/contact_phone(item_fields 참고)은 그대로 유지되며, "이 매물만
+	 * 다른 담당자면 개별 입력"하는 선택적 override다 — Flyer 레벨 값을 대체하는 게 아니라
+	 * 항목 단위로 겹쳐 쓰는 구조. 우선순위(항목 override → flyer 기본값 → 대표번호 폴백)는
+	 * 공개 템플릿(templates/public/*.php)에서 처리한다.
+	 */
+	public static function flyer_fields(): array {
+		return array(
+			'contact_name'  => array( 'type' => 'string' ),
+			'contact_phone' => array( 'type' => 'string' ),
+		);
+	}
+
+	/** Flyer 필드는 전부 클라이언트가 직접 쓸 수 있다(서버관리 필드가 없음). */
+	public static function flyer_writable_fields(): array {
+		return array_keys( self::flyer_fields() );
+	}
+
 	public static function register(): void {
 		$auth = static function ( $allowed, $meta_key, $post_id ) {
 			return current_user_can( 'edit_post', $post_id );
@@ -85,6 +106,19 @@ final class HLF_Meta_Schema {
 				'single'            => true,
 				'type'              => $rest_type,
 				'show_in_rest'      => false, // 커스텀 컨트롤러(HLF_REST_Controller)로만 노출.
+				'sanitize_callback' => static function ( $value ) use ( $def ) {
+					return HLF_Meta_Schema::sanitize( $def['type'], $value );
+				},
+				'auth_callback'     => $auth,
+			) );
+		}
+
+		foreach ( self::flyer_fields() as $key => $def ) {
+			$rest_type = self::rest_type( $def['type'] );
+			register_post_meta( HLF_Post_Types::FLYER, $key, array(
+				'single'            => true,
+				'type'              => $rest_type,
+				'show_in_rest'      => false,
 				'sanitize_callback' => static function ( $value ) use ( $def ) {
 					return HLF_Meta_Schema::sanitize( $def['type'], $value );
 				},
@@ -167,6 +201,15 @@ final class HLF_Meta_Schema {
 			} else {
 				$out[ $key ] = (string) $raw;
 			}
+		}
+		return $out;
+	}
+
+	/** Flyer 레벨 메타(contact_name/contact_phone)를 정규화된 배열로 읽는다. */
+	public static function read_flyer( int $flyer_id ): array {
+		$out = array();
+		foreach ( self::flyer_fields() as $key => $def ) {
+			$out[ $key ] = self::sanitize( $def['type'], get_post_meta( $flyer_id, $key, true ) );
 		}
 		return $out;
 	}

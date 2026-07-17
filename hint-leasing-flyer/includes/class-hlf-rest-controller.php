@@ -73,10 +73,12 @@ final class HLF_REST_Controller {
 			),
 		) );
 
-		register_rest_route( self::NS, '/flyers/(?P<id>\d+)/publish', array(
+		// 이름은 "publish"가 아니라 "status"다 — draft/published/archived 중 어떤 상태로도
+		// 전이할 수 있는 범용 상태변경 엔드포인트이며, publish 전용이 아니다.
+		register_rest_route( self::NS, '/flyers/(?P<id>\d+)/status', array(
 			'methods'             => WP_REST_Server::CREATABLE,
 			'callback'            => array( __CLASS__, 'set_status' ),
-			'permission_callback' => array( __CLASS__, 'can_publish_this_flyer' ),
+			'permission_callback' => array( __CLASS__, 'can_set_status_this_flyer' ),
 		) );
 
 		// --- Phase 2 범위: 라우트만 등록, 지금은 501 ---
@@ -108,7 +110,8 @@ final class HLF_REST_Controller {
 		return current_user_can( 'delete_post', $id );
 	}
 
-	public static function can_publish_this_flyer( WP_REST_Request $request ): bool {
+	/** publish_leasing_flyers는 draft/published/archived 어느 방향 전이든 동일하게 요구한다(범용 상태변경). */
+	public static function can_set_status_this_flyer( WP_REST_Request $request ): bool {
 		$id = (int) $request['id'];
 		return current_user_can( 'publish_leasing_flyers' ) && current_user_can( 'edit_post', $id );
 	}
@@ -124,7 +127,7 @@ final class HLF_REST_Controller {
 	}
 
 	public static function create_flyer( WP_REST_Request $request ) {
-		$flyer_id = HLF_Flyer_Repository::create( array( 'title' => (string) $request['title'] ) );
+		$flyer_id = HLF_Flyer_Repository::create( self::flyer_input( $request ) );
 		if ( is_wp_error( $flyer_id ) ) {
 			return $flyer_id;
 		}
@@ -142,7 +145,7 @@ final class HLF_REST_Controller {
 	}
 
 	public static function update_flyer( WP_REST_Request $request ) {
-		$result = HLF_Flyer_Repository::update( (int) $request['id'], array( 'title' => (string) $request['title'] ) );
+		$result = HLF_Flyer_Repository::update( (int) $request['id'], self::flyer_input( $request ) );
 		if ( is_wp_error( $result ) ) {
 			return $result;
 		}
@@ -157,6 +160,7 @@ final class HLF_REST_Controller {
 		return rest_ensure_response( array( 'deleted' => (bool) $result ) );
 	}
 
+	/** draft|published|archived 중 하나로 상태를 바꾼다(publish 전용 엔드포인트가 아님). */
 	public static function set_status( WP_REST_Request $request ) {
 		$status = sanitize_key( (string) $request['status'] );
 		$result = HLF_Flyer_Repository::set_status( (int) $request['id'], $status );
@@ -209,12 +213,28 @@ final class HLF_REST_Controller {
 
 	/** 요청 본문에서 화이트리스트 필드만 뽑아 넘긴다(정규화는 repository/apply_fields가 재확인). */
 	private static function item_input( WP_REST_Request $request ): array {
-		$params = $request->get_json_params();
-		if ( ! is_array( $params ) ) {
-			$params = $request->get_params();
+		return self::pluck_params( $request, HLF_Meta_Schema::writable_fields() );
+	}
+
+	/** Flyer 생성/수정 입력. title은 메타가 아니라 post_title이므로 별도로 항상 포함한다. */
+	private static function flyer_input( WP_REST_Request $request ): array {
+		$out = self::pluck_params( $request, HLF_Meta_Schema::flyer_writable_fields() );
+		$params = self::request_params( $request );
+		if ( array_key_exists( 'title', $params ) ) {
+			$out['title'] = (string) $params['title'];
 		}
-		$out = array();
-		foreach ( HLF_Meta_Schema::writable_fields() as $field ) {
+		return $out;
+	}
+
+	private static function request_params( WP_REST_Request $request ): array {
+		$params = $request->get_json_params();
+		return is_array( $params ) ? $params : $request->get_params();
+	}
+
+	private static function pluck_params( WP_REST_Request $request, array $whitelist ): array {
+		$params = self::request_params( $request );
+		$out    = array();
+		foreach ( $whitelist as $field ) {
 			if ( array_key_exists( $field, $params ) ) {
 				$out[ $field ] = $params[ $field ];
 			}

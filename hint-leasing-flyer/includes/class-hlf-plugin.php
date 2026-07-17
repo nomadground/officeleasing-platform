@@ -18,6 +18,9 @@ final class HLF_Plugin {
 		// 관리자 전용 REST API.
 		add_action( 'rest_api_init', array( 'HLF_REST_Controller', 'register_routes' ) );
 
+		// wp-admin "Leasing Flyer" 메뉴(목록/편집 화면). 데이터는 위 REST를 그대로 호출한다.
+		HLF_Admin_UI::init();
+
 		// ACF가 있으면 flyer item 편집용 필드그룹 json을 추가 로드(선택적, 의존 아님).
 		add_filter( 'acf/settings/load_json', array( __CLASS__, 'maybe_add_acf_json_path' ) );
 

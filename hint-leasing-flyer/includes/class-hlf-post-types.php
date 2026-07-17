@@ -59,8 +59,12 @@ final class HLF_Post_Types {
 				'not_found'     => '등록된 Flyer가 없습니다',
 			),
 			'public'              => false,
-			'show_ui'             => true,
-			'show_in_menu'        => true,
+			// 기본 워드프레스 글 편집기(post.php)는 title/author만 지원해 커스텀 필드(담당자·주소·
+			// 금액 등)와 item 관리 UI를 전혀 노출하지 못한다. 그 화면을 그대로 두면 "Leasing Flyer"
+			// 메뉴가 두 개(기본 편집기 vs HLF_Admin_UI 커스텀 화면) 생겨 혼란만 준다 → 기본 UI는
+			// 끄고, 편집은 HLF_Admin_UI가 등록하는 커스텀 REST 기반 화면 하나로만 진입하게 한다.
+			'show_ui'             => false,
+			'show_in_menu'        => false,
 			'show_in_rest'        => true,
 			'publicly_queryable'  => false,
 			'exclude_from_search' => true,
@@ -68,8 +72,6 @@ final class HLF_Post_Types {
 			'rewrite'             => false, // 공개 URL은 /listup/ 커스텀 rewrite가 전담(HLF_Routes).
 			'hierarchical'        => false,
 			'supports'            => array( 'title', 'author' ),
-			'menu_icon'           => 'dashicons-media-spreadsheet',
-			'menu_position'       => 22,
 			'capability_type'     => array( 'leasing_flyer', 'leasing_flyers' ),
 			'map_meta_cap'        => true,
 			'capabilities'        => self::flyer_capabilities(),

@@ -79,8 +79,15 @@ $noindex = ( 'published' !== $status );
 			</ul>
 		<?php endif; ?>
 
+		<?php $contact = HLF_Flyer_Repository::public_contact( $flyer ); ?>
 		<footer class="hlf-footer">
 			<span>© HINT <?php echo esc_html( gmdate( 'Y' ) ); ?> · <?php echo esc_html( $flyer['flyer_number'] ); ?></span>
+			<span class="hlf-footer-contact">
+				<?php if ( $contact['name'] ) : ?>
+					<?php echo esc_html( $contact['name'] ); ?> ·
+				<?php endif; ?>
+				<a href="<?php echo esc_attr( 'tel:' . preg_replace( '/[^0-9+]/', '', $contact['phone'] ) ); ?>"><?php echo esc_html( $contact['phone'] ); ?></a>
+			</span>
 		</footer>
 	</div>
 </body>

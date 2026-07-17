@@ -1,5 +1,67 @@
 /*
- * HLF 관리자 화면 스타일 (Phase 1 골격). 실제 등록/OCR/이미지 관리자 UI는 Phase 3~4에서.
- * .hlf- 네임스페이스 유지. 지금은 자리표시자.
+ * HLF 관리자 화면 스타일(Phase 2-1). wp-admin 기본 룩(.wrap, .button, .widefat)을 최대한 그대로
+ * 쓰고, 이 플러그인 전용 레이아웃만 .hlf- 네임스페이스로 얹는다.
  */
-.hlf-admin-placeholder { padding: 16px; color: #687780; }
+.hlf-admin .hlf-admin-loading,
+.hlf-admin .hlf-admin-empty {
+	padding: 16px;
+	color: #646970;
+}
+.hlf-admin .hlf-admin-error {
+	padding: 8px 12px;
+	color: #8a2424;
+	background: #fcf0f1;
+	border-left: 4px solid #d63638;
+}
+.hlf-admin .hlf-admin-note {
+	color: #646970;
+	font-size: 13px;
+}
+
+.hlf-admin .hlf-card {
+	padding: 16px 20px;
+	margin: 16px 0;
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+}
+.hlf-admin .hlf-edit-grid {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+	gap: 16px;
+	align-items: start;
+}
+@media (max-width: 960px) {
+	.hlf-admin .hlf-edit-grid { grid-template-columns: 1fr; }
+}
+
+.hlf-admin .hlf-field { display: grid; gap: 4px; margin-bottom: 12px; }
+.hlf-admin .hlf-field label { font-weight: 600; font-size: 13px; }
+.hlf-admin .hlf-field input[type="text"],
+.hlf-admin .hlf-field input[type="number"],
+.hlf-admin .hlf-field textarea {
+	width: 100%;
+	max-width: 100%;
+	padding: 6px 8px;
+}
+.hlf-admin .hlf-field textarea { min-height: 70px; resize: vertical; }
+.hlf-admin .hlf-field-checkbox { flex-direction: row; align-items: center; gap: 6px; font-weight: 600; font-size: 13px; }
+.hlf-admin .hlf-field-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 16px; }
+.hlf-admin .hlf-field-wide { grid-column: 1 / -1; }
+@media (max-width: 700px) {
+	.hlf-admin .hlf-field-grid { grid-template-columns: 1fr; }
+}
+
+.hlf-admin .hlf-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: 700; vertical-align: middle; }
+.hlf-admin .hlf-badge--draft { color: #8a6100; background: #fff4c9; }
+.hlf-admin .hlf-badge--published { color: #1e5c2e; background: #d8f0dc; }
+.hlf-admin .hlf-badge--archived { color: #55705a; background: #edf2ea; }
+
+.hlf-admin .hlf-admin-table { margin-top: 8px; }
+.hlf-admin .hlf-admin-actions { white-space: nowrap; }
+.hlf-admin .hlf-danger { color: #8a2424; }
+.hlf-admin .hlf-danger:hover { color: #fff; background: #d63638; border-color: #d63638; }
+
+.hlf-admin .hlf-item-form { margin-top: 16px; padding-top: 16px; border-top: 1px solid #dcdcde; }
+.hlf-admin .hlf-metrics-readonly { margin: 12px 0; padding: 10px 12px; background: #f6f7f7; border-radius: 4px; font-size: 13px; }
+.hlf-admin .hlf-metrics-readonly ul { margin: 6px 0 0; padding-left: 18px; }
