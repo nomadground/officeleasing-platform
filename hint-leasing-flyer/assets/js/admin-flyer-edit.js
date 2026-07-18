@@ -42,11 +42,20 @@
 		{ key: 'contact_name', label: '담당자명 (선택 — 이 매물만 다르면 입력)', type: 'text' },
 		{ key: 'contact_phone', label: '담당자 연락처 (선택 — 이 매물만 다르면 입력)', type: 'text' },
 		{ key: 'article_no', label: '매물번호', type: 'text' },
-		{ key: 'source_listing_id', label: '원본 매물 ID (선택)', type: 'number', step: '1' },
-		{ key: 'source_building_id', label: '원본 빌딩 ID (선택)', type: 'number', step: '1' },
 	];
 
-	var state = { flyer: null, items: [], editingItemId: null };
+	// officeleasing-core acf-json(group_ol_listing.json)의 listing_status 실제 choices 그대로.
+	var OFFICELEASING_STATUS_CHOICES = [
+		{ value: '', label: '전체 상태' },
+		{ value: 'available', label: '임대가능' },
+		{ value: 'reserved', label: '협의중' },
+		{ value: 'contract_pending', label: '계약진행중' },
+		{ value: 'leased', label: '거래완료' },
+		{ value: 'temporarily_hidden', label: '노출중지' },
+		{ value: 'expired', label: '만료' },
+	];
+
+	var state = { flyer: null, items: [], editingItemId: null, search: { open: false, page: 1, results: null, importingId: null } };
 
 	/* ---------------- 신규 Flyer 생성 모드 ---------------- */
 
@@ -113,6 +122,7 @@
 			'</div>';
 		bindFlyerCard();
 		bindItemsCard();
+		bindImportPanel();
 	}
 
 	function renderFlyerCard() {
@@ -206,14 +216,185 @@
 
 	function renderItemsCard() {
 		var atLimit = state.items.length >= HLF_ADMIN.maxItems;
+		var limitAttr = atLimit ? ' disabled title="최대 ' + HLF_ADMIN.maxItems + '개까지만 담을 수 있습니다."' : '';
 		return (
 			'<section class="hlf-card">' +
 				'<h2>매물(Item) — ' + state.items.length + ' / ' + HLF_ADMIN.maxItems + '</h2>' +
 				'<div id="hlf-items-table-wrap">' + renderItemsTable() + '</div>' +
-				'<button type="button" class="button button-primary" id="hlf-add-item"' + ( atLimit ? ' disabled title="최대 ' + HLF_ADMIN.maxItems + '개까지만 담을 수 있습니다."' : '' ) + '>매물 추가</button>' +
+				'<button type="button" class="button button-primary" id="hlf-add-item"' + limitAttr + '>매물 추가</button> ' +
+				'<button type="button" class="button" id="hlf-import-toggle"' + limitAttr + '>원본 매물에서 가져오기</button>' +
 				renderItemForm() +
+				renderImportPanel() +
 			'</section>'
 		);
+	}
+
+	/* ---------------- officeleasing 검색/가져오기 패널 ---------------- */
+
+	function renderImportPanel() {
+		if ( ! state.search.open ) {
+			return '';
+		}
+		var statusOptions = OFFICELEASING_STATUS_CHOICES.map( function ( c ) {
+			return '<option value="' + c.value + '">' + HLFAdmin.escapeHtml( c.label ) + '</option>';
+		} ).join( '' );
+
+		return (
+			'<div class="hlf-import-panel">' +
+				'<h3>원본 매물에서 가져오기</h3>' +
+				'<form id="hlf-officeleasing-search-form">' +
+					'<div class="hlf-field"><label>검색어(매물 제목/건물명/주소)</label><input type="text" name="search" placeholder="예: 파르나스타워, 테헤란로"></div>' +
+					'<div class="hlf-field"><label>상태</label><select name="status">' + statusOptions + '</select></div>' +
+					'<button type="submit" class="button button-primary">검색</button> ' +
+					'<button type="button" class="button" id="hlf-import-panel-close">닫기</button>' +
+				'</form>' +
+				'<p class="hlf-admin-error" data-hlf-search-error hidden></p>' +
+				'<div id="hlf-officeleasing-results">' + renderImportResults() + '</div>' +
+			'</div>'
+		);
+	}
+
+	function renderImportResults() {
+		var results = state.search.results;
+		if ( null === results ) {
+			return '<p class="hlf-admin-note">검색어를 입력하고 검색을 눌러 주세요(비워두면 전체 목록).</p>';
+		}
+		if ( ! results.items.length ) {
+			return '<p class="hlf-admin-empty">일치하는 매물이 없습니다.</p>';
+		}
+		var atLimit = state.items.length >= HLF_ADMIN.maxItems;
+		var statusLabelMap = {};
+		OFFICELEASING_STATUS_CHOICES.forEach( function ( c ) { statusLabelMap[ c.value ] = c.label; } );
+
+		var rows = results.items.map( function ( listing ) {
+			var address = listing.road_address || listing.lot_address || '-';
+			var statusLabel = statusLabelMap[ listing.listing_status ] || listing.listing_status || '-';
+			var importing = state.search.importingId === listing.listing_id;
+			return (
+				'<tr>' +
+					'<td>' + HLFAdmin.escapeHtml( listing.listing_title ) + '</td>' +
+					'<td>' + HLFAdmin.escapeHtml( listing.building_title ) + '<br><small>' + HLFAdmin.escapeHtml( address ) + '</small></td>' +
+					'<td>' + HLFAdmin.escapeHtml( statusLabel ) + '</td>' +
+					'<td>' + HLFAdmin.formatManwon( listing.deposit_manwon ) + ' / ' + HLFAdmin.formatManwon( listing.monthly_rent_manwon ) + '</td>' +
+					'<td><button type="button" class="button button-small" data-hlf-import-listing="' + listing.listing_id + '"' + ( atLimit || importing ? ' disabled' : '' ) + '>' + ( importing ? '가져오는 중…' : '가져오기' ) + '</button></td>' +
+				'</tr>'
+			);
+		} ).join( '' );
+
+		var pager =
+			'<div class="hlf-import-pager">' +
+				'<button type="button" class="button button-small" id="hlf-search-prev-page"' + ( results.page <= 1 ? ' disabled' : '' ) + '>← 이전</button> ' +
+				'<span>' + results.page + ' 페이지 (총 ' + results.total + '건)</span> ' +
+				'<button type="button" class="button button-small" id="hlf-search-next-page"' + ( results.page * results.per_page >= results.total ? ' disabled' : '' ) + '>다음 →</button>' +
+			'</div>';
+
+		return (
+			'<table class="widefat striped hlf-admin-table">' +
+				'<thead><tr><th>매물</th><th>빌딩/주소</th><th>상태</th><th>보증금/임대료</th><th>작업</th></tr></thead>' +
+				'<tbody>' + rows + '</tbody>' +
+			'</table>' + pager
+		);
+	}
+
+	function runOfficeleasingSearch( searchTerm, status, page ) {
+		var errorEl = document.querySelector( '[data-hlf-search-error]' );
+		var query = 'officeleasing/listings?page=' + encodeURIComponent( page ) +
+			( searchTerm ? '&search=' + encodeURIComponent( searchTerm ) : '' ) +
+			( status ? '&status=' + encodeURIComponent( status ) : '' );
+
+		HLFAdmin.apiFetch( query )
+			.then( function ( result ) {
+				state.search.page = result.page;
+				state.search.results = result;
+				// wrap 엘리먼트 자체는 그대로 두고 내용만 갱신한다 — 클릭 리스너는 bindImportResults()가
+				// 패널이 열릴 때 wrap에 딱 한 번 위임 방식으로 붙여두므로(아래), 여기서 다시 부르면
+				// 같은 엘리먼트에 리스너가 중복으로 쌓인다(클릭 한 번에 핸들러가 N번 실행되는 버그).
+				document.getElementById( 'hlf-officeleasing-results' ).innerHTML = renderImportResults();
+			} )
+			.catch( function ( err ) {
+				if ( errorEl ) {
+					errorEl.textContent = err.message;
+					errorEl.hidden = false;
+				}
+			} );
+	}
+
+	// wrap에 클릭 리스너를 정확히 한 번만 붙인다(이벤트 위임) — bindImportPanel()에서만 호출한다.
+	// 이후 검색 결과 갱신/가져오기 진행 중 표시는 wrap.innerHTML만 바꾸고 리스너는 다시 붙이지 않는다.
+	function bindImportResults() {
+		var wrap = document.getElementById( 'hlf-officeleasing-results' );
+		if ( ! wrap ) { return; }
+
+		wrap.addEventListener( 'click', function ( event ) {
+			var prevBtn = event.target.closest( '#hlf-search-prev-page' );
+			var nextBtn = event.target.closest( '#hlf-search-next-page' );
+			if ( prevBtn || nextBtn ) {
+				var lastSearch = state.search.lastQuery || { search: '', status: '' };
+				var nextPage = state.search.page + ( nextBtn ? 1 : -1 );
+				runOfficeleasingSearch( lastSearch.search, lastSearch.status, nextPage );
+				return;
+			}
+			var importBtn = event.target.closest( '[data-hlf-import-listing]' );
+			if ( ! importBtn || importBtn.disabled ) { return; }
+
+			var listingId = importBtn.getAttribute( 'data-hlf-import-listing' );
+			state.search.importingId = Number( listingId ); // 중복 클릭 방지: 진행 중인 listing_id를 기록.
+			document.getElementById( 'hlf-officeleasing-results' ).innerHTML = renderImportResults();
+
+			HLFAdmin.apiFetch( 'flyers/' + flyerId + '/items/import', {
+				method: 'POST',
+				body: JSON.stringify( { listing_id: Number( listingId ) } ),
+			} )
+				.then( function () {
+					return HLFAdmin.apiFetch( 'flyers/' + flyerId );
+				} )
+				.then( function ( flyer ) {
+					state.flyer = flyer;
+					state.items = flyer.items || [];
+					state.search.open = false;
+					state.search.importingId = null;
+					renderEdit();
+				} )
+				.catch( function ( err ) {
+					state.search.importingId = null;
+					window.alert( '가져오기에 실패했습니다: ' + err.message );
+					document.getElementById( 'hlf-officeleasing-results' ).innerHTML = renderImportResults();
+				} );
+		} );
+	}
+
+	function bindImportPanel() {
+		var toggleButton = document.getElementById( 'hlf-import-toggle' );
+		if ( toggleButton && ! toggleButton.disabled ) {
+			toggleButton.addEventListener( 'click', function () {
+				state.search.open = true;
+				state.search.results = null;
+				renderEdit();
+			} );
+		}
+
+		var closeButton = document.getElementById( 'hlf-import-panel-close' );
+		if ( closeButton ) {
+			closeButton.addEventListener( 'click', function () {
+				state.search.open = false;
+				renderEdit();
+			} );
+		}
+
+		var searchForm = document.getElementById( 'hlf-officeleasing-search-form' );
+		if ( searchForm ) {
+			searchForm.addEventListener( 'submit', function ( event ) {
+				event.preventDefault();
+				var searchTerm = searchForm.search.value.trim();
+				var status = searchForm.status.value;
+				state.search.lastQuery = { search: searchTerm, status: status };
+				var submitButton = searchForm.querySelector( 'button[type="submit"]' );
+				submitButton.disabled = true;
+				runOfficeleasingSearch( searchTerm, status, 1 );
+				window.setTimeout( function () { submitButton.disabled = false; }, 300 ); // 중복 제출 방지(짧은 디바운스).
+			} );
+			bindImportResults();
+		}
 	}
 
 	function renderItemsTable() {

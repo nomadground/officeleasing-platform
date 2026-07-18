@@ -21,22 +21,16 @@ final class HLF_Meta_Schema {
 	 */
 	public static function item_fields(): array {
 		return array(
-			// 원본 연결(선택) — 원본이 바뀌어도 자동 반영되지 않는다.
+			// 원본 연결(Phase 2-2: officeleasing import) — 전부 서버 전용(writable_fields() 제외).
+			// HLF_Item_Repository::set_snapshot_metadata()를 통해서만 기록되며, 일반 Item
+			// POST/PUT(apply_fields())으로는 절대 바뀌지 않는다. created_at은 최초 1회만 기록되고
+			// 이후 절대 갱신되지 않는다 — refreshed_at만 재수입(Refresh, 향후 phase) 때 채워진다.
+			// version은 이 스냅샷이 만들어질 당시의 HLF_OfficeLeasing_Mapper::MAPPING_CONTRACT_VERSION.
 			'source_listing_id'      => array( 'type' => 'int' ),
 			'source_building_id'     => array( 'type' => 'int' ),
-
-			// Snapshot 이력(Phase 2-2: officeleasing import). created_at은 최초 1회만 기록되고
-			// 이후 절대 갱신되지 않는다 — refreshed_at만 재수입(Refresh, 향후 phase) 때마다 갱신된다.
-			// version은 이 스냅샷이 만들어질 당시의 HLF_OfficeLeasing_Mapper::MAPPING_CONTRACT_VERSION.
 			'snapshot_created_at'    => array( 'type' => 'string' ),
 			'snapshot_refreshed_at'  => array( 'type' => 'string' ),
 			'snapshot_version'       => array( 'type' => 'int' ),
-
-			// officeleasing 원본 첨부파일 ID의 스냅샷(가공 전 원본 그대로) — 워터마크/리사이즈
-			// 파이프라인(별도 phase)이 아직 없으므로 exterior_image_id/interior_image_ids(아래,
-			// 플러그인 자체 가공본 슬롯)에는 쓰지 않고 이 필드에만 원본 ID를 남겨둔다.
-			'source_exterior_image_id'  => array( 'type' => 'int' ),
-			'source_interior_image_ids' => array( 'type' => 'int_array' ),
 
 			// 식별/표시 순서
 			'item_number'            => array( 'type' => 'string' ), // 서버 관리(불변). writable 제외.
@@ -81,9 +75,15 @@ final class HLF_Meta_Schema {
 		);
 	}
 
-	/** 클라이언트가 REST로 직접 쓸 수 있는 필드(서버관리/순서 필드 제외). */
+	/** 클라이언트가 REST로 직접 쓸 수 있는 필드(서버관리/순서/스냅샷 provenance 필드 제외). */
 	public static function writable_fields(): array {
-		$exclude = array( 'item_number', 'display_order', 'exterior_image_id', 'interior_image_ids' );
+		$exclude = array(
+			'item_number', 'display_order', 'exterior_image_id', 'interior_image_ids',
+			// Phase 2-2: officeleasing import provenance — HLF_Item_Repository::set_snapshot_metadata()
+			// 를 통해서만 기록된다. 일반 Item 생성/수정 폼에서 절대 입력받지 않는다.
+			'source_listing_id', 'source_building_id',
+			'snapshot_created_at', 'snapshot_refreshed_at', 'snapshot_version',
+		);
 		return array_values( array_diff( array_keys( self::item_fields() ), $exclude ) );
 	}
 

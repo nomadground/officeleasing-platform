@@ -174,6 +174,34 @@ final class HLF_Item_Repository {
 		return true;
 	}
 
+	/**
+	 * officeleasing import(Phase 2-2)의 provenance 필드를 기록하는 서버 전용 경로.
+	 * apply_fields()/writable_fields() 화이트리스트를 거치지 않는다 — item_number를 create_item()
+	 * 내부에서 update_post_meta()로 직접 쓰는 것과 정확히 같은 패턴이다(일반 클라이언트 입력 경로가
+	 * 아니라 서버 로직만 호출하는 전용 setter). HLF_OfficeLeasing_Import_Service만 이 메서드를 부른다.
+	 */
+	public static function set_snapshot_metadata(
+		int $item_id,
+		int $source_listing_id,
+		int $source_building_id,
+		string $snapshot_created_at,
+		string $snapshot_refreshed_at,
+		int $snapshot_version
+	): bool|WP_Error {
+		$item = get_post( $item_id );
+		if ( ! $item || HLF_Post_Types::ITEM !== $item->post_type ) {
+			return new WP_Error( 'hlf_item_not_found', 'Item을 찾을 수 없습니다.', array( 'status' => 404 ) );
+		}
+
+		update_post_meta( $item_id, 'source_listing_id', $source_listing_id );
+		update_post_meta( $item_id, 'source_building_id', $source_building_id );
+		update_post_meta( $item_id, 'snapshot_created_at', $snapshot_created_at );
+		update_post_meta( $item_id, 'snapshot_refreshed_at', $snapshot_refreshed_at );
+		update_post_meta( $item_id, 'snapshot_version', $snapshot_version );
+
+		return true;
+	}
+
 	/** 화이트리스트 필드만 정규화해 저장. item_number/display_order 등 서버관리 필드는 무시된다. */
 	private static function apply_fields( int $item_id, array $fields ): void {
 		$schema   = HLF_Meta_Schema::item_fields();

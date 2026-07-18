@@ -81,12 +81,19 @@ final class HLF_REST_Controller {
 			'permission_callback' => array( __CLASS__, 'can_set_status_this_flyer' ),
 		) );
 
-		// officeleasing listing → 새 Flyer item 가져오기(Phase 2-2). flyer_id는 URL이 아니라
-		// body(JSON)로 온다 — 기존 /flyers/{id}/... 라우트들과 형태가 달라 별도 permission_callback을 쓴다.
-		register_rest_route( self::NS, '/import-officeleasing', array(
+		// officeleasing listing 검색(Phase 2-2) — 특정 Flyer에 종속되지 않으므로 can_edit_flyers 재사용.
+		register_rest_route( self::NS, '/officeleasing/listings', array(
+			'methods'             => WP_REST_Server::READABLE,
+			'callback'            => array( __CLASS__, 'search_officeleasing_listings' ),
+			'permission_callback' => array( __CLASS__, 'can_edit_flyers' ),
+		) );
+
+		// officeleasing listing → 이 Flyer에 새 item 가져오기(Phase 2-2). 기존 /flyers/{id}/items
+		// 라우트는 그대로 두고(수동 생성용), 이건 별도 라우트 — 같은 permission_callback을 재사용한다.
+		register_rest_route( self::NS, '/flyers/(?P<id>\d+)/items/import', array(
 			'methods'             => WP_REST_Server::CREATABLE,
-			'callback'            => array( __CLASS__, 'import_officeleasing' ),
-			'permission_callback' => array( __CLASS__, 'can_import_officeleasing' ),
+			'callback'            => array( __CLASS__, 'import_officeleasing_item' ),
+			'permission_callback' => array( __CLASS__, 'can_edit_this_flyer' ),
 		) );
 
 		// --- Phase 2 범위: 라우트만 등록, 지금은 501 ---
@@ -122,12 +129,6 @@ final class HLF_REST_Controller {
 	public static function can_set_status_this_flyer( WP_REST_Request $request ): bool {
 		$id = (int) $request['id'];
 		return current_user_can( 'publish_leasing_flyers' ) && current_user_can( 'edit_post', $id );
-	}
-
-	/** flyer_id가 URL이 아니라 body에 있으므로 can_edit_this_flyer(URL의 id 기준)와 별도로 둔다. */
-	public static function can_import_officeleasing( WP_REST_Request $request ): bool {
-		$flyer_id = (int) $request['flyer_id'];
-		return current_user_can( 'edit_post', $flyer_id );
 	}
 
 	/* ---------------- flyer handlers ---------------- */
@@ -224,21 +225,39 @@ final class HLF_REST_Controller {
 	}
 
 	/**
-	 * officeleasing listing → 새 Flyer item. body: { flyer_id, listing_id, building_id? }.
-	 * 실제 매핑/저장은 HLF_Snapshot_Import_Service(Mapper + 기존 create_item()) 몫 — 여기서는
+	 * officeleasing listing 검색(관리자가 Import할 매물을 찾는 화면용). GET 쿼리 파라미터:
+	 * search, status, page, per_page. 실제 쿼리는 HLF_OfficeLeasing_Search가 전담.
+	 */
+	public static function search_officeleasing_listings( WP_REST_Request $request ) {
+		$params = self::request_params( $request );
+		$result = HLF_OfficeLeasing_Search::search( array(
+			'search'   => (string) ( $params['search'] ?? '' ),
+			'status'   => (string) ( $params['status'] ?? '' ),
+			'page'     => (int) ( $params['page'] ?? 1 ),
+			'per_page' => (int) ( $params['per_page'] ?? HLF_OfficeLeasing_Search::DEFAULT_PER_PAGE ),
+		) );
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+		return rest_ensure_response( $result );
+	}
+
+	/**
+	 * officeleasing listing → 이 Flyer(URL의 id)에 새 item. body: { listing_id } — building_id는
+	 * 받지 않는다(HLF_OfficeLeasing_Import_Service/Mapper가 항상 서버에서 확정).
+	 * 실제 매핑/저장은 HLF_OfficeLeasing_Import_Service(Mapper + 기존 create_item()) 몫 — 여기서는
 	 * 입력을 뽑아 넘기고 응답을 만들 뿐이다(계산 지표 포함 응답은 기존 create_item 핸들러와 동일 패턴).
 	 */
-	public static function import_officeleasing( WP_REST_Request $request ) {
-		$params      = self::request_params( $request );
-		$flyer_id    = (int) ( $params['flyer_id'] ?? 0 );
-		$listing_id  = (int) ( $params['listing_id'] ?? 0 );
-		$building_id = ! empty( $params['building_id'] ) ? (int) $params['building_id'] : null;
+	public static function import_officeleasing_item( WP_REST_Request $request ) {
+		$flyer_id   = (int) $request['id'];
+		$params     = self::request_params( $request );
+		$listing_id = (int) ( $params['listing_id'] ?? 0 );
 
 		if ( ! $listing_id ) {
 			return new WP_Error( 'hlf_missing_listing_id', 'listing_id가 필요합니다.', array( 'status' => 400 ) );
 		}
 
-		$item_id = HLF_Snapshot_Import_Service::import( $flyer_id, $listing_id, $building_id );
+		$item_id = HLF_OfficeLeasing_Import_Service::import( $flyer_id, $listing_id );
 		if ( is_wp_error( $item_id ) ) {
 			return $item_id;
 		}

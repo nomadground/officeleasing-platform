@@ -24,10 +24,12 @@
  * core에 없는 Flyer 신규 필드: article_no, contact_name, contact_phone, building_use, approval_date.
  *
  * 이미지 처리 범위: exterior_image_id/interior_image_ids(플러그인 자체 가공본 슬롯, 워터마크·
- * 리사이즈 파이프라인 전용)는 이번 phase에서 채우지 않는다 — 그 파이프라인이 아직 없는 상태에서
- * 원본을 그대로 채우면 미가공 원본이 처리된 이미지인 것처럼 노출된다. 대신 원본 attachment ID를
- * source_exterior_image_id/source_interior_image_ids에 스냅샷만 해둔다(이미지 phase가 나중에 이
- * ID들을 읽어 실제 가공 파이프라인을 돌린다).
+ * 리사이즈 파이프라인 전용)는 mapping_contract() 문서에는 남아있지만 이번 phase의 to_snapshot()
+ * 결과에는 아예 포함하지 않는다 — 그 파이프라인이 아직 없는 상태에서 원본을 그대로 채우면 미가공
+ * 원본이 처리된 이미지인 것처럼 노출되기 때문이다. 원본 attachment ID의 사전 스냅샷(예:
+ * source_exterior_image_id 같은 필드)도 이번 phase에서는 두지 않는다 — 지금 이 값을 실제로
+ * 소비하는 곳이 없고, 이미지 파이프라인 phase가 확정되면 그때 필요에 맞게 스키마를 추가하는 편이
+ * 낫다(쓰이지 않는 필드를 미리 만들어두지 않는다).
  */
 defined( 'ABSPATH' ) || exit;
 
@@ -126,8 +128,6 @@ final class HLF_OfficeLeasing_Mapper {
 			'direction'                  => (string) get_field( 'building_orientation', $building_id ),
 			'available_date_text'        => self::format_move_in_text( $listing_id ),
 			'features'                   => self::compose_features( $listing_id ),
-			'source_exterior_image_id'   => self::extract_image_id( get_field( 'building_image_1', $building_id ) ),
-			'source_interior_image_ids'  => self::extract_interior_image_ids( $listing_id ),
 		);
 	}
 
@@ -186,23 +186,4 @@ final class HLF_OfficeLeasing_Mapper {
 		return implode( ' | ', $parts );
 	}
 
-	/** ACF image 필드(return_format=array)에서 attachment ID만 뽑는다. 방어적으로 id/int 형태도 허용. */
-	private static function extract_image_id( $image ): int {
-		if ( is_array( $image ) ) {
-			return (int) ( $image['ID'] ?? $image['id'] ?? 0 );
-		}
-		return (int) $image;
-	}
-
-	/** listing_image_1~6 중 실제로 채워진 것만 attachment ID로 모은다. */
-	private static function extract_interior_image_ids( int $listing_id ): array {
-		$ids = array();
-		for ( $i = 1; $i <= 6; $i++ ) {
-			$id = self::extract_image_id( get_field( "listing_image_{$i}", $listing_id ) );
-			if ( $id > 0 ) {
-				$ids[] = $id;
-			}
-		}
-		return $ids;
-	}
 }
