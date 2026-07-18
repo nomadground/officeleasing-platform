@@ -3,8 +3,17 @@
  * Plugin Name: HINT Leasing Flyer
  * Description: 임대매물 전달용 Leasing Flyer. 발행 시점 조건을 스냅샷으로 저장하고 /listup/ 공개 URL로 공유한다. officeleasing-core에 의존하지 않고 단독 동작한다.
  * Version: 0.1.0
+ * Requires at least: 6.0
+ * Requires PHP: 8.0
  * Author: HINT
  * Text Domain: hint-leasing-flyer
+ *
+ * Requires PHP 8.0 근거: includes/ 전체에 union return type(int|WP_Error, bool|WP_Error 등,
+ * class-hlf-flyer-repository.php/class-hlf-item-repository.php)을 실제로 쓰고 있어 PHP 8.0
+ * 미만에서는 파싱 자체가 실패한다 — 이 헤더가 있으면 그 전에 워드프레스가 활성화를 막고 안내를
+ * 띄운다(치명적 에러 대신). Requires at least는 officeleasing-core.php에 별도 명시가 없어
+ * 이 플러그인이 실제로 쓰는 API(register_post_meta 콜백 배열, WP_REST_Server, 커스텀
+ * post status) 기준으로 넉넉히 잡은 보수적 하한이다.
  *
  * 설계 근거:
  * - officeleasing-core.php의 부트스트랩 패턴(plugins_loaded → require, 활성화 훅에서 CPT 등록 + flush)을 참고했다.
