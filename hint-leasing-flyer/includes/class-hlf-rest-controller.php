@@ -81,6 +81,14 @@ final class HLF_REST_Controller {
 			'permission_callback' => array( __CLASS__, 'can_set_status_this_flyer' ),
 		) );
 
+		// officeleasing listing → 새 Flyer item 가져오기(Phase 2-2). flyer_id는 URL이 아니라
+		// body(JSON)로 온다 — 기존 /flyers/{id}/... 라우트들과 형태가 달라 별도 permission_callback을 쓴다.
+		register_rest_route( self::NS, '/import-officeleasing', array(
+			'methods'             => WP_REST_Server::CREATABLE,
+			'callback'            => array( __CLASS__, 'import_officeleasing' ),
+			'permission_callback' => array( __CLASS__, 'can_import_officeleasing' ),
+		) );
+
 		// --- Phase 2 범위: 라우트만 등록, 지금은 501 ---
 		register_rest_route( self::NS, '/items/(?P<item_id>\d+)/refresh-source', array(
 			'methods'             => WP_REST_Server::CREATABLE,
@@ -114,6 +122,12 @@ final class HLF_REST_Controller {
 	public static function can_set_status_this_flyer( WP_REST_Request $request ): bool {
 		$id = (int) $request['id'];
 		return current_user_can( 'publish_leasing_flyers' ) && current_user_can( 'edit_post', $id );
+	}
+
+	/** flyer_id가 URL이 아니라 body에 있으므로 can_edit_this_flyer(URL의 id 기준)와 별도로 둔다. */
+	public static function can_import_officeleasing( WP_REST_Request $request ): bool {
+		$flyer_id = (int) $request['flyer_id'];
+		return current_user_can( 'edit_post', $flyer_id );
 	}
 
 	/* ---------------- flyer handlers ---------------- */
@@ -207,6 +221,31 @@ final class HLF_REST_Controller {
 		}
 		$items = array_map( array( 'HLF_Item_Repository', 'to_array' ), HLF_Item_Repository::get_items( (int) $request['id'] ) );
 		return rest_ensure_response( array( 'items' => $items ) );
+	}
+
+	/**
+	 * officeleasing listing → 새 Flyer item. body: { flyer_id, listing_id, building_id? }.
+	 * 실제 매핑/저장은 HLF_Snapshot_Import_Service(Mapper + 기존 create_item()) 몫 — 여기서는
+	 * 입력을 뽑아 넘기고 응답을 만들 뿐이다(계산 지표 포함 응답은 기존 create_item 핸들러와 동일 패턴).
+	 */
+	public static function import_officeleasing( WP_REST_Request $request ) {
+		$params      = self::request_params( $request );
+		$flyer_id    = (int) ( $params['flyer_id'] ?? 0 );
+		$listing_id  = (int) ( $params['listing_id'] ?? 0 );
+		$building_id = ! empty( $params['building_id'] ) ? (int) $params['building_id'] : null;
+
+		if ( ! $listing_id ) {
+			return new WP_Error( 'hlf_missing_listing_id', 'listing_id가 필요합니다.', array( 'status' => 400 ) );
+		}
+
+		$item_id = HLF_Snapshot_Import_Service::import( $flyer_id, $listing_id, $building_id );
+		if ( is_wp_error( $item_id ) ) {
+			return $item_id;
+		}
+
+		$response = rest_ensure_response( HLF_Item_Repository::to_array( get_post( $item_id ) ) );
+		$response->set_status( 201 );
+		return $response;
 	}
 
 	/* ---------------- helpers ---------------- */

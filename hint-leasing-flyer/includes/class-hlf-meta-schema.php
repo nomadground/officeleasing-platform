@@ -25,6 +25,19 @@ final class HLF_Meta_Schema {
 			'source_listing_id'      => array( 'type' => 'int' ),
 			'source_building_id'     => array( 'type' => 'int' ),
 
+			// Snapshot 이력(Phase 2-2: officeleasing import). created_at은 최초 1회만 기록되고
+			// 이후 절대 갱신되지 않는다 — refreshed_at만 재수입(Refresh, 향후 phase) 때마다 갱신된다.
+			// version은 이 스냅샷이 만들어질 당시의 HLF_OfficeLeasing_Mapper::MAPPING_CONTRACT_VERSION.
+			'snapshot_created_at'    => array( 'type' => 'string' ),
+			'snapshot_refreshed_at'  => array( 'type' => 'string' ),
+			'snapshot_version'       => array( 'type' => 'int' ),
+
+			// officeleasing 원본 첨부파일 ID의 스냅샷(가공 전 원본 그대로) — 워터마크/리사이즈
+			// 파이프라인(별도 phase)이 아직 없으므로 exterior_image_id/interior_image_ids(아래,
+			// 플러그인 자체 가공본 슬롯)에는 쓰지 않고 이 필드에만 원본 ID를 남겨둔다.
+			'source_exterior_image_id'  => array( 'type' => 'int' ),
+			'source_interior_image_ids' => array( 'type' => 'int_array' ),
+
 			// 식별/표시 순서
 			'item_number'            => array( 'type' => 'string' ), // 서버 관리(불변). writable 제외.
 			'display_order'          => array( 'type' => 'int' ),
