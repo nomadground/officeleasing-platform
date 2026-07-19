@@ -19,12 +19,17 @@ body.hlf-public {
 	background: #eef2f5;
 	font-family: Pretendard, "Noto Sans KR", system-ui, -apple-system, sans-serif;
 	line-height: 1.5;
+	/* 한글 주소/건물명은 공백 없이 숫자·영문이 섞이는 경우가 많다(예: "테헤란로 152") —
+	   word-break:break-all을 쓰면 그 안에서도 아무 데서나 끊겨 가독성이 떨어지므로 공백 단위로만
+	   줄바꿈한다. */
+	word-break: keep-all;
 }
 .hlf-shell { width: min(1100px, calc(100% - 32px)); margin: 0 auto; padding: 24px 0 48px; }
 .hlf-header { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--hlf-line); }
 .hlf-brand { font-weight: 800; letter-spacing: .06em; color: var(--hlf-primary); }
 .hlf-flyer-number { color: var(--hlf-muted); font-size: 13px; }
-.hlf-back { color: var(--hlf-primary); text-decoration: none; font-weight: 700; }
+/* padding으로 탭 영역을 넓혀 모바일에서 오터치 없이 누르기 쉽게 한다(시각적 크기는 거의 그대로). */
+.hlf-back { display: inline-block; padding: 6px 4px; margin: -6px -4px; color: var(--hlf-primary); text-decoration: none; font-weight: 700; }
 .hlf-badge { margin-left: auto; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; }
 .hlf-badge--draft { color: #8a6100; background: #fff4c9; }
 .hlf-badge--archived { color: #55705a; background: #edf2ea; }
@@ -37,7 +42,17 @@ body.hlf-public {
 .hlf-listing-link { display: grid; grid-template-columns: 32px minmax(0, 1.4fr) 2fr; align-items: center; gap: 12px; padding: 12px 14px; color: inherit; text-decoration: none; }
 .hlf-listing-link:hover { background: #fffdf4; }
 .hlf-listing-index { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 22px; color: #fff; background: var(--hlf-primary); border-radius: 6px; font-size: 11px; font-weight: 700; }
-.hlf-listing-address { overflow: hidden; font-weight: 800; color: var(--hlf-primary-strong); text-overflow: ellipsis; white-space: nowrap; }
+/* 긴 주소를 한 줄로 자르면 정작 필요한 동/건물명이 잘려나가는 경우가 많다 — 2줄까지는 그대로
+   보여주고, 그 이상만 말줄임(line-clamp)한다. */
+.hlf-listing-address {
+	display: -webkit-box;
+	overflow: hidden;
+	font-weight: 800;
+	color: var(--hlf-primary-strong);
+	-webkit-line-clamp: 2;
+	line-clamp: 2;
+	-webkit-box-orient: vertical;
+}
 
 .hlf-lease-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
 .hlf-lease-metric { min-width: 0; padding: 4px 8px; text-align: center; border-left: 1px solid var(--hlf-line); }
@@ -47,18 +62,38 @@ body.hlf-public {
 
 .hlf-detail-metrics { margin: 16px 0; }
 .hlf-detail-metrics .hlf-lease-metric { padding: 12px 10px; border: 1px solid var(--hlf-line); border-radius: 8px; }
-.hlf-features { margin: 12px 0; color: var(--hlf-ink); font-weight: 700; }
+.hlf-features { margin: 12px 0; color: var(--hlf-ink); font-weight: 700; line-height: 1.6; }
 .hlf-property-details { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; margin: 16px 0; }
 .hlf-basic-item { display: flex; justify-content: space-between; gap: 10px; padding: 8px; border-top: 1px solid var(--hlf-line); }
 .hlf-basic-item dt { color: var(--hlf-muted); font-size: 13px; }
 .hlf-basic-item dd { margin: 0; color: var(--hlf-ink); font-size: 14px; font-weight: 700; text-align: right; }
-.hlf-contact { color: var(--hlf-primary); font-weight: 700; }
 .hlf-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-top: 28px; padding-top: 14px; border-top: 1px solid var(--hlf-line); color: var(--hlf-muted); font-size: 12px; }
-.hlf-footer-contact a { color: var(--hlf-primary); font-weight: 700; text-decoration: none; }
-.hlf-footer-contact a:hover { text-decoration: underline; }
+/* 고객이 실제로 누르는 핵심 행동(전화 문의)이므로 일반 텍스트 링크보다 눈에 띄고 손가락으로
+   누르기 쉬운 버튼 형태로 강조한다(44px 안팎의 터치 영역 확보). */
+.hlf-footer-contact a {
+	display: inline-block;
+	padding: 8px 14px;
+	color: #fff;
+	background: var(--hlf-primary);
+	border-radius: 8px;
+	font-weight: 700;
+	text-decoration: none;
+	white-space: nowrap;
+}
+.hlf-footer-contact a:hover { background: var(--hlf-primary-strong); text-decoration: none; }
 
 @media (max-width: 700px) {
 	.hlf-listing-link { grid-template-columns: 28px 1fr; }
 	.hlf-listing-link .hlf-lease-metrics { grid-column: 1 / -1; }
 	.hlf-property-details { grid-template-columns: 1fr; }
+	/* 4열 그대로 두면 좁은 화면에서 값이 줄바꿈되거나 뭉개져 정작 가장 중요한 숫자(보증금/임대료)를
+	   읽기 어려워진다 — 2열로 접어 각 칸에 충분한 너비를 준다. */
+	.hlf-lease-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+	.hlf-lease-metric-label { font-size: 11px; }
+	.hlf-lease-metric-value { font-size: 16px; }
+	/* 4열 기준 :first-child만 border-left를 없애던 규칙은 2열에서 3번째 칸(각 줄의 시작)에는
+	   적용되지 않아 줄 시작에 불필요한 세로선이 남는다 — 2열일 때는 각 줄의 첫 칸(홀수번째)마다
+	   지운다. */
+	.hlf-lease-metric:nth-child(odd) { border-left: 0; }
+	.hlf-lease-metric:nth-child(even) { border-left: 1px solid var(--hlf-line); }
 }

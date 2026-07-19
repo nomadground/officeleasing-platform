@@ -63,9 +63,9 @@
 		root.innerHTML =
 			'<section class="hlf-card">' +
 				'<form id="hlf-new-flyer-form">' +
-					'<div class="hlf-field"><label>제목(내부 관리용)</label><input type="text" name="title" required></div>' +
-					'<div class="hlf-field"><label>담당자명</label><input type="text" name="contact_name"></div>' +
-					'<div class="hlf-field"><label>담당자 연락처</label><input type="text" name="contact_phone"></div>' +
+					'<div class="hlf-field"><label for="hlf-new-title">제목(내부 관리용)</label><input id="hlf-new-title" type="text" name="title" required></div>' +
+					'<div class="hlf-field"><label for="hlf-new-contact-name">담당자명</label><input id="hlf-new-contact-name" type="text" name="contact_name"></div>' +
+					'<div class="hlf-field"><label for="hlf-new-contact-phone">담당자 연락처</label><input id="hlf-new-contact-phone" type="text" name="contact_phone"></div>' +
 					'<p class="hlf-admin-note">매물(Item)은 Flyer를 먼저 만든 뒤 이어서 추가합니다.</p>' +
 					'<button type="submit" class="button button-primary">만들기</button>' +
 					'<p class="hlf-admin-error" data-hlf-create-error hidden></p>' +
@@ -131,16 +131,16 @@
 			'<section class="hlf-card">' +
 				'<h2>' + HLFAdmin.escapeHtml( flyer.flyer_number ) + ' <span class="' + HLFAdmin.statusBadgeClass( flyer.status ) + '">' + HLFAdmin.statusLabel( flyer.status ) + '</span></h2>' +
 				'<form id="hlf-flyer-form">' +
-					'<div class="hlf-field"><label>제목(내부 관리용)</label><input type="text" name="title" value="' + HLFAdmin.escapeAttr( flyer.title ) + '" required></div>' +
-					'<div class="hlf-field"><label>담당자명</label><input type="text" name="contact_name" value="' + HLFAdmin.escapeAttr( flyer.contact_name ) + '"></div>' +
-					'<div class="hlf-field"><label>담당자 연락처</label><input type="text" name="contact_phone" value="' + HLFAdmin.escapeAttr( flyer.contact_phone ) + '"></div>' +
+					'<div class="hlf-field"><label for="hlf-flyer-title">제목(내부 관리용)</label><input id="hlf-flyer-title" type="text" name="title" value="' + HLFAdmin.escapeAttr( flyer.title ) + '" required></div>' +
+					'<div class="hlf-field"><label for="hlf-flyer-contact-name">담당자명</label><input id="hlf-flyer-contact-name" type="text" name="contact_name" value="' + HLFAdmin.escapeAttr( flyer.contact_name ) + '"></div>' +
+					'<div class="hlf-field"><label for="hlf-flyer-contact-phone">담당자 연락처</label><input id="hlf-flyer-contact-phone" type="text" name="contact_phone" value="' + HLFAdmin.escapeAttr( flyer.contact_phone ) + '"></div>' +
 					'<p class="hlf-admin-note">공개 화면 하단 문의처로 쓰입니다. 비워두면 대표번호(' + HLFAdmin.escapeHtml( HLF_ADMIN.defaultPhone ) + ')로 표시됩니다.</p>' +
 					'<button type="submit" class="button button-primary">저장</button>' +
 					'<p class="hlf-admin-error" data-hlf-flyer-error hidden></p>' +
 				'</form>' +
 				'<hr>' +
 				'<div class="hlf-field">' +
-					'<label>상태</label>' +
+					'<label for="hlf-status-select">상태</label>' +
 					'<select id="hlf-status-select">' +
 						'<option value="draft"' + ( flyer.status === 'draft' ? ' selected' : '' ) + '>미발행(draft)</option>' +
 						'<option value="published"' + ( flyer.status === 'published' ? ' selected' : '' ) + '>발행됨(published)</option>' +
@@ -243,8 +243,8 @@
 			'<div class="hlf-import-panel">' +
 				'<h3>원본 매물에서 가져오기</h3>' +
 				'<form id="hlf-officeleasing-search-form">' +
-					'<div class="hlf-field"><label>검색어(매물 제목/건물명/주소)</label><input type="text" name="search" placeholder="예: 파르나스타워, 테헤란로"></div>' +
-					'<div class="hlf-field"><label>상태</label><select name="status">' + statusOptions + '</select></div>' +
+					'<div class="hlf-field"><label for="hlf-search-term">검색어(매물 제목/건물명/주소)</label><input id="hlf-search-term" type="text" name="search" placeholder="예: 파르나스타워, 테헤란로"></div>' +
+					'<div class="hlf-field"><label for="hlf-search-status">상태</label><select id="hlf-search-status" name="status">' + statusOptions + '</select></div>' +
 					'<button type="submit" class="button button-primary">검색</button> ' +
 					'<button type="button" class="button" id="hlf-import-panel-close">닫기</button>' +
 				'</form>' +
@@ -453,17 +453,20 @@
 					'</label>'
 				);
 			}
+			// name(=def.key, HLF_Meta_Schema 필드명)은 폼 하나 안에서 항상 유일하므로 그대로 id로
+			// 재사용해도 충돌하지 않는다(같은 폼 인스턴스는 항상 하나만 렌더링됨).
+			var fieldId = 'hlf-item-field-' + def.key;
 			if ( def.type === 'textarea' ) {
 				return (
-					'<div class="hlf-field' + wideClass + '"><label>' + HLFAdmin.escapeHtml( def.label ) + '</label>' +
-					'<textarea name="' + def.key + '">' + HLFAdmin.escapeHtml( value || '' ) + '</textarea></div>'
+					'<div class="hlf-field' + wideClass + '"><label for="' + fieldId + '">' + HLFAdmin.escapeHtml( def.label ) + '</label>' +
+					'<textarea id="' + fieldId + '" name="' + def.key + '">' + HLFAdmin.escapeHtml( value || '' ) + '</textarea></div>'
 				);
 			}
 			var stepAttr = def.step ? ' step="' + def.step + '"' : '';
 			var placeholderAttr = def.placeholder ? ' placeholder="' + HLFAdmin.escapeAttr( def.placeholder ) + '"' : '';
 			return (
-				'<div class="hlf-field' + wideClass + '"><label>' + HLFAdmin.escapeHtml( def.label ) + '</label>' +
-				'<input type="' + def.type + '" name="' + def.key + '" value="' + HLFAdmin.escapeAttr( value === null || value === undefined ? '' : value ) + '"' + stepAttr + placeholderAttr + '></div>'
+				'<div class="hlf-field' + wideClass + '"><label for="' + fieldId + '">' + HLFAdmin.escapeHtml( def.label ) + '</label>' +
+				'<input id="' + fieldId + '" type="' + def.type + '" name="' + def.key + '" value="' + HLFAdmin.escapeAttr( value === null || value === undefined ? '' : value ) + '"' + stepAttr + placeholderAttr + '></div>'
 			);
 		} ).join( '' );
 

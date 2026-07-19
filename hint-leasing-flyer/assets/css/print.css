@@ -7,5 +7,14 @@
 @media print {
 	body.hlf-public { background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 	.hlf-back, .hlf-badge { display: none !important; }
-	.hlf-listing-card, .hlf-detail-metrics { break-inside: avoid; }
+	/* 이 골격 안에서 안전하게 할 수 있는 최소한의 페이지 나눔 보호: 카드/지표 그룹뿐 아니라 라벨-값
+	   한 쌍(.hlf-basic-item)과 하단 문의처도 페이지 경계에서 반으로 잘리지 않게 한다. 여러 매물
+	   밀도별 레이아웃(1-5/6-8/9-10개)은 Phase 5 몫이라 여기서 다루지 않는다. */
+	.hlf-listing-card,
+	.hlf-detail-metrics,
+	.hlf-lease-metrics,
+	.hlf-basic-item,
+	.hlf-footer {
+		break-inside: avoid;
+	}
 }

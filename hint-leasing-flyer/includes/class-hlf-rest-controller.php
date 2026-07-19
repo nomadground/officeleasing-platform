@@ -237,7 +237,7 @@ final class HLF_REST_Controller {
 	public static function reorder_items( WP_REST_Request $request ) {
 		$order = $request['order'];
 		if ( ! is_array( $order ) ) {
-			return new WP_Error( 'hlf_bad_order', 'order 는 item_id 배열이어야 합니다.', array( 'status' => 400 ) );
+			return new WP_Error( 'hlf_bad_order', '순서 정보가 올바르지 않습니다.', array( 'status' => 400 ) );
 		}
 		$result = HLF_Item_Repository::reorder( (int) $request['id'], $order );
 		if ( is_wp_error( $result ) ) {
@@ -277,7 +277,7 @@ final class HLF_REST_Controller {
 		$listing_id = (int) ( $params['listing_id'] ?? 0 );
 
 		if ( ! $listing_id ) {
-			return new WP_Error( 'hlf_missing_listing_id', 'listing_id가 필요합니다.', array( 'status' => 400 ) );
+			return new WP_Error( 'hlf_missing_listing_id', '가져올 매물을 선택해 주세요.', array( 'status' => 400 ) );
 		}
 
 		$item_id = HLF_OfficeLeasing_Import_Service::import( $flyer_id, $listing_id );
@@ -330,6 +330,6 @@ final class HLF_REST_Controller {
 	}
 
 	public static function phase2_stub() {
-		return new WP_Error( 'hlf_phase2', '이 엔드포인트는 Phase 2에서 구현됩니다.', array( 'status' => 501 ) );
+		return new WP_Error( 'hlf_not_implemented', '이 기능은 아직 준비 중입니다.', array( 'status' => 501 ) );
 	}
 }

@@ -39,7 +39,7 @@ final class HLF_OfficeLeasing_Search {
 		if ( ! HLF_OfficeLeasing_Mapper::is_core_available() ) {
 			return new WP_Error(
 				'hlf_core_unavailable',
-				'officeleasing-core(또는 ACF)가 활성화되어 있지 않아 원본 매물을 검색할 수 없습니다.',
+				'원본 매물 연동 기능이 꺼져 있어 검색할 수 없습니다(officeleasing-core/ACF 비활성화). 관리자에게 문의해 주세요.',
 				array( 'status' => 503 )
 			);
 		}

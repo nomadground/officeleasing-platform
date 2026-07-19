@@ -85,8 +85,12 @@ final class HLF_Item_Repository {
 			return $guard;
 		}
 
+		// 10개 제한 체크와 display_order 최댓값 계산 둘 다 "이 Flyer의 현재 item 목록"이 필요하므로
+		// get_items()를 한 번만 불러 재사용한다(전에는 이 두 용도로 같은 쿼리를 두 번 날렸다).
+		$existing_items = self::get_items( $flyer_id );
+
 		// 클라이언트 우회(직접 REST 호출 등) 방지 — 서버가 최종 기준. UI는 안내만 표시한다.
-		if ( count( self::get_items( $flyer_id ) ) >= self::MAX_ITEMS_PER_FLYER ) {
+		if ( count( $existing_items ) >= self::MAX_ITEMS_PER_FLYER ) {
 			return new WP_Error(
 				'hlf_item_limit_reached',
 				sprintf( 'Flyer 하나에는 최대 %d개의 매물만 담을 수 있습니다.', self::MAX_ITEMS_PER_FLYER ),
@@ -98,7 +102,7 @@ final class HLF_Item_Repository {
 		// 빈 상태에서 "전체 개수"로 새 순번을 매기면 남아있는 item과 값이 겹칠 수 있다(예: 0,1,2 중
 		// 1번 삭제 후 재추가 시 "개수-1"=1이 남아있는 2번과 충돌). 최댓값+1이면 항상 유일하다.
 		$max_existing_order = -1;
-		foreach ( self::get_items( $flyer_id ) as $existing_item ) {
+		foreach ( $existing_items as $existing_item ) {
 			$max_existing_order = max( $max_existing_order, (int) get_post_meta( $existing_item->ID, 'display_order', true ) );
 		}
 		$next_display_order = $max_existing_order + 1; // 기존 item이 없으면 -1 + 1 = 0.
@@ -131,7 +135,7 @@ final class HLF_Item_Repository {
 		}
 		$item = get_post( $item_id );
 		if ( ! $item || HLF_Post_Types::ITEM !== $item->post_type || (int) $item->post_parent !== $flyer_id ) {
-			return new WP_Error( 'hlf_item_not_found', '해당 Flyer의 항목이 아닙니다.', array( 'status' => 404 ) );
+			return new WP_Error( 'hlf_item_not_found', '해당 Flyer에 속한 매물이 아닙니다.', array( 'status' => 404 ) );
 		}
 		self::apply_fields( $item_id, $fields );
 		return $item_id;
@@ -144,7 +148,7 @@ final class HLF_Item_Repository {
 		}
 		$item = get_post( $item_id );
 		if ( ! $item || HLF_Post_Types::ITEM !== $item->post_type || (int) $item->post_parent !== $flyer_id ) {
-			return new WP_Error( 'hlf_item_not_found', '해당 Flyer의 항목이 아닙니다.', array( 'status' => 404 ) );
+			return new WP_Error( 'hlf_item_not_found', '해당 Flyer에 속한 매물이 아닙니다.', array( 'status' => 404 ) );
 		}
 		return (bool) wp_delete_post( $item_id, true );
 	}
@@ -166,7 +170,7 @@ final class HLF_Item_Repository {
 		$requested_ids = array_map( 'intval', $ordered_item_ids );
 
 		if ( count( $requested_ids ) !== count( array_unique( $requested_ids ) ) ) {
-			return new WP_Error( 'hlf_reorder_invalid', '순서 목록에 중복된 항목이 있습니다.', array( 'status' => 400 ) );
+			return new WP_Error( 'hlf_reorder_invalid', '순서 목록에 같은 매물이 중복으로 들어 있습니다.', array( 'status' => 400 ) );
 		}
 
 		$valid_ids = array_map( 'intval', wp_list_pluck( self::get_items( $flyer_id ), 'ID' ) );
@@ -176,7 +180,7 @@ final class HLF_Item_Repository {
 		if ( $requested_ids !== $sorted_valid_ids ) {
 			return new WP_Error(
 				'hlf_reorder_invalid',
-				'순서 목록이 이 Flyer의 현재 항목 구성과 일치하지 않습니다(누락되었거나 다른 Flyer의 항목이 포함됨).',
+				'순서 목록이 이 Flyer의 현재 매물 구성과 일치하지 않습니다. 새로고침 후 다시 시도해 주세요.',
 				array( 'status' => 400 )
 			);
 		}
@@ -204,7 +208,7 @@ final class HLF_Item_Repository {
 	): bool|WP_Error {
 		$item = get_post( $item_id );
 		if ( ! $item || HLF_Post_Types::ITEM !== $item->post_type ) {
-			return new WP_Error( 'hlf_item_not_found', 'Item을 찾을 수 없습니다.', array( 'status' => 404 ) );
+			return new WP_Error( 'hlf_item_not_found', '매물을 찾을 수 없습니다.', array( 'status' => 404 ) );
 		}
 
 		// 각 값을 쓴 뒤 실제로 읽어서 검증한다 — update_post_meta()의 반환값(bool)은 "행이 바뀌었는지"만
@@ -229,10 +233,12 @@ final class HLF_Item_Repository {
 			$expected_value = 'int' === $type ? (int) $expected_value : (string) $expected_value;
 
 			if ( $stored !== $expected_value ) {
+				// 원인 파악용 필드명은 message가 아니라 data에만 담는다 — 화면에는 직원이 이해할 수
+				// 있는 문구만 노출한다.
 				return new WP_Error(
 					'hlf_snapshot_metadata_write_failed',
-					"스냅샷 출처 정보({$meta_key}) 저장을 확인하지 못했습니다.",
-					array( 'status' => 500 )
+					'매물 가져오기 중 데이터 저장을 확인하지 못했습니다. 다시 시도해 주세요.',
+					array( 'status' => 500, 'field' => $meta_key )
 				);
 			}
 		}

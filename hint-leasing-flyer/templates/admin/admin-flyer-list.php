@@ -7,7 +7,7 @@ defined( 'ABSPATH' ) || exit;
 ?>
 <div class="wrap hlf-admin">
 	<h1 class="wp-heading-inline">Leasing Flyer</h1>
-	<a href="#" class="page-title-action" data-hlf-new-flyer>새 Flyer 만들기</a>
+	<a href="<?php echo esc_url( admin_url( 'admin.php?page=' . HLF_Admin_UI::EDIT_SLUG ) ); ?>" class="page-title-action">새 Flyer 만들기</a>
 	<hr class="wp-header-end">
 	<div id="hlf-flyer-list-root" class="hlf-admin-root">
 		<p class="hlf-admin-loading">불러오는 중…</p>

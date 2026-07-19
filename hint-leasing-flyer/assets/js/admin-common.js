@@ -17,7 +17,14 @@
 			.then( function ( response ) {
 				return response.json().catch( function () { return {}; } ).then( function ( body ) {
 					if ( ! response.ok ) {
-						var message = ( body && body.message ) ? body.message : ( 'HTTP ' + response.status );
+						// body.message는 서버(WP_Error)가 이미 직원이 이해할 수 있는 문구로 내려준다.
+						// 그게 없는 경우(네트워크 중간 장비 차단, PHP 치명적 오류 등 JSON 바디 자체가
+						// 없는 응답)에만 "HTTP 500" 같은 개발자용 문자열 대신 이 기본 문구를 쓴다.
+						var message = ( body && body.message )
+							? body.message
+							: ( response.status >= 500
+								? '서버에 문제가 발생했습니다(오류 코드 ' + response.status + '). 잠시 후 다시 시도해 주세요.'
+								: '요청을 처리하지 못했습니다(오류 코드 ' + response.status + ').' );
 						var err = new Error( message );
 						err.status = response.status;
 						err.body = body;
@@ -28,10 +35,16 @@
 			} );
 	}
 
+	// DOM 엘리먼트를 만들어 textContent→innerHTML 왕복으로 이스케이프하던 이전 방식은 렌더링마다
+	// (필드 수 × 항목 수만큼) 불필요한 <div>를 생성했다 — 순수 문자열 치환으로도 결과가 동일하므로
+	// 이렇게 바꾼다. 순서가 중요하다: 치환으로 새로 생긴 "&"를 다시 이스케이프하지 않도록 반드시 "&"를
+	// 가장 먼저 치환해야 한다.
 	function escapeHtml( value ) {
-		var div = document.createElement( 'div' );
-		div.textContent = value === null || value === undefined ? '' : String( value );
-		return div.innerHTML;
+		if ( value === null || value === undefined ) { return ''; }
+		return String( value )
+			.replace( /&/g, '&amp;' )
+			.replace( /</g, '&lt;' )
+			.replace( />/g, '&gt;' );
 	}
 
 	// escapeHtml()은 텍스트 노드 콘텐츠(&, <, >)만 안전하다 — 따옴표는 그대로 남기므로

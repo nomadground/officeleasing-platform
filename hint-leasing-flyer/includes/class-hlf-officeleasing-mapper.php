@@ -89,12 +89,12 @@ final class HLF_OfficeLeasing_Mapper {
 		if ( ! self::is_core_available() ) {
 			return new WP_Error(
 				'hlf_core_unavailable',
-				'officeleasing-core(또는 ACF)가 활성화되어 있지 않아 원본 매물을 불러올 수 없습니다.',
+				'원본 매물 연동 기능이 꺼져 있어 불러올 수 없습니다(officeleasing-core/ACF 비활성화). 관리자에게 문의해 주세요.',
 				array( 'status' => 503 )
 			);
 		}
 		if ( 'listing' !== get_post_type( $listing_id ) ) {
-			return new WP_Error( 'hlf_invalid_listing', '유효한 매물(listing)이 아닙니다.', array( 'status' => 404 ) );
+			return new WP_Error( 'hlf_invalid_listing', '선택한 매물 정보를 찾을 수 없습니다.', array( 'status' => 404 ) );
 		}
 		if ( ! self::is_readable_source( $listing_id ) ) {
 			return new WP_Error(
@@ -108,7 +108,7 @@ final class HLF_OfficeLeasing_Mapper {
 		if ( ! $building_id || 'building' !== get_post_type( $building_id ) ) {
 			return new WP_Error(
 				'hlf_no_building_linked',
-				'이 매물에 연결된 빌딩이 없어 스냅샷을 만들 수 없습니다.',
+				'이 매물에 연결된 빌딩 정보가 없어 가져올 수 없습니다.',
 				array( 'status' => 422 )
 			);
 		}
