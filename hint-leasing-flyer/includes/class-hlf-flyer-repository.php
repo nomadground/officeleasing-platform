@@ -68,8 +68,9 @@ final class HLF_Flyer_Repository {
 	}
 
 	public static function update( int $flyer_id, array $data ): int|WP_Error {
-		if ( HLF_Post_Types::FLYER !== get_post_type( $flyer_id ) ) {
-			return new WP_Error( 'hlf_not_flyer', '대상이 Flyer가 아닙니다.', array( 'status' => 404 ) );
+		$guard = self::assert_not_archived( $flyer_id );
+		if ( is_wp_error( $guard ) ) {
+			return $guard;
 		}
 		if ( isset( $data['title'] ) ) {
 			$result = wp_update_post( array( 'ID' => $flyer_id, 'post_title' => sanitize_text_field( $data['title'] ) ), true );
@@ -105,8 +106,30 @@ final class HLF_Flyer_Repository {
 		return (bool) $result;
 	}
 
-	/** 상태 전이: draft|published|archived. */
+	/**
+	 * archived Flyer는 읽기 전용이다(기존 공유 링크는 유지, 신규 쓰기만 차단) — Flyer 자체 수정,
+	 * Item 추가/수정/삭제/재정렬, officeleasing import 등 이 Flyer에 속한 모든 변경 동작이 이
+	 * 게이트를 공유한다(중복 구현 방지). 상태 변경(set_status) 자체와 읽기(GET)는 이 게이트를
+	 * 거치지 않는다 — archived에서 draft/published로 되돌리는 것 자체가 막히면 안 되기 때문이다.
+	 *
+	 * @return true|WP_Error
+	 */
+	public static function assert_not_archived( int $flyer_id ) {
+		$flyer = get_post( $flyer_id );
+		if ( ! $flyer || HLF_Post_Types::FLYER !== $flyer->post_type ) {
+			return new WP_Error( 'hlf_not_flyer', '대상이 Flyer가 아닙니다.', array( 'status' => 404 ) );
+		}
+		if ( HLF_Post_Types::STATUS_ARCHIVED === $flyer->post_status ) {
+			return new WP_Error( 'hlf_flyer_archived', '보관된 Flyer는 읽기 전용입니다.', array( 'status' => 409 ) );
+		}
+		return true;
+	}
+
+	/** 상태 전이: draft|published|archived. archived 상태에서도 이 메서드 자체는 허용한다(되돌리기 가능). */
 	public static function set_status( int $flyer_id, string $status ): int|WP_Error {
+		if ( HLF_Post_Types::FLYER !== get_post_type( $flyer_id ) ) {
+			return new WP_Error( 'hlf_not_flyer', '대상이 Flyer가 아닙니다.', array( 'status' => 404 ) );
+		}
 		$map = array(
 			'draft'     => 'draft',
 			'published' => 'publish',

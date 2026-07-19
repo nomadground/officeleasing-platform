@@ -6,7 +6,7 @@
  * (+building_id) → 필드 배열"만 하는 순수 변환기다 — item_number/display_order/10개 제한 같은
  * Flyer/Item 저장 규칙은 전혀 모른다(그건 HLF_Item_Repository의 일이다). source_listing_id 등
  * "이 스냅샷이 어디서 왔는지"에 대한 기록(provenance)도 여기서 채우지 않는다 — 그건 이 스냅샷을
- * 실제로 저장할 오케스트레이션 계층(HLF_Snapshot_Import_Service)의 일이다. 이 분리 덕분에
+ * 실제로 저장할 오케스트레이션 계층(HLF_OfficeLeasing_Import_Service)의 일이다. 이 분리 덕분에
  * to_snapshot()은 최초 Import와 향후 Refresh(원본에서 다시 불러오기) 양쪽에서 그대로 재사용된다.
  *
  * 부작용 없음: get_field()로 "읽기"만 하고, update_post_meta()/wp_insert_post() 등 어떤 것도
@@ -70,20 +70,22 @@ final class HLF_OfficeLeasing_Mapper {
 			'available_date_text'    => array( 'from' => 'listing', 'source' => 'move_in_type', 'transform' => 'move_in_to_text' ),
 			'features'               => array( 'from' => 'listing', 'source' => 'listing_note', 'transform' => 'features_compose' ),
 			'exterior_image_id'      => array( 'from' => 'building', 'source' => 'building_image_1', 'transform' => 'image_derive' ),
-			'interior_images'        => array( 'from' => 'listing', 'source' => 'listing_image_1..6', 'transform' => 'image_derive' ),
+			'interior_image_ids'     => array( 'from' => 'listing', 'source' => 'listing_image_1..6', 'transform' => 'image_derive' ),
 			// approval_date/building_use/article_no/contact_* 는 core 소스가 없음 → 관리자 입력(Flyer 신규).
 		);
 	}
 
 	/**
-	 * listing/building ID로부터 Flyer item 스냅샷 배열을 생성한다.
-	 * $building_id를 안 넘기면 listing의 related_building에서 자동으로 구한다.
+	 * listing ID로부터 Flyer item 스냅샷 배열을 생성한다. building은 항상 listing의
+	 * related_building에서 서버가 직접 구한다 — 호출자가 building_id를 지정할 수 있게 하면
+	 * listing과 실제로 연결되지 않은 임의의 building을 스냅샷에 섞어넣을 수 있으므로 파라미터
+	 * 자체를 받지 않는다.
 	 * 반환 배열의 키는 HLF_Meta_Schema::item_fields()와 1:1로 대응하며, 그대로
 	 * HLF_Item_Repository::create_item()/update_item()에 넘기면 된다.
 	 *
 	 * @return array<string, mixed>|WP_Error
 	 */
-	public static function to_snapshot( int $listing_id, ?int $building_id = null ) {
+	public static function to_snapshot( int $listing_id ) {
 		if ( ! self::is_core_available() ) {
 			return new WP_Error(
 				'hlf_core_unavailable',
@@ -94,15 +96,27 @@ final class HLF_OfficeLeasing_Mapper {
 		if ( 'listing' !== get_post_type( $listing_id ) ) {
 			return new WP_Error( 'hlf_invalid_listing', '유효한 매물(listing)이 아닙니다.', array( 'status' => 404 ) );
 		}
-
-		if ( ! $building_id ) {
-			$building_id = (int) get_field( 'related_building', $listing_id );
+		if ( ! self::is_readable_source( $listing_id ) ) {
+			return new WP_Error(
+				'hlf_source_not_readable',
+				'이 매물은 열람 권한이 없거나 발행 상태가 아니어서 가져올 수 없습니다.',
+				array( 'status' => 403 )
+			);
 		}
+
+		$building_id = (int) get_field( 'related_building', $listing_id );
 		if ( ! $building_id || 'building' !== get_post_type( $building_id ) ) {
 			return new WP_Error(
 				'hlf_no_building_linked',
 				'이 매물에 연결된 빌딩이 없어 스냅샷을 만들 수 없습니다.',
 				array( 'status' => 422 )
+			);
+		}
+		if ( ! self::is_readable_source( $building_id ) ) {
+			return new WP_Error(
+				'hlf_source_not_readable',
+				'연결된 빌딩을 열람할 권한이 없거나 발행 상태가 아니어서 가져올 수 없습니다.',
+				array( 'status' => 403 )
 			);
 		}
 
@@ -129,6 +143,17 @@ final class HLF_OfficeLeasing_Mapper {
 			'available_date_text'        => self::format_move_in_text( $listing_id ),
 			'features'                   => self::compose_features( $listing_id ),
 		);
+	}
+
+	/**
+	 * 워드프레스 네이티브 발행 상태(post_status === 'publish') + 열람 권한(read_post) 둘 다 확인한다.
+	 * officeleasing의 listing_status(available/reserved/contract_pending/...) ACF 필드는 업무상
+	 * 진행 상태일 뿐 이 게이트와 무관하다 — 그 필드로 차단하면 "협의중"인 정상 발행 매물도 못
+	 * 가져오게 되어 정책과 어긋난다. 이 게이트는 오직 "검색을 우회해 draft/private listing_id를
+	 * 직접 넘기는" 경로를 막기 위한 것이다(검색 자체는 이미 publish만 노출해 안전하다).
+	 */
+	private static function is_readable_source( int $post_id ): bool {
+		return 'publish' === get_post_status( $post_id ) && current_user_can( 'read_post', $post_id );
 	}
 
 	/** "0"/빈 값은 빈 문자열로, 그 외엔 정수 문자열로. floor_total처럼 자유표기 문자열 필드에 채운다. */

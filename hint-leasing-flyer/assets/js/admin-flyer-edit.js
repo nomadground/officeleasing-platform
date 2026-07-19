@@ -131,9 +131,9 @@
 			'<section class="hlf-card">' +
 				'<h2>' + HLFAdmin.escapeHtml( flyer.flyer_number ) + ' <span class="' + HLFAdmin.statusBadgeClass( flyer.status ) + '">' + HLFAdmin.statusLabel( flyer.status ) + '</span></h2>' +
 				'<form id="hlf-flyer-form">' +
-					'<div class="hlf-field"><label>제목(내부 관리용)</label><input type="text" name="title" value="' + HLFAdmin.escapeHtml( flyer.title ) + '" required></div>' +
-					'<div class="hlf-field"><label>담당자명</label><input type="text" name="contact_name" value="' + HLFAdmin.escapeHtml( flyer.contact_name ) + '"></div>' +
-					'<div class="hlf-field"><label>담당자 연락처</label><input type="text" name="contact_phone" value="' + HLFAdmin.escapeHtml( flyer.contact_phone ) + '"></div>' +
+					'<div class="hlf-field"><label>제목(내부 관리용)</label><input type="text" name="title" value="' + HLFAdmin.escapeAttr( flyer.title ) + '" required></div>' +
+					'<div class="hlf-field"><label>담당자명</label><input type="text" name="contact_name" value="' + HLFAdmin.escapeAttr( flyer.contact_name ) + '"></div>' +
+					'<div class="hlf-field"><label>담당자 연락처</label><input type="text" name="contact_phone" value="' + HLFAdmin.escapeAttr( flyer.contact_phone ) + '"></div>' +
 					'<p class="hlf-admin-note">공개 화면 하단 문의처로 쓰입니다. 비워두면 대표번호(' + HLFAdmin.escapeHtml( HLF_ADMIN.defaultPhone ) + ')로 표시됩니다.</p>' +
 					'<button type="submit" class="button button-primary">저장</button>' +
 					'<p class="hlf-admin-error" data-hlf-flyer-error hidden></p>' +
@@ -149,7 +149,7 @@
 					'<button type="button" class="button" id="hlf-status-apply">상태 변경</button>' +
 					'<p class="hlf-admin-error" data-hlf-status-error hidden></p>' +
 				'</div>' +
-				'<p class="hlf-admin-note"><a href="' + HLFAdmin.escapeHtml( flyer.url ) + '" target="_blank" rel="noopener">공개 링크 열기 ↗</a></p>' +
+				'<p class="hlf-admin-note"><a href="' + HLFAdmin.escapeAttr( flyer.url ) + '" target="_blank" rel="noopener">공개 링크 열기 ↗</a></p>' +
 			'</section>'
 		);
 	}
@@ -236,7 +236,7 @@
 			return '';
 		}
 		var statusOptions = OFFICELEASING_STATUS_CHOICES.map( function ( c ) {
-			return '<option value="' + c.value + '">' + HLFAdmin.escapeHtml( c.label ) + '</option>';
+			return '<option value="' + HLFAdmin.escapeAttr( c.value ) + '">' + HLFAdmin.escapeHtml( c.label ) + '</option>';
 		} ).join( '' );
 
 		return (
@@ -276,7 +276,7 @@
 					'<td>' + HLFAdmin.escapeHtml( listing.building_title ) + '<br><small>' + HLFAdmin.escapeHtml( address ) + '</small></td>' +
 					'<td>' + HLFAdmin.escapeHtml( statusLabel ) + '</td>' +
 					'<td>' + HLFAdmin.formatManwon( listing.deposit_manwon ) + ' / ' + HLFAdmin.formatManwon( listing.monthly_rent_manwon ) + '</td>' +
-					'<td><button type="button" class="button button-small" data-hlf-import-listing="' + listing.listing_id + '"' + ( atLimit || importing ? ' disabled' : '' ) + '>' + ( importing ? '가져오는 중…' : '가져오기' ) + '</button></td>' +
+					'<td><button type="button" class="button button-small" data-hlf-import-listing="' + HLFAdmin.escapeAttr( listing.listing_id ) + '"' + ( atLimit || importing ? ' disabled' : '' ) + '>' + ( importing ? '가져오는 중…' : '가져오기' ) + '</button></td>' +
 				'</tr>'
 			);
 		} ).join( '' );
@@ -296,14 +296,21 @@
 		);
 	}
 
-	function runOfficeleasingSearch( searchTerm, status, page ) {
+	// 요청이 늦게 끝난 이전 검색 응답이 이후 검색 결과를 덮어쓰지 않도록 매 호출마다 증가시키는
+	// 시퀀스 번호. 응답이 도착했을 때 자신이 "가장 최근에 보낸 요청"이 아니면 렌더링하지 않는다.
+	var searchRequestSeq = 0;
+
+	function runOfficeleasingSearch( searchTerm, status, page, onSettled ) {
 		var errorEl = document.querySelector( '[data-hlf-search-error]' );
 		var query = 'officeleasing/listings?page=' + encodeURIComponent( page ) +
 			( searchTerm ? '&search=' + encodeURIComponent( searchTerm ) : '' ) +
 			( status ? '&status=' + encodeURIComponent( status ) : '' );
 
+		var requestId = ++searchRequestSeq;
+
 		HLFAdmin.apiFetch( query )
 			.then( function ( result ) {
+				if ( requestId !== searchRequestSeq ) { return; } // 더 최신 요청이 이미 나가 있음 — 이 응답은 버린다.
 				state.search.page = result.page;
 				state.search.results = result;
 				// wrap 엘리먼트 자체는 그대로 두고 내용만 갱신한다 — 클릭 리스너는 bindImportResults()가
@@ -312,10 +319,14 @@
 				document.getElementById( 'hlf-officeleasing-results' ).innerHTML = renderImportResults();
 			} )
 			.catch( function ( err ) {
+				if ( requestId !== searchRequestSeq ) { return; }
 				if ( errorEl ) {
 					errorEl.textContent = err.message;
 					errorEl.hidden = false;
 				}
+			} )
+			.then( function () {
+				if ( requestId === searchRequestSeq && onSettled ) { onSettled(); }
 			} );
 	}
 
@@ -390,8 +401,10 @@
 				state.search.lastQuery = { search: searchTerm, status: status };
 				var submitButton = searchForm.querySelector( 'button[type="submit"]' );
 				submitButton.disabled = true;
-				runOfficeleasingSearch( searchTerm, status, 1 );
-				window.setTimeout( function () { submitButton.disabled = false; }, 300 ); // 중복 제출 방지(짧은 디바운스).
+				// 요청이 실제로 끝난 뒤에만 버튼을 다시 활성화한다(고정 setTimeout이 아님) — 느린 응답이
+				// 늦게 도착해 최신 검색 결과를 덮어쓰는 경쟁 상태는 runOfficeleasingSearch()의 시퀀스
+				// 번호 검사로 별도 차단된다.
+				runOfficeleasingSearch( searchTerm, status, 1, function () { submitButton.disabled = false; } );
 			} );
 			bindImportResults();
 		}
@@ -405,14 +418,14 @@
 			var address = item.road_address || item.lot_address || '-';
 			var m = item.metrics || {};
 			return (
-				'<tr data-item-row="' + item.id + '">' +
+				'<tr data-item-row="' + HLFAdmin.escapeAttr( item.id ) + '">' +
 					'<td>' + HLFAdmin.escapeHtml( item.item_number ) + '</td>' +
 					'<td>' + HLFAdmin.escapeHtml( address ) + '</td>' +
 					'<td>' + HLFAdmin.formatManwon( item.deposit_manwon ) + ' / ' + HLFAdmin.formatManwon( item.monthly_rent_manwon ) + ' / ' + HLFAdmin.formatManwon( item.maintenance_fee_manwon ) + '</td>' +
 					'<td>' + HLFAdmin.formatNumber1( m.noc ) + '만원/평</td>' +
 					'<td class="hlf-admin-actions">' +
-						'<button type="button" class="button button-small" data-hlf-edit-item="' + item.id + '">수정</button> ' +
-						'<button type="button" class="button button-small hlf-danger" data-hlf-delete-item="' + item.id + '">삭제</button>' +
+						'<button type="button" class="button button-small" data-hlf-edit-item="' + HLFAdmin.escapeAttr( item.id ) + '">수정</button> ' +
+						'<button type="button" class="button button-small hlf-danger" data-hlf-delete-item="' + HLFAdmin.escapeAttr( item.id ) + '">삭제</button>' +
 					'</td>' +
 				'</tr>'
 			);
@@ -447,10 +460,10 @@
 				);
 			}
 			var stepAttr = def.step ? ' step="' + def.step + '"' : '';
-			var placeholderAttr = def.placeholder ? ' placeholder="' + HLFAdmin.escapeHtml( def.placeholder ) + '"' : '';
+			var placeholderAttr = def.placeholder ? ' placeholder="' + HLFAdmin.escapeAttr( def.placeholder ) + '"' : '';
 			return (
 				'<div class="hlf-field' + wideClass + '"><label>' + HLFAdmin.escapeHtml( def.label ) + '</label>' +
-				'<input type="' + def.type + '" name="' + def.key + '" value="' + HLFAdmin.escapeHtml( value === null || value === undefined ? '' : value ) + '"' + stepAttr + placeholderAttr + '></div>'
+				'<input type="' + def.type + '" name="' + def.key + '" value="' + HLFAdmin.escapeAttr( value === null || value === undefined ? '' : value ) + '"' + stepAttr + placeholderAttr + '></div>'
 			);
 		} ).join( '' );
 

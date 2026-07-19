@@ -34,6 +34,17 @@
 		return div.innerHTML;
 	}
 
+	// escapeHtml()은 텍스트 노드 콘텐츠(&, <, >)만 안전하다 — 따옴표는 그대로 남기므로
+	// value="' + escapeHtml(x) + '"' 처럼 속성값 자리에 쓰면 "나 '로 속성을 깨고 나가는
+	// 스토어드 XSS가 가능하다(예: 콘텐츠에 "><img src=x onerror=alert(1)> 저장). 속성값
+	// 자리에는 반드시 이 escapeAttr()을 쓴다 — &/</>는 escapeHtml과 동일하게, 그 위에
+	// 남은 리터럴 따옴표를 엔티티로 추가 치환한다.
+	function escapeAttr( value ) {
+		return escapeHtml( value )
+			.replace( /"/g, '&quot;' )
+			.replace( /'/g, '&#039;' );
+	}
+
 	var STATUS_LABELS = { draft: '미발행', published: '발행됨', archived: '보관' };
 	var STATUS_CLASSES = { draft: 'hlf-badge--draft', published: 'hlf-badge--published', archived: 'hlf-badge--archived' };
 
@@ -54,6 +65,7 @@
 	window.HLFAdmin = {
 		apiFetch: apiFetch,
 		escapeHtml: escapeHtml,
+		escapeAttr: escapeAttr,
 		statusLabel: statusLabel,
 		statusBadgeClass: statusBadgeClass,
 		formatManwon: formatManwon,

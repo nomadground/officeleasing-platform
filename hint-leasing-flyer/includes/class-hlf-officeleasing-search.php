@@ -28,6 +28,9 @@ final class HLF_OfficeLeasing_Search {
 	const DEFAULT_PER_PAGE = 20;
 	const MAX_PER_PAGE     = 50;
 
+	/** 검색어 후보 id 집합의 상한 — posts_per_page => -1로 뽑는 후보 조회가 무제한으로 커지지 않게 한다. */
+	const MAX_CANDIDATE_IDS = 800;
+
 	/**
 	 * @param array{search?: string, status?: string, page?: int, per_page?: int} $args
 	 * @return array{items: array<int, array>, page: int, per_page: int, total: int}|WP_Error
@@ -64,6 +67,12 @@ final class HLF_OfficeLeasing_Search {
 		}
 
 		if ( '' !== $search ) {
+			// 한 글자짜리 검색어는 LIKE/제목검색 후보가 사실상 전수조사에 가까워 posts_per_page => -1
+			// 조회 비용이 급격히 커진다 — 빈 검색어(전체 목록 보기, 위 분기)와 달리 이건 명시적으로
+			// 거부한다. 관리자 UI는 빈 결과를 이미 "일치하는 매물이 없습니다"로 자연스럽게 표시한다.
+			if ( mb_strlen( $search ) <= 1 ) {
+				return array( 'items' => array(), 'page' => $page, 'per_page' => $per_page, 'total' => 0 );
+			}
 			$matched_ids = self::find_matching_listing_ids( $search, $meta_query );
 			if ( empty( $matched_ids ) ) {
 				return array( 'items' => array(), 'page' => $page, 'per_page' => $per_page, 'total' => 0 );
@@ -118,7 +127,8 @@ final class HLF_OfficeLeasing_Search {
 			) );
 		}
 
-		return array_values( array_unique( array_map( 'intval', array_merge( $by_title, $by_building ) ) ) );
+		$ids = array_values( array_unique( array_map( 'intval', array_merge( $by_title, $by_building ) ) ) );
+		return array_slice( $ids, 0, self::MAX_CANDIDATE_IDS );
 	}
 
 	/** building 제목 또는 도로명/지번주소가 검색어와 일치하는 building id 목록. */
@@ -143,7 +153,8 @@ final class HLF_OfficeLeasing_Search {
 			),
 		) );
 
-		return array_values( array_unique( array_map( 'intval', array_merge( $by_title, $by_address ) ) ) );
+		$ids = array_values( array_unique( array_map( 'intval', array_merge( $by_title, $by_address ) ) ) );
+		return array_slice( $ids, 0, self::MAX_CANDIDATE_IDS );
 	}
 
 	/** 검색 결과 한 행 — Import 버튼이 미리보기로 쓸 최소 정보만. */

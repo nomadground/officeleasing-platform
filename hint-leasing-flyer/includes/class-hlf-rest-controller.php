@@ -86,6 +86,15 @@ final class HLF_REST_Controller {
 			'methods'             => WP_REST_Server::READABLE,
 			'callback'            => array( __CLASS__, 'search_officeleasing_listings' ),
 			'permission_callback' => array( __CLASS__, 'can_edit_flyers' ),
+			'args'                => array(
+				'search'   => array( 'type' => 'string' ),
+				'status'   => array(
+					'type' => 'string',
+					'enum' => array( '', 'available', 'reserved', 'contract_pending', 'leased', 'temporarily_hidden', 'expired' ),
+				),
+				'page'     => array( 'type' => 'integer', 'minimum' => 1 ),
+				'per_page' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => HLF_OfficeLeasing_Search::MAX_PER_PAGE ),
+			),
 		) );
 
 		// officeleasing listing → 이 Flyer에 새 item 가져오기(Phase 2-2). 기존 /flyers/{id}/items
@@ -94,6 +103,13 @@ final class HLF_REST_Controller {
 			'methods'             => WP_REST_Server::CREATABLE,
 			'callback'            => array( __CLASS__, 'import_officeleasing_item' ),
 			'permission_callback' => array( __CLASS__, 'can_edit_this_flyer' ),
+			'args'                => array(
+				'listing_id' => array(
+					'type'     => 'integer',
+					'required' => true,
+					'minimum'  => 1,
+				),
+			),
 		) );
 
 		// --- Phase 2 범위: 라우트만 등록, 지금은 501 ---
@@ -125,10 +141,17 @@ final class HLF_REST_Controller {
 		return current_user_can( 'delete_post', $id );
 	}
 
-	/** publish_leasing_flyers는 draft/published/archived 어느 방향 전이든 동일하게 요구한다(범용 상태변경). */
+	/**
+	 * publish_leasing_flyers는 draft/published/archived 어느 방향 전이든 동일하게 요구한다(범용 상태변경).
+	 * 대상이 실제로 Flyer인지도 여기서 한 번 더 확인한다(defense-in-depth) — 권한 계층은 "이 사용자가
+	 * 상태를 바꿀 수 있나"만 보고, 실제 대상 종류 검증은 HLF_Flyer_Repository::set_status()가 최종
+	 * 기준이다.
+	 */
 	public static function can_set_status_this_flyer( WP_REST_Request $request ): bool {
 		$id = (int) $request['id'];
-		return current_user_can( 'publish_leasing_flyers' ) && current_user_can( 'edit_post', $id );
+		return HLF_Post_Types::FLYER === get_post_type( $id )
+			&& current_user_can( 'publish_leasing_flyers' )
+			&& current_user_can( 'edit_post', $id );
 	}
 
 	/* ---------------- flyer handlers ---------------- */

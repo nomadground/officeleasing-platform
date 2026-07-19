@@ -80,8 +80,9 @@ final class HLF_Item_Repository {
 	}
 
 	public static function create_item( int $flyer_id, array $fields ): int|WP_Error {
-		if ( HLF_Post_Types::FLYER !== get_post_type( $flyer_id ) ) {
-			return new WP_Error( 'hlf_not_flyer', '대상이 Flyer가 아닙니다.', array( 'status' => 404 ) );
+		$guard = HLF_Flyer_Repository::assert_not_archived( $flyer_id );
+		if ( is_wp_error( $guard ) ) {
+			return $guard;
 		}
 
 		// 클라이언트 우회(직접 REST 호출 등) 방지 — 서버가 최종 기준. UI는 안내만 표시한다.
@@ -124,6 +125,10 @@ final class HLF_Item_Repository {
 	}
 
 	public static function update_item( int $flyer_id, int $item_id, array $fields ): int|WP_Error {
+		$guard = HLF_Flyer_Repository::assert_not_archived( $flyer_id );
+		if ( is_wp_error( $guard ) ) {
+			return $guard;
+		}
 		$item = get_post( $item_id );
 		if ( ! $item || HLF_Post_Types::ITEM !== $item->post_type || (int) $item->post_parent !== $flyer_id ) {
 			return new WP_Error( 'hlf_item_not_found', '해당 Flyer의 항목이 아닙니다.', array( 'status' => 404 ) );
@@ -133,6 +138,10 @@ final class HLF_Item_Repository {
 	}
 
 	public static function delete_item( int $flyer_id, int $item_id ): bool|WP_Error {
+		$guard = HLF_Flyer_Repository::assert_not_archived( $flyer_id );
+		if ( is_wp_error( $guard ) ) {
+			return $guard;
+		}
 		$item = get_post( $item_id );
 		if ( ! $item || HLF_Post_Types::ITEM !== $item->post_type || (int) $item->post_parent !== $flyer_id ) {
 			return new WP_Error( 'hlf_item_not_found', '해당 Flyer의 항목이 아닙니다.', array( 'status' => 404 ) );
@@ -149,6 +158,11 @@ final class HLF_Item_Repository {
 	 * 검증에 실패하면 아무 것도 저장하지 않고 즉시 400을 반환한다(부분 반영 금지).
 	 */
 	public static function reorder( int $flyer_id, array $ordered_item_ids ): bool|WP_Error {
+		$guard = HLF_Flyer_Repository::assert_not_archived( $flyer_id );
+		if ( is_wp_error( $guard ) ) {
+			return $guard;
+		}
+
 		$requested_ids = array_map( 'intval', $ordered_item_ids );
 
 		if ( count( $requested_ids ) !== count( array_unique( $requested_ids ) ) ) {
@@ -193,11 +207,35 @@ final class HLF_Item_Repository {
 			return new WP_Error( 'hlf_item_not_found', 'Item을 찾을 수 없습니다.', array( 'status' => 404 ) );
 		}
 
-		update_post_meta( $item_id, 'source_listing_id', $source_listing_id );
-		update_post_meta( $item_id, 'source_building_id', $source_building_id );
-		update_post_meta( $item_id, 'snapshot_created_at', $snapshot_created_at );
-		update_post_meta( $item_id, 'snapshot_refreshed_at', $snapshot_refreshed_at );
-		update_post_meta( $item_id, 'snapshot_version', $snapshot_version );
+		// 각 값을 쓴 뒤 실제로 읽어서 검증한다 — update_post_meta()의 반환값(bool)은 "행이 바뀌었는지"만
+		// 알려줄 뿐이라(같은 값이면 false) 성공 여부 판정에 쓸 수 없어, 대신 get_post_meta()로 읽어
+		// 되돌아온 값을 비교한다. 워드프레스는 숫자 postmeta를 문자열로 반환하므로 숫자 필드는
+		// (int) 캐스팅 후, 문자열 필드는 그대로 비교해야 정상 값을 오탐(false positive)으로 실패
+		// 처리하지 않는다. snapshot_refreshed_at은 최초 Import 시 빈 문자열('')이 정상값이다.
+		$fields = array(
+			'source_listing_id'     => array( $source_listing_id, 'int' ),
+			'source_building_id'    => array( $source_building_id, 'int' ),
+			'snapshot_created_at'   => array( $snapshot_created_at, 'string' ),
+			'snapshot_refreshed_at' => array( $snapshot_refreshed_at, 'string' ),
+			'snapshot_version'      => array( $snapshot_version, 'int' ),
+		);
+
+		foreach ( $fields as $meta_key => $expected ) {
+			list( $expected_value, $type ) = $expected;
+			update_post_meta( $item_id, $meta_key, $expected_value );
+
+			$stored = get_post_meta( $item_id, $meta_key, true );
+			$stored = 'int' === $type ? (int) $stored : (string) $stored;
+			$expected_value = 'int' === $type ? (int) $expected_value : (string) $expected_value;
+
+			if ( $stored !== $expected_value ) {
+				return new WP_Error(
+					'hlf_snapshot_metadata_write_failed',
+					"스냅샷 출처 정보({$meta_key}) 저장을 확인하지 못했습니다.",
+					array( 'status' => 500 )
+				);
+			}
+		}
 
 		return true;
 	}
