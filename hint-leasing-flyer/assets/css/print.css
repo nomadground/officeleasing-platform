@@ -18,13 +18,10 @@
 	.hlf-gallery-main {
 		break-inside: avoid;
 	}
-	/* 목록 화면 카드 그리드는 화면 폭에 따라 열 수가 달라진다 — 인쇄에서는 예측 가능한 한 줄
-	   레이아웃으로 고정해 페이지마다 카드 수가 들쭉날쭉해지는 것을 막는다(Phase 5 밀도별 레이아웃
-	   전까지의 최소 안전장치). */
-	.hlf-listing-grid { display: block; }
-	.hlf-listing-card { margin-bottom: 8px; }
-	.hlf-listing-link { flex-direction: row; align-items: center; }
-	.hlf-listing-media { width: 90px; aspect-ratio: auto; height: 68px; flex: 0 0 90px; }
+	/* 리스트는 장부형(한 매물 = 한 행)이라 인쇄에서도 그대로 나열되면 된다. 배경 틴트/그림자만
+	   잉크 절약을 위해 걷어내고 행 경계는 얇은 선으로 유지한다(밀도별 레이아웃은 Phase 5). */
+	.hlf-listing-card { background: #fff !important; }
+	.hlf-listing-card:hover { background: #fff !important; }
 	/* 썸네일 스트립까지 인쇄하면 한 장짜리 매물 안내문이 여러 장으로 늘어질 수 있다 — 대표 이미지
 	   하나만 인쇄하고 나머지는 화면 전용으로 남긴다(Phase 5 밀도별 레이아웃이 나오기 전까지). */
 	.hlf-gallery-thumbs { display: none !important; }

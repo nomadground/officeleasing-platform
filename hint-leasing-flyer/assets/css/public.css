@@ -1,127 +1,198 @@
 /*
- * HLF 공개 화면 스타일 (Phase 1 최소 골격).
- * .hlf- 네임스페이스로 테마의 .olx-* 와 완전히 격리. 실제 디자인 시스템은 Phase 4+에서
- * MVP 최종 규칙만 골라 컴포넌트별로 재작성한다(중복 오버라이드 금지).
+ * HLF 공개 화면 스타일.
+ * .hlf- 네임스페이스로 테마의 .olx-*/.olt-* 와 완전히 격리한다(같은 워드프레스 사이트에
+ * officeleasing-core 테마의 실제 .olx-* 가 로드될 수 있으므로 클래스명은 절대 재사용하지 않고
+ * "톤"(색·폰트·간격·모서리·그림자)만 가져온다).
+ *
+ * 디자인 토큰은 officeleasinglistingimprovedv2(officeleasing.co.kr 개선판) 실측값 기준(v2).
+ * 이번 라운드는 Visual Migration(스키닝)이라 값/토큰/컴포넌트 스타일만 교체하고, 리스트의
+ * 표/장부형 비교 구조와 데이터 흐름은 그대로 둔다.
  */
 :root {
-	--hlf-primary: #355c73;
-	--hlf-primary-strong: #29485c;
-	--hlf-ink: #1d2b33;
-	--hlf-muted: #687780;
-	--hlf-line: #dfe7ec;
-	--hlf-surface: #ffffff;
+	/* 색상 — v2 실측값 */
+	--hlf-brand:       #355c73;
+	--hlf-brand-ink:   #203f51;
+	--hlf-brand-tint:  #eef3f6;
+	--hlf-ink:         #152027;
+	--hlf-ink-2:       #4b5a63;
+	--hlf-ink-3:       #84919a;
+	--hlf-line:        #e0e7eb;
+	--hlf-line-2:      #edf1f3;
+	--hlf-paper:       #ffffff;
+	--hlf-warm:        #f8f7f3;
+	--hlf-ok:          #2f8f5b;
+	--hlf-sub:         #ffcd4a;  /* 보조 강조색 — 남용 금지, 포인트에만 */
+	--hlf-max:         1160px;
+
+	/* 모서리 */
+	--hlf-radius-sm:   3px;
+	--hlf-radius-md:   4px;
+	--hlf-radius-lg:   5px;
+	--hlf-radius-pill: 999px;
+
+	/* 그림자 */
+	--hlf-shadow-card: 0 4px 12px rgba(19, 39, 31, .12);
+	--hlf-shadow-hero: 0 14px 32px rgba(22, 32, 39, .08);
+
+	/* 폰트 — 반드시 한글 지원 스택(한글 콘텐츠가 대부분이라 Fraunces/Inter류는 폐기) */
+	--hlf-font-display: "Noto Sans KR", "Pretendard Variable", Pretendard, "Malgun Gothic", Arial, sans-serif;
+	--hlf-font-body:    "Noto Sans KR", "Pretendard Variable", Pretendard, "Malgun Gothic", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+	/* 하위호환 별칭 — 상세/푸터 등 기존 규칙이 참조하던 이름. 이번 라운드는 리스트만
+	   스킨하므로, 값만 v2로 재매핑해 상세 화면 톤도 자동으로 따라오게 하고 마크업은 건드리지
+	   않는다(상세 화면 본격 스킨은 다음 라운드). */
+	--hlf-primary:        var(--hlf-brand);
+	--hlf-primary-strong: var(--hlf-brand-ink);
+	--hlf-muted:          var(--hlf-ink-3);
+	--hlf-surface:        var(--hlf-paper);
 }
 
 * { box-sizing: border-box; }
 body.hlf-public {
 	margin: 0;
 	color: var(--hlf-ink);
-	background: #eef2f5;
-	font-family: Pretendard, "Noto Sans KR", system-ui, -apple-system, sans-serif;
+	background: var(--hlf-warm);
+	font-family: var(--hlf-font-body);
 	line-height: 1.5;
+	letter-spacing: -.01em;
+	-webkit-font-smoothing: antialiased;
 	/* 한글 주소/건물명은 공백 없이 숫자·영문이 섞이는 경우가 많다(예: "테헤란로 152") —
 	   word-break:break-all을 쓰면 그 안에서도 아무 데서나 끊겨 가독성이 떨어지므로 공백 단위로만
 	   줄바꿈한다. */
 	word-break: keep-all;
 }
-.hlf-shell { width: min(1100px, calc(100% - 32px)); margin: 0 auto; padding: 24px 0 48px; }
-.hlf-header { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--hlf-line); }
-.hlf-brand { font-weight: 800; letter-spacing: .06em; color: var(--hlf-primary); }
-.hlf-flyer-number { color: var(--hlf-muted); font-size: 13px; }
+.hlf-shell { width: min(var(--hlf-max), calc(100% - 40px)); margin: 0 auto; padding: 22px 0 56px; }
+
+.hlf-header { display: flex; align-items: center; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--hlf-line); }
+.hlf-brand { font-family: var(--hlf-font-display); font-weight: 800; letter-spacing: .08em; color: var(--hlf-brand); }
+.hlf-flyer-number { color: var(--hlf-ink-3); font-size: 13px; }
 /* padding으로 탭 영역을 넓혀 모바일에서 오터치 없이 누르기 쉽게 한다(시각적 크기는 거의 그대로). */
-.hlf-back { display: inline-block; padding: 6px 4px; margin: -6px -4px; color: var(--hlf-primary); text-decoration: none; font-weight: 700; }
-.hlf-badge { margin-left: auto; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; }
+.hlf-back { display: inline-block; padding: 6px 4px; margin: -6px -4px; color: var(--hlf-brand); text-decoration: none; font-weight: 700; }
+.hlf-badge { margin-left: auto; padding: 4px 10px; border-radius: var(--hlf-radius-pill); font-size: 11px; font-weight: 750; }
 .hlf-badge--draft { color: #8a6100; background: #fff4c9; }
 .hlf-badge--archived { color: #55705a; background: #edf2ea; }
-.hlf-title { margin: 20px 0 4px; color: var(--hlf-primary-strong); font-size: clamp(24px, 4vw, 34px); letter-spacing: -.04em; }
-.hlf-subaddress, .hlf-result-count { margin: 0 0 8px; color: var(--hlf-muted); font-size: 13px; }
-.hlf-empty { padding: 40px; text-align: center; color: var(--hlf-muted); border: 1px dashed var(--hlf-line); border-radius: 12px; }
 
-.hlf-listing-grid { list-style: none; margin: 16px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
-.hlf-listing-card { background: var(--hlf-surface); border: 1px solid var(--hlf-line); border-radius: 12px; overflow: hidden; transition: box-shadow .15s, border-color .15s; }
-.hlf-listing-card:hover { border-color: var(--hlf-primary); box-shadow: 0 8px 20px rgba(29, 43, 51, .1); }
-.hlf-listing-link { display: flex; flex-direction: column; height: 100%; color: inherit; text-decoration: none; }
-/* 썸네일 칸(hlf-listing-thumb)은 이미지가 없는 매물에서도 항상 렌더링된다(빈 <span>) — 그래야
-   이미지가 없는 카드도 같은 높이의 미디어 영역을 유지해 카드 높이가 들쭉날쭉해지지 않는다. */
-.hlf-listing-media { position: relative; aspect-ratio: 4 / 3; background: var(--hlf-line); }
-.hlf-listing-thumb, .hlf-listing-thumb img { display: block; width: 100%; height: 100%; }
-.hlf-listing-thumb img { object-fit: cover; }
-.hlf-listing-index { position: absolute; top: 8px; left: 8px; display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 22px; padding: 0 6px; color: #fff; background: var(--hlf-primary); border-radius: 6px; font-size: 11px; font-weight: 700; }
-.hlf-listing-body { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px 14px; }
-.hlf-listing-floor { color: var(--hlf-muted); font-size: 12px; font-weight: 700; }
-/* 긴 주소를 한 줄로 자르면 정작 필요한 동/건물명이 잘려나가는 경우가 많다 — 2줄까지는 그대로
-   보여주고, 그 이상만 말줄임(line-clamp)한다. */
-.hlf-listing-address {
-	display: -webkit-box;
-	overflow: hidden;
-	font-weight: 800;
-	font-size: 15px;
-	color: var(--hlf-primary-strong);
-	-webkit-line-clamp: 2;
-	line-clamp: 2;
-	-webkit-box-orient: vertical;
+.hlf-title { margin: 22px 0 4px; color: var(--hlf-brand-ink); font-family: var(--hlf-font-display); font-size: clamp(26px, 4vw, 38px); font-weight: 730; letter-spacing: -.045em; line-height: 1.12; }
+.hlf-subaddress, .hlf-result-count { margin: 0 0 8px; color: var(--hlf-ink-3); font-size: 13px; }
+.hlf-empty { padding: 44px; text-align: center; color: var(--hlf-ink-3); background: var(--hlf-paper); border: 1px dashed var(--hlf-line); border-radius: var(--hlf-radius-lg); }
+
+/* ── 매물 비교 리스트(표/장부형) ───────────────────────────────────────────
+   최대 10개 매물의 보증금/임대료/관리비/NOC를 세로로 정렬해 한눈에 비교하는 게 핵심 목적이다.
+   officeleasing 톤(색·타이포·간격·모서리)만 입히고 카드형 그리드로 바꾸지 않는다 —
+   Flyer는 탐색 사이트가 아니라 비교·제안 문서다. */
+.hlf-listing-grid { list-style: none; margin: 18px 0 0; padding: 0; display: grid; gap: 7px; }
+.hlf-listing-card { background: var(--hlf-paper); border: 1px solid var(--hlf-line); border-radius: var(--hlf-radius-lg); transition: background .16s ease, border-color .16s ease; }
+.hlf-listing-card:hover { background: var(--hlf-brand-tint); border-color: #cfe0e8; }
+
+.hlf-listing-link {
+	display: grid;
+	grid-template-columns: 26px minmax(0, 1.5fr) minmax(86px, .82fr) repeat(4, minmax(76px, .62fr)) 14px;
+	align-items: center;
+	gap: 12px;
+	padding: 11px 14px;
+	color: inherit;
+	text-decoration: none;
 }
-.hlf-listing-areas { display: flex; gap: 14px; margin-top: 2px; padding-top: 8px; border-top: 1px solid var(--hlf-line); font-size: 12px; }
-.hlf-listing-area b { margin-right: 4px; color: var(--hlf-muted); font-size: 11px; font-weight: 700; }
-.hlf-listing-area strong { color: var(--hlf-ink); font-weight: 800; }
-.hlf-listing-prices { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 12px; font-weight: 700; color: var(--hlf-primary); }
-.hlf-chip { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
-.hlf-chip i { display: inline-grid; place-items: center; width: 18px; height: 18px; color: #fff; border-radius: 4px; font-size: 10px; font-style: normal; font-weight: 800; }
-.hlf-chip--deposit i { background: var(--hlf-primary); }
-.hlf-chip--rent i { color: var(--hlf-ink); background: #d5b65f; }
-.hlf-chip--maint i { background: #8d9aa1; }
-.hlf-listing-noc { margin-top: 4px; padding-top: 8px; border-top: 1px dashed var(--hlf-line); color: var(--hlf-muted); font-size: 12px; }
-.hlf-listing-noc strong { color: var(--hlf-primary-strong); font-weight: 900; }
+.hlf-listing-index {
+	display: inline-flex; align-items: center; justify-content: center;
+	width: 26px; height: 21px;
+	color: #fff; background: var(--hlf-brand);
+	border-radius: var(--hlf-radius-md);
+	font-size: 10px; font-weight: 700; letter-spacing: .02em;
+}
+/* 주소 셀: 작은 썸네일 + (도로명 굵게 / 지번 옅게). 썸네일 칸은 이미지가 없어도 빈 상태로 항상
+   렌더링돼 행마다 열 정렬이 흔들리지 않는다. */
+.hlf-listing-address { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.hlf-listing-thumb { flex: 0 0 auto; width: 46px; height: 34px; overflow: hidden; background: var(--hlf-line-2); border-radius: var(--hlf-radius-md); }
+.hlf-listing-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.hlf-listing-address-copy { display: grid; gap: 1px; min-width: 0; }
+.hlf-listing-road { overflow: hidden; color: var(--hlf-brand-ink); font-family: var(--hlf-font-display); font-size: 15px; font-weight: 800; letter-spacing: -.02em; text-overflow: ellipsis; white-space: nowrap; }
+.hlf-listing-lot { overflow: hidden; color: var(--hlf-ink-3); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
 
-/* 상세 화면 갤러리(Phase 3) — 대표 이미지 하나를 크게, 나머지는 가로 스크롤 썸네일 스트립으로. */
+.hlf-listing-area { display: grid; gap: 2px; min-width: 0; }
+.hlf-listing-area-line { display: flex; align-items: baseline; gap: 4px; min-width: 0; }
+.hlf-listing-area-line b { flex: 0 0 auto; color: var(--hlf-ink-3); font-size: 10px; font-weight: 700; }
+.hlf-listing-area-line strong { color: var(--hlf-ink-2); font-size: 12px; font-weight: 750; white-space: nowrap; }
+
+/* 지표(보증금/임대료/관리비/NOC): 라벨(옅게) + 굵은 값 + 작은 단위. display:contents로 4칸이
+   바깥 그리드 열에 그대로 참여해 행 간 세로 비교가 된다(모바일에서는 아래 media query에서
+   자체 4열 그리드로 전환). */
+.hlf-listing-metrics { display: contents; }
+.hlf-metric { min-width: 0; padding: 0 10px; text-align: right; border-left: 1px solid var(--hlf-line-2); }
+.hlf-metric-label { display: block; color: var(--hlf-ink-3); font-size: 10px; font-weight: 700; }
+.hlf-metric-value { display: block; margin-top: 2px; color: var(--hlf-brand); font-size: 17px; font-weight: 900; line-height: 1.1; letter-spacing: -.02em; white-space: nowrap; }
+.hlf-metric-value small { font-size: 10px; font-weight: 700; }
+.hlf-metric--noc .hlf-metric-label { color: var(--hlf-brand); }
+.hlf-metric--noc .hlf-metric-value { color: var(--hlf-brand-ink); }
+
+.hlf-listing-arrow { justify-self: end; color: var(--hlf-ink-3); font-size: 20px; line-height: 1; transition: color .16s ease; }
+.hlf-listing-card:hover .hlf-listing-arrow { color: var(--hlf-brand); }
+
+/* ── 상세 화면(이번 라운드 미스킨 — 토큰 재매핑으로 톤만 따라옴) ──────────────── */
+/* 상세 갤러리 — 대표 이미지 하나를 크게, 나머지는 가로 스크롤 썸네일 스트립으로. */
 .hlf-gallery { margin: 16px 0; }
-.hlf-gallery-main { aspect-ratio: 3 / 2; overflow: hidden; border-radius: 12px; background: var(--hlf-line); }
+.hlf-gallery-main { aspect-ratio: 3 / 2; overflow: hidden; border-radius: var(--hlf-radius-lg); background: var(--hlf-line); }
 .hlf-gallery-main img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .hlf-gallery-thumbs { display: flex; gap: 8px; margin-top: 8px; overflow-x: auto; padding-bottom: 2px; }
-.hlf-gallery-thumbs img { flex: 0 0 auto; width: 84px; height: 60px; object-fit: cover; border-radius: 8px; }
+.hlf-gallery-thumbs img { flex: 0 0 auto; width: 84px; height: 60px; object-fit: cover; border-radius: var(--hlf-radius-md); }
 
 .hlf-lease-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
 .hlf-lease-metric { min-width: 0; padding: 4px 8px; text-align: center; border-left: 1px solid var(--hlf-line); }
 .hlf-lease-metric:first-child { border-left: 0; }
-.hlf-lease-metric-label { display: block; color: var(--hlf-muted); font-size: 10px; font-weight: 700; }
-.hlf-lease-metric-value { display: block; margin-top: 2px; color: var(--hlf-primary); font-size: 15px; font-weight: 900; white-space: nowrap; }
+.hlf-lease-metric-label { display: block; color: var(--hlf-ink-3); font-size: 10px; font-weight: 700; }
+.hlf-lease-metric-value { display: block; margin-top: 2px; color: var(--hlf-brand); font-size: 15px; font-weight: 900; white-space: nowrap; }
 
 .hlf-detail-metrics { margin: 16px 0; }
-.hlf-detail-metrics .hlf-lease-metric { padding: 12px 10px; border: 1px solid var(--hlf-line); border-radius: 8px; }
+.hlf-detail-metrics .hlf-lease-metric { padding: 12px 10px; border: 1px solid var(--hlf-line); border-radius: var(--hlf-radius-lg); }
 .hlf-features { margin: 12px 0; color: var(--hlf-ink); font-weight: 700; line-height: 1.6; }
 .hlf-property-details { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; margin: 16px 0; }
 .hlf-basic-item { display: flex; justify-content: space-between; gap: 10px; padding: 8px; border-top: 1px solid var(--hlf-line); }
-.hlf-basic-item dt { color: var(--hlf-muted); font-size: 13px; }
+.hlf-basic-item dt { color: var(--hlf-ink-3); font-size: 13px; }
 .hlf-basic-item dd { margin: 0; color: var(--hlf-ink); font-size: 14px; font-weight: 700; text-align: right; }
-.hlf-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-top: 28px; padding-top: 14px; border-top: 1px solid var(--hlf-line); color: var(--hlf-muted); font-size: 12px; }
-/* 고객이 실제로 누르는 핵심 행동(전화 문의)이므로 일반 텍스트 링크보다 눈에 띄고 손가락으로
-   누르기 쉬운 버튼 형태로 강조한다(44px 안팎의 터치 영역 확보). */
+
+.hlf-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-top: 30px; padding-top: 16px; border-top: 1px solid var(--hlf-line); color: var(--hlf-ink-3); font-size: 12px; }
+/* 고객이 실제로 누르는 핵심 행동(전화 문의)이므로 손가락으로 누르기 쉬운 버튼 형태로 강조한다. */
 .hlf-footer-contact a {
 	display: inline-block;
-	padding: 8px 14px;
-	color: #fff;
-	background: var(--hlf-primary);
-	border-radius: 8px;
-	font-weight: 700;
+	padding: 9px 15px;
+	color: var(--hlf-ink);
+	background: var(--hlf-sub);
+	border-radius: var(--hlf-radius-md);
+	font-weight: 750;
 	text-decoration: none;
 	white-space: nowrap;
+	transition: background .16s ease;
 }
-.hlf-footer-contact a:hover { background: var(--hlf-primary-strong); text-decoration: none; }
+.hlf-footer-contact a:hover { background: #ffd96d; text-decoration: none; }
 
-@media (max-width: 700px) {
-	.hlf-listing-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
-	.hlf-listing-body { padding: 10px 12px 12px; }
+@media (max-width: 760px) {
+	/* 좁은 화면: 한 행을 카드처럼 접되, 지표 4칸은 한 밴드로 묶어 여전히 나란히 읽히게 한다. */
+	.hlf-listing-link {
+		grid-template-columns: 26px 1fr;
+		grid-template-areas:
+			"idx  addr"
+			"area area"
+			"metrics metrics";
+		gap: 9px 10px;
+		padding: 12px 13px;
+	}
+	.hlf-listing-index { grid-area: idx; align-self: start; }
+	.hlf-listing-address { grid-area: addr; }
+	.hlf-listing-road { font-size: 16px; white-space: normal; }
+	.hlf-listing-area { grid-area: area; grid-auto-flow: column; justify-content: start; gap: 16px; }
+	.hlf-listing-metrics { grid-area: metrics; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; padding-top: 9px; border-top: 1px solid var(--hlf-line); }
+	.hlf-metric { text-align: left; padding: 0 4px; border-left: 0; }
+	.hlf-metric + .hlf-metric { border-left: 1px solid var(--hlf-line-2); padding-left: 8px; }
+	.hlf-metric-value { font-size: 16px; }
+	.hlf-listing-arrow { display: none; }
+
 	.hlf-property-details { grid-template-columns: 1fr; }
-	/* 4열 그대로 두면 좁은 화면에서 값이 줄바꿈되거나 뭉개져 정작 가장 중요한 숫자(보증금/임대료)를
-	   읽기 어려워진다 — 2열로 접어 각 칸에 충분한 너비를 준다. */
+	/* 상세 지표: 4열 그대로면 좁은 화면에서 값이 뭉개져 2열로 접는다. */
 	.hlf-lease-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 	.hlf-lease-metric-label { font-size: 11px; }
 	.hlf-lease-metric-value { font-size: 16px; }
-	/* 4열 기준 :first-child만 border-left를 없애던 규칙은 2열에서 3번째 칸(각 줄의 시작)에는
-	   적용되지 않아 줄 시작에 불필요한 세로선이 남는다 — 2열일 때는 각 줄의 첫 칸(홀수번째)마다
-	   지운다. */
 	.hlf-lease-metric:nth-child(odd) { border-left: 0; }
 	.hlf-lease-metric:nth-child(even) { border-left: 1px solid var(--hlf-line); }
-	.hlf-gallery-main { aspect-ratio: 4 / 3; border-radius: 8px; }
+	.hlf-gallery-main { aspect-ratio: 4 / 3; border-radius: var(--hlf-radius-lg); }
 	.hlf-gallery-thumbs img { width: 68px; height: 50px; }
 }
