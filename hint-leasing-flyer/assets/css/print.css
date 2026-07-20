@@ -14,7 +14,11 @@
 	.hlf-detail-metrics,
 	.hlf-lease-metrics,
 	.hlf-basic-item,
-	.hlf-footer {
+	.hlf-footer,
+	.hlf-gallery-main {
 		break-inside: avoid;
 	}
+	/* 썸네일 스트립까지 인쇄하면 한 장짜리 매물 안내문이 여러 장으로 늘어질 수 있다 — 대표 이미지
+	   하나만 인쇄하고 나머지는 화면 전용으로 남긴다(Phase 5 밀도별 레이아웃이 나오기 전까지). */
+	.hlf-gallery-thumbs { display: none !important; }
 }

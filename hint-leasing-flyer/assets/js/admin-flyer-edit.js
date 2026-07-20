@@ -55,7 +55,12 @@
 		{ value: 'expired', label: '만료' },
 	];
 
-	var state = { flyer: null, items: [], editingItemId: null, search: { open: false, page: 1, results: null, importingId: null } };
+	var state = {
+		flyer: null, items: [], editingItemId: null,
+		search: { open: false, page: 1, results: null, importingId: null },
+		// itemId: 이 상태가 어느 Item용인지(다른 Item을 편집하기 시작하면 검색 상태를 리셋한다).
+		imageSearch: { itemId: null, query: null, results: null, selected: {}, consent: false, loading: false, importing: false },
+	};
 
 	/* ---------------- 신규 Flyer 생성 모드 ---------------- */
 
@@ -493,8 +498,302 @@
 				'<button type="submit" class="button button-primary">저장</button> ' +
 				'<button type="button" class="button" id="hlf-item-cancel">취소</button>' +
 				'<p class="hlf-admin-error" data-hlf-item-error hidden></p>' +
-			'</form>'
+			'</form>' +
+			// 이미지 섹션은 별도 <form> submit(엔터키 등)에 휘말리지 않도록 hlf-item-form 밖의
+			// 형제 요소로 둔다. 이미지는 attachment의 post_parent가 item_id라 Item이 실제로 저장돼
+			// 있어야만(=수정 모드) 다룰 수 있다 — 추가(생성) 모드에서는 안내문만 보여준다.
+			( editing ? renderImageSection( item ) : '' )
 		);
+	}
+
+	/* ---------------- 매물 이미지(Phase 3: 검색·가져오기·관리) ---------------- */
+
+	function renderImageSection( item ) {
+		if ( state.imageSearch.itemId !== item.id ) {
+			state.imageSearch = { itemId: item.id, query: null, results: null, selected: {}, consent: false, loading: false, importing: false };
+		}
+
+		var defaultQuery = state.imageSearch.query !== null ? state.imageSearch.query : ( item.road_address || item.lot_address || '' );
+
+		var searchBlock;
+		if ( ! HLF_ADMIN.imageSearchConfigured ) {
+			searchBlock = '<p class="hlf-admin-note">네이버 이미지 검색 설정이 필요합니다. 관리자에게 문의해 주세요. 저장된 이미지 관리(삭제·순서 변경)는 계속 사용할 수 있습니다.</p>';
+		} else {
+			searchBlock =
+				'<form id="hlf-image-search-form">' +
+					'<div class="hlf-field"><label for="hlf-image-query">검색어</label>' +
+						'<input id="hlf-image-query" type="text" name="query" value="' + HLFAdmin.escapeAttr( defaultQuery ) + '"></div>' +
+					'<button type="submit" class="button">이미지 검색</button>' +
+				'</form>' +
+				'<p class="hlf-admin-error" data-hlf-image-search-error hidden></p>' +
+				'<div id="hlf-image-results">' + renderImageResults() + '</div>';
+		}
+
+		return (
+			'<section class="hlf-image-section">' +
+				'<h3>매물 이미지</h3>' +
+				'<div id="hlf-saved-images">' + renderSavedImages( item ) + '</div>' +
+				'<hr>' +
+				searchBlock +
+			'</section>'
+		);
+	}
+
+	function renderSavedImages( item ) {
+		var previews = item.image_previews || {};
+		var exteriorId = item.exterior_image_id;
+		var interiorIds = item.interior_image_ids || [];
+
+		if ( ! exteriorId && ! interiorIds.length ) {
+			return '<p class="hlf-admin-note">아직 저장된 이미지가 없습니다.</p>';
+		}
+
+		function renderThumb( id, isExterior, interiorIndex ) {
+			var url = previews[ id ] || previews[ String( id ) ] || '';
+			var actions = '';
+			if ( ! isExterior ) {
+				actions += '<button type="button" class="button button-small" data-hlf-image-primary="' + id + '">대표로</button> ';
+				if ( interiorIndex > 0 ) {
+					actions += '<button type="button" class="button button-small" data-hlf-image-up="' + id + '">↑</button> ';
+				}
+				if ( interiorIndex < interiorIds.length - 1 ) {
+					actions += '<button type="button" class="button button-small" data-hlf-image-down="' + id + '">↓</button> ';
+				}
+			}
+			actions += '<button type="button" class="button button-small hlf-danger" data-hlf-image-delete="' + id + '">삭제</button>';
+			return (
+				'<div class="hlf-saved-image' + ( isExterior ? ' is-primary' : '' ) + '">' +
+					( url ? '<img src="' + HLFAdmin.escapeAttr( url ) + '" alt="">' : '<div class="hlf-saved-image-missing">미리보기 없음</div>' ) +
+					( isExterior ? '<span class="hlf-saved-image-badge">대표</span>' : '' ) +
+					'<div class="hlf-saved-image-actions">' + actions + '</div>' +
+				'</div>'
+			);
+		}
+
+		var html = '<div class="hlf-saved-image-grid">';
+		if ( exteriorId ) {
+			html += renderThumb( exteriorId, true, -1 );
+		}
+		interiorIds.forEach( function ( id, idx ) {
+			html += renderThumb( id, false, idx );
+		} );
+		html += '</div>';
+		return html;
+	}
+
+	function renderImageResults() {
+		var s = state.imageSearch;
+		if ( s.loading ) {
+			return '<p class="hlf-admin-loading">검색 중…</p>';
+		}
+		if ( null === s.results ) {
+			return '<p class="hlf-admin-note">검색어를 확인하고 검색을 눌러 주세요.</p>';
+		}
+		if ( ! s.results.length ) {
+			return '<p class="hlf-admin-empty">검색 결과가 없습니다.</p>';
+		}
+
+		var thumbs = s.results.map( function ( r, idx ) {
+			var checked = !! s.selected[ idx ];
+			return (
+				'<label class="hlf-image-result' + ( checked ? ' is-selected' : '' ) + '">' +
+					'<input type="checkbox" data-hlf-image-result-index="' + idx + '"' + ( checked ? ' checked' : '' ) + '>' +
+					'<img src="' + HLFAdmin.escapeAttr( r.thumbnail_url ) + '" alt="' + HLFAdmin.escapeAttr( r.title || '' ) + '" loading="lazy">' +
+				'</label>'
+			);
+		} ).join( '' );
+
+		var selectedCount = Object.keys( s.selected ).filter( function ( k ) { return s.selected[ k ]; } ).length;
+		var importDisabled = ( 0 === selectedCount || ! s.consent || s.importing );
+
+		return (
+			'<div class="hlf-image-result-grid">' + thumbs + '</div>' +
+			'<div class="hlf-image-import-bar">' +
+				'<label class="hlf-field-checkbox">' +
+					'<input type="checkbox" id="hlf-image-consent"' + ( s.consent ? ' checked' : '' ) + '> ' +
+					'이 이미지에 대한 사용 권한을 확인했습니다' +
+				'</label> ' +
+				'<button type="button" class="button button-primary" id="hlf-image-import"' + ( importDisabled ? ' disabled' : '' ) + '>' +
+					( s.importing ? '가져오는 중…' : '선택한 이미지 가져오기(' + selectedCount + ')' ) +
+				'</button>' +
+			'</div>'
+		);
+	}
+
+	/** 검색 폼 submit, 결과 체크박스/동의 체크박스/가져오기 버튼, 저장된 이미지 액션 버튼 — 전부 한 번만 바인딩. */
+	function bindImageSection( item ) {
+		var searchForm = document.getElementById( 'hlf-image-search-form' );
+		if ( searchForm ) {
+			searchForm.addEventListener( 'submit', function ( event ) {
+				event.preventDefault();
+				var query = searchForm.query.value.trim();
+				state.imageSearch.query = query;
+				if ( query.replace( /\s+/g, '' ).length < 2 ) {
+					window.alert( '검색어를 두 글자 이상 입력해 주세요.' );
+					return;
+				}
+
+				state.imageSearch.loading = true;
+				state.imageSearch.selected = {};
+				document.getElementById( 'hlf-image-results' ).innerHTML = renderImageResults();
+
+				HLFAdmin.apiFetch( 'images/search?q=' + encodeURIComponent( query ) )
+					.then( function ( result ) {
+						state.imageSearch.loading = false;
+						state.imageSearch.results = result.items || [];
+						document.getElementById( 'hlf-image-results' ).innerHTML = renderImageResults();
+					} )
+					.catch( function ( err ) {
+						state.imageSearch.loading = false;
+						state.imageSearch.results = null;
+						document.getElementById( 'hlf-image-results' ).innerHTML = renderImageResults();
+						var errorEl = document.querySelector( '[data-hlf-image-search-error]' );
+						if ( errorEl ) {
+							errorEl.textContent = err.message;
+							errorEl.hidden = false;
+						}
+					} );
+			} );
+
+			// #hlf-image-results는 검색할 때마다 innerHTML만 바뀌는 안정된 wrap이다 — officeleasing
+			// 검색 패널과 같은 이유로 위임 리스너를 이 wrap에 딱 한 번만 붙인다(중복 바인딩 방지).
+			var resultsWrap = document.getElementById( 'hlf-image-results' );
+			resultsWrap.addEventListener( 'change', function ( event ) {
+				var checkbox = event.target.closest( '[data-hlf-image-result-index]' );
+				if ( checkbox ) {
+					var idx = Number( checkbox.getAttribute( 'data-hlf-image-result-index' ) );
+					if ( checkbox.checked ) {
+						state.imageSearch.selected[ idx ] = true;
+					} else {
+						delete state.imageSearch.selected[ idx ];
+					}
+					checkbox.closest( '.hlf-image-result' ).classList.toggle( 'is-selected', checkbox.checked );
+					updateImageImportBar();
+					return;
+				}
+				if ( event.target.id === 'hlf-image-consent' ) {
+					state.imageSearch.consent = event.target.checked;
+					updateImageImportBar();
+				}
+			} );
+			resultsWrap.addEventListener( 'click', function ( event ) {
+				var importBtn = event.target.closest( '#hlf-image-import' );
+				if ( importBtn && ! importBtn.disabled ) {
+					runImageImport( item );
+				}
+			} );
+		}
+
+		var savedWrap = document.getElementById( 'hlf-saved-images' );
+		if ( savedWrap ) {
+			savedWrap.addEventListener( 'click', function ( event ) {
+				var primaryBtn = event.target.closest( '[data-hlf-image-primary]' );
+				var upBtn = event.target.closest( '[data-hlf-image-up]' );
+				var downBtn = event.target.closest( '[data-hlf-image-down]' );
+				var deleteBtn = event.target.closest( '[data-hlf-image-delete]' );
+
+				if ( primaryBtn ) {
+					promoteImage( item, Number( primaryBtn.getAttribute( 'data-hlf-image-primary' ) ) );
+				} else if ( upBtn ) {
+					moveImage( item, Number( upBtn.getAttribute( 'data-hlf-image-up' ) ), -1 );
+				} else if ( downBtn ) {
+					moveImage( item, Number( downBtn.getAttribute( 'data-hlf-image-down' ) ), 1 );
+				} else if ( deleteBtn ) {
+					var id = Number( deleteBtn.getAttribute( 'data-hlf-image-delete' ) );
+					if ( ! window.confirm( '이 이미지를 삭제할까요?' ) ) { return; }
+					deleteImage( item, id );
+				}
+			} );
+		}
+	}
+
+	function updateImageImportBar() {
+		// 선택/동의 상태가 바뀔 때마다 그리드 전체를 다시 그리면 방금 클릭한 체크박스까지 새로
+		// 만들어져(순간적으로) 상호작용이 끊길 수 있다 — 가져오기 버튼만 갱신한다.
+		var s = state.imageSearch;
+		var btn = document.getElementById( 'hlf-image-import' );
+		if ( ! btn ) { return; }
+		var selectedCount = Object.keys( s.selected ).filter( function ( k ) { return s.selected[ k ]; } ).length;
+		btn.disabled = ( 0 === selectedCount || ! s.consent || s.importing );
+		btn.textContent = s.importing ? '가져오는 중…' : '선택한 이미지 가져오기(' + selectedCount + ')';
+	}
+
+	function runImageImport( item ) {
+		var s = state.imageSearch;
+		var selectedImages = Object.keys( s.selected )
+			.filter( function ( k ) { return s.selected[ k ]; } )
+			.map( function ( k ) { return s.results[ Number( k ) ]; } );
+		if ( ! selectedImages.length || ! s.consent ) { return; }
+
+		s.importing = true;
+		updateImageImportBar();
+
+		HLFAdmin.apiFetch( 'flyers/' + flyerId + '/items/' + item.id + '/images/import', {
+			method: 'POST',
+			body: JSON.stringify( { images: selectedImages, search_term: s.query || '' } ),
+		} )
+			.then( function () { return HLFAdmin.apiFetch( 'flyers/' + flyerId ); } )
+			.then( function ( flyer ) {
+				state.flyer = flyer;
+				state.items = flyer.items || [];
+				state.imageSearch.selected = {};
+				state.imageSearch.importing = false;
+				renderEdit();
+			} )
+			.catch( function ( err ) {
+				state.imageSearch.importing = false;
+				window.alert( '선택한 이미지를 가져오지 못했습니다: ' + err.message );
+				updateImageImportBar();
+			} );
+	}
+
+	function saveImageState( item, exteriorId, interiorIds ) {
+		HLFAdmin.apiFetch( 'flyers/' + flyerId + '/items/' + item.id + '/images', {
+			method: 'PUT',
+			body: JSON.stringify( { exterior_image_id: exteriorId, interior_image_ids: interiorIds } ),
+		} )
+			.then( function () { return HLFAdmin.apiFetch( 'flyers/' + flyerId ); } )
+			.then( function ( flyer ) {
+				state.flyer = flyer;
+				state.items = flyer.items || [];
+				renderEdit();
+			} )
+			.catch( function ( err ) {
+				window.alert( '이미지 정보를 저장하지 못했습니다: ' + err.message );
+			} );
+	}
+
+	function promoteImage( item, id ) {
+		var interior = ( item.interior_image_ids || [] ).filter( function ( i ) { return i !== id; } );
+		if ( item.exterior_image_id ) {
+			interior.unshift( item.exterior_image_id );
+		}
+		saveImageState( item, id, interior );
+	}
+
+	function moveImage( item, id, delta ) {
+		var interior = ( item.interior_image_ids || [] ).slice();
+		var idx = interior.indexOf( id );
+		if ( idx < 0 ) { return; }
+		var swapWith = idx + delta;
+		if ( swapWith < 0 || swapWith >= interior.length ) { return; }
+		var tmp = interior[ idx ];
+		interior[ idx ] = interior[ swapWith ];
+		interior[ swapWith ] = tmp;
+		saveImageState( item, item.exterior_image_id, interior );
+	}
+
+	function deleteImage( item, id ) {
+		HLFAdmin.apiFetch( 'flyers/' + flyerId + '/items/' + item.id + '/images/' + id, { method: 'DELETE' } )
+			.then( function () { return HLFAdmin.apiFetch( 'flyers/' + flyerId ); } )
+			.then( function ( flyer ) {
+				state.flyer = flyer;
+				state.items = flyer.items || [];
+				renderEdit();
+			} )
+			.catch( function ( err ) {
+				window.alert( '이미지를 삭제하지 못했습니다: ' + err.message );
+			} );
 	}
 
 	function readItemForm( form ) {
@@ -590,6 +889,13 @@
 					} );
 			}
 		} );
+
+		if ( state.editingItemId !== null ) {
+			var editingItem = state.items.find( function ( i ) { return i.id === state.editingItemId; } );
+			if ( editingItem ) {
+				bindImageSection( editingItem );
+			}
+		}
 	}
 
 	if ( ! flyerId ) {

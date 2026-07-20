@@ -11,6 +11,7 @@ final class HLF_Plugin {
 		// CPT/상태/메타/capability는 ACF 없이도 항상 등록한다.
 		add_action( 'init', array( 'HLF_Post_Types', 'register' ), 5 );
 		add_action( 'init', array( 'HLF_Meta_Schema', 'register' ), 6 );
+		add_action( 'init', array( __CLASS__, 'register_image_sizes' ) );
 
 		// URL(rewrite) + 공개 템플릿 라우팅.
 		HLF_Routes::init();
@@ -25,6 +26,12 @@ final class HLF_Plugin {
 		add_filter( 'acf/settings/load_json', array( __CLASS__, 'maybe_add_acf_json_path' ) );
 
 		load_plugin_textdomain( 'hint-leasing-flyer', false, dirname( plugin_basename( HLF_FILE ) ) . '/languages' );
+	}
+
+	/** 공개 화면(대표 이미지 큰 사진 / 나머지 썸네일)용 이미지 사이즈(Phase 3). */
+	public static function register_image_sizes(): void {
+		add_image_size( 'hlf-item-photo', 960, 640, true );
+		add_image_size( 'hlf-item-thumb', 300, 220, true );
 	}
 
 	/**

@@ -15,7 +15,7 @@ officeleasing-core / ACF가 없어도 활성화·동작한다(데이터 접근�
   display_order(표시순)와 item_number(불변 URL 식별자) 분리.
 - URL(1-E): `/listup/{flyer}/`, `/listup/{flyer}/{item}/` rewrite + template_include 서버 렌더링.
   버전비교 flush(permalinks.php 패턴). draft=권한필요, published=공개, archived=읽기전용.
-- REST(1-G): `hlf/v1` CRUD/reorder/publish. refresh-source·images는 Phase 2(501 stub).
+- REST(1-G): `hlf/v1` CRUD/reorder/publish. refresh-source는 아직 501 stub, images는 Phase 3에서 구현.
 
 ## Phase 2-1 구현 범위 — 관리자 CRUD UI
 - `class-hlf-admin-ui.php` + `assets/js/admin-flyer-list.js`/`admin-flyer-edit.js` — 빌드 없이
@@ -40,10 +40,32 @@ officeleasing-core / ACF가 없어도 활성화·동작한다(데이터 접근�
   경우에만 허용한다(검색을 우회해 draft/private id를 직접 넘기는 경로 차단, 403). officeleasing의
   업무용 `listing_status`(협의중/거래완료 등) ACF 필드는 이 게이트와 무관한 정보성 값이다.
 
+## Phase 3 구현 범위 — 이미지 검색·선택(Image Search & Selection MVP)
+- 계층 분리: `class-hlf-image-search-service.php`(검색어 검증 + provider 위임) →
+  `class-hlf-naver-image-search-provider.php`(네이버 이미지 검색 API 연동, `class-hlf-image-search-provider-interface.php`
+  구현) → `class-hlf-image-url-guard.php`(SSRF 방어: http/https만, 사설·루프백·링크로컬 IP 차단,
+  redirect마다 재검증) → `class-hlf-image-import-service.php`(다운로드+Attachment 생성+중복 방지) →
+  `class-hlf-item-repository.php::set_images()/delete_image()`(Item 필드 저장, 소유권 검증).
+- 새 메타 필드는 추가하지 않았다 — 기존에 예약돼 있던 `exterior_image_id`(대표)/`interior_image_ids`
+  (나머지)를 그대로 쓴다. 둘 다 `writable_fields()` 밖이라 일반 Item PUT으로는 못 바꾸고, 전용
+  setter(`set_images()`)만 쓸 수 있으며 `set_snapshot_metadata()`와 같은 "쓰고 다시 읽어 검증" 패턴이다.
+- 인증정보는 `wp-config.php`의 `define('HLF_NAVER_CLIENT_ID', ...)` / `define('HLF_NAVER_CLIENT_SECRET', ...)`
+  로만 받는다(옵션 테이블 방식 채택 안 함). 미설정 시 검색 기능만 비활성화되고 관리자 화면·저장된
+  이미지 관리(삭제/순서 변경)는 그대로 동작한다.
+- REST: `GET /images/search`, `POST /flyers/{id}/items/{item_id}/images/import`,
+  `PUT .../images`(대표 지정/순서 변경), `DELETE .../images/{attachment_id}`.
+- 관리자 UI: Item 편집 폼에 "매물 이미지" 섹션 — 검색어는 `road_address` → `lot_address` 순으로
+  자동 채움(건물명 필드는 Item 스키마에 없어 우선순위에서 제외, 아래 "알려진 제한" 참고), 수정 가능,
+  검색 버튼을 눌러야만 요청. 가져오기 전 "이 이미지에 대한 사용 권한을 확인했습니다" 체크가 필수.
+- 공개/Print: 대표 이미지가 상세 화면 상단에 크게, 나머지는 썸네일 스트립으로. 목록 화면에도 작은
+  대표 썸네일. 이미지가 없으면 아무 마크업도 렌더링하지 않는다(깨진 img 없음). Print는 대표 이미지만
+  출력하고 썸네일 스트립은 숨긴다(한 장짜리 인쇄물이 여러 장으로 늘어지지 않도록).
+
 ## 후속 단계에서 제외
-OCR 폼, 이미지 업로드/워터마크 파이프라인, NOC 차트·비교지도, 인쇄 레이아웃, Refresh from Source,
-검색 지역(region) 필터, 10개 제한/재정렬의 동시성·트랜잭션 처리(현재 저사용량 내부 운영 기준으로는
-불필요) — 후속 phase.
+OCR, AI 이미지 적합성 판별, 워터마크 제거/자동 보정, 얼굴·번호판 블러, 네이버 외 다중 provider 실제
+구현, 이미지 Drag & Drop/크롭 편집기, officeleasing 원본 이미지 자동 동기화, PDF 생성, 인쇄 밀도별
+레이아웃, 검색 지역(region) 필터, 10개 제한/재정렬의 동시성·트랜잭션 처리(현재 저사용량 내부 운영
+기준으로는 불필요) — 후속 phase.
 
 ## 검증
 ```

@@ -54,6 +54,11 @@ $noindex = ( 'published' !== $status );
 					<li class="hlf-listing-card">
 						<a class="hlf-listing-link" href="<?php echo esc_url( $detail_url ); ?>">
 							<span class="hlf-listing-index"><?php echo esc_html( sprintf( '%02d', $i + 1 ) ); ?></span>
+							<span class="hlf-listing-thumb"><?php
+								if ( ! empty( $item['exterior_image_id'] ) ) {
+									echo wp_get_attachment_image( (int) $item['exterior_image_id'], 'hlf-item-thumb', false, array( 'alt' => esc_attr( $address ), 'loading' => 'lazy' ) );
+								}
+							?></span>
 							<span class="hlf-listing-address"><?php echo esc_html( $address ); ?></span>
 							<span class="hlf-lease-metrics">
 								<span class="hlf-lease-metric">

@@ -109,6 +109,9 @@ final class HLF_Admin_UI {
 			'editUrlBase'  => admin_url( 'admin.php?page=' . self::EDIT_SLUG . '&flyer_id=' ),
 			'maxItems'     => HLF_Item_Repository::MAX_ITEMS_PER_FLYER,
 			'defaultPhone' => HLF_Flyer_Repository::DEFAULT_PHONE,
+			// 설정 안 됐을 때 REST 호출 없이 검색 폼 자체를 숨기고 안내만 보여주기 위한 사전 확인
+			// (요청서: "관리자 화면이 깨지지 않아야 함 / 이미지 검색 기능만 비활성화").
+			'imageSearchConfigured' => HLF_Image_Search_Service::is_configured(),
 		);
 
 		wp_enqueue_script( 'hlf-admin-common', HLF_URL . 'assets/js/admin-common.js', array(), HLF_VERSION, true );

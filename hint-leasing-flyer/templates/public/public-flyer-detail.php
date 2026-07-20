@@ -12,6 +12,17 @@ $metrics = $item['metrics'];
 $noindex = ( 'published' !== $status );
 $address = $item['road_address'] ?: $item['lot_address'];
 
+// 대표 이미지(exterior_image_id) 우선, 나머지(interior_image_ids)는 썸네일 스트립으로 — 갤러리
+// 계약은 이 순서(대표 먼저) 하나뿐이라 목록/상세 어디서 이미지를 추가하더라도 그대로 유지된다.
+$photo_ids = array();
+if ( ! empty( $item['exterior_image_id'] ) ) {
+	$photo_ids[] = (int) $item['exterior_image_id'];
+}
+foreach ( $item['interior_image_ids'] as $image_id ) {
+	$photo_ids[] = (int) $image_id;
+}
+$photo_ids = array_values( array_unique( array_filter( $photo_ids ) ) );
+
 $basic = array(
 	'해당층'       => trim( ( $item['floor_current'] ?: '-' ) . ' / ' . ( $item['floor_total'] ?: '-' ) . '층' ),
 	'공급면적'     => $item['lease_area_sqm'] ? number_format( (float) $item['lease_area_sqm'], 1 ) . '㎡ (' . number_format( $metrics['lease_pyeong'], 1 ) . '평)' : '-',
@@ -47,6 +58,21 @@ $basic = array(
 		<h1 class="hlf-title"><?php echo esc_html( $address ); ?></h1>
 		<?php if ( $item['lot_address'] && $item['lot_address'] !== $address ) : ?>
 			<p class="hlf-subaddress"><?php echo esc_html( $item['lot_address'] ); ?></p>
+		<?php endif; ?>
+
+		<?php if ( ! empty( $photo_ids ) ) : ?>
+			<section class="hlf-gallery">
+				<div class="hlf-gallery-main">
+					<?php echo wp_get_attachment_image( $photo_ids[0], 'hlf-item-photo', false, array( 'alt' => esc_attr( $address ), 'loading' => 'eager' ) ); ?>
+				</div>
+				<?php if ( count( $photo_ids ) > 1 ) : ?>
+					<div class="hlf-gallery-thumbs">
+						<?php foreach ( array_slice( $photo_ids, 1 ) as $photo_id ) : ?>
+							<?php echo wp_get_attachment_image( $photo_id, 'hlf-item-thumb', false, array( 'alt' => esc_attr( $address ), 'loading' => 'lazy' ) ); ?>
+						<?php endforeach; ?>
+					</div>
+				<?php endif; ?>
+			</section>
 		<?php endif; ?>
 
 		<section class="hlf-lease-metrics hlf-detail-metrics">

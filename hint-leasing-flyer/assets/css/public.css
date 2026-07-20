@@ -39,9 +39,13 @@ body.hlf-public {
 
 .hlf-listing-grid { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 8px; }
 .hlf-listing-card { background: var(--hlf-surface); border: 1px solid var(--hlf-line); border-radius: 10px; }
-.hlf-listing-link { display: grid; grid-template-columns: 32px minmax(0, 1.4fr) 2fr; align-items: center; gap: 12px; padding: 12px 14px; color: inherit; text-decoration: none; }
+/* 썸네일 칸(hlf-listing-thumb)은 이미지가 없는 매물에서도 항상 렌더링된다(빈 <span>) — 그래야
+   행마다 자식 개수가 달라 컬럼이 밀리는 일 없이 모든 행에서 주소/금액 위치가 그대로 정렬된다. */
+.hlf-listing-link { display: grid; grid-template-columns: 32px 52px minmax(0, 1.4fr) 2fr; align-items: center; gap: 12px; padding: 12px 14px; color: inherit; text-decoration: none; }
 .hlf-listing-link:hover { background: #fffdf4; }
 .hlf-listing-index { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 22px; color: #fff; background: var(--hlf-primary); border-radius: 6px; font-size: 11px; font-weight: 700; }
+.hlf-listing-thumb { display: block; width: 52px; height: 40px; }
+.hlf-listing-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 6px; }
 /* 긴 주소를 한 줄로 자르면 정작 필요한 동/건물명이 잘려나가는 경우가 많다 — 2줄까지는 그대로
    보여주고, 그 이상만 말줄임(line-clamp)한다. */
 .hlf-listing-address {
@@ -53,6 +57,13 @@ body.hlf-public {
 	line-clamp: 2;
 	-webkit-box-orient: vertical;
 }
+
+/* 상세 화면 갤러리(Phase 3) — 대표 이미지 하나를 크게, 나머지는 가로 스크롤 썸네일 스트립으로. */
+.hlf-gallery { margin: 16px 0; }
+.hlf-gallery-main { aspect-ratio: 3 / 2; overflow: hidden; border-radius: 12px; background: var(--hlf-line); }
+.hlf-gallery-main img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.hlf-gallery-thumbs { display: flex; gap: 8px; margin-top: 8px; overflow-x: auto; padding-bottom: 2px; }
+.hlf-gallery-thumbs img { flex: 0 0 auto; width: 84px; height: 60px; object-fit: cover; border-radius: 8px; }
 
 .hlf-lease-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
 .hlf-lease-metric { min-width: 0; padding: 4px 8px; text-align: center; border-left: 1px solid var(--hlf-line); }
@@ -83,7 +94,8 @@ body.hlf-public {
 .hlf-footer-contact a:hover { background: var(--hlf-primary-strong); text-decoration: none; }
 
 @media (max-width: 700px) {
-	.hlf-listing-link { grid-template-columns: 28px 1fr; }
+	.hlf-listing-link { grid-template-columns: 28px 44px 1fr; }
+	.hlf-listing-thumb { width: 44px; height: 34px; }
 	.hlf-listing-link .hlf-lease-metrics { grid-column: 1 / -1; }
 	.hlf-property-details { grid-template-columns: 1fr; }
 	/* 4열 그대로 두면 좁은 화면에서 값이 줄바꿈되거나 뭉개져 정작 가장 중요한 숫자(보증금/임대료)를
@@ -96,4 +108,6 @@ body.hlf-public {
 	   지운다. */
 	.hlf-lease-metric:nth-child(odd) { border-left: 0; }
 	.hlf-lease-metric:nth-child(even) { border-left: 1px solid var(--hlf-line); }
+	.hlf-gallery-main { aspect-ratio: 4 / 3; border-radius: 8px; }
+	.hlf-gallery-thumbs img { width: 68px; height: 50px; }
 }

@@ -246,6 +246,91 @@ final class HLF_Item_Repository {
 		return true;
 	}
 
+	/**
+	 * 이미지 목록 저장(요청서 Phase 3). $exterior_image_id/$interior_image_ids에 넣을 수 있는 값은
+	 * 반드시 "이미 이 item_id를 post_parent로 갖는 attachment"여야 한다 — 검증 없이 그대로 저장하면
+	 * 클라이언트가 임의의(타인 소유일 수도 있는) attachment_id를 이 Item의 대표/목록 이미지로
+	 * 지정할 수 있게 된다. reorder()가 "요청한 ID 집합이 실제 이 Flyer의 item 집합과 일치하는지"를
+	 * 검증하는 것과 같은 이유다.
+	 */
+	public static function set_images( int $flyer_id, int $item_id, int $exterior_image_id, array $interior_image_ids ): bool|WP_Error {
+		$guard = HLF_Flyer_Repository::assert_not_archived( $flyer_id );
+		if ( is_wp_error( $guard ) ) {
+			return $guard;
+		}
+
+		$item = get_post( $item_id );
+		if ( ! $item || HLF_Post_Types::ITEM !== $item->post_type || (int) $item->post_parent !== $flyer_id ) {
+			return new WP_Error( 'hlf_item_not_found', '해당 Flyer에 속한 매물이 아닙니다.', array( 'status' => 404 ) );
+		}
+
+		$interior_image_ids = array_values( array_unique( array_map( 'intval', $interior_image_ids ) ) );
+		$requested          = $exterior_image_id > 0 ? array_merge( array( $exterior_image_id ), $interior_image_ids ) : $interior_image_ids;
+
+		$owned_attachment_ids = get_posts( array(
+			'post_type'      => 'attachment',
+			'post_parent'    => $item_id,
+			'post_status'    => 'inherit',
+			'posts_per_page' => -1,
+			'fields'         => 'ids',
+		) );
+
+		foreach ( $requested as $id ) {
+			if ( ! in_array( $id, $owned_attachment_ids, true ) ) {
+				return new WP_Error(
+					'hlf_image_not_owned',
+					'이 매물에 속하지 않은 이미지는 지정할 수 없습니다.',
+					array( 'status' => 400 )
+				);
+			}
+		}
+
+		update_post_meta( $item_id, 'exterior_image_id', $exterior_image_id );
+		update_post_meta( $item_id, 'interior_image_ids', $interior_image_ids );
+
+		// set_snapshot_metadata()와 같은 이유로 쓴 값을 다시 읽어 검증한다 — update_post_meta()의
+		// 반환값(bool)은 "행이 실제로 바뀌었는지"만 알려줄 뿐이라 성공 여부 판정에 못 쓴다.
+		$stored_exterior = (int) get_post_meta( $item_id, 'exterior_image_id', true );
+		$stored_interior = get_post_meta( $item_id, 'interior_image_ids', true );
+		$stored_interior = is_array( $stored_interior ) ? array_values( array_map( 'intval', $stored_interior ) ) : array();
+
+		if ( $stored_exterior !== $exterior_image_id || $stored_interior !== $interior_image_ids ) {
+			return new WP_Error( 'hlf_image_save_failed', '이미지 정보를 저장하지 못했습니다. 다시 시도해 주세요.', array( 'status' => 500 ) );
+		}
+
+		return true;
+	}
+
+	/** 이미지 하나를 Item에서 떼어내고(exterior/interior 양쪽 다 확인) Attachment 자체도 삭제한다. */
+	public static function delete_image( int $flyer_id, int $item_id, int $attachment_id ): bool|WP_Error {
+		$guard = HLF_Flyer_Repository::assert_not_archived( $flyer_id );
+		if ( is_wp_error( $guard ) ) {
+			return $guard;
+		}
+
+		$item = get_post( $item_id );
+		if ( ! $item || HLF_Post_Types::ITEM !== $item->post_type || (int) $item->post_parent !== $flyer_id ) {
+			return new WP_Error( 'hlf_item_not_found', '해당 Flyer에 속한 매물이 아닙니다.', array( 'status' => 404 ) );
+		}
+
+		$attachment = get_post( $attachment_id );
+		if ( ! $attachment || 'attachment' !== $attachment->post_type || (int) $attachment->post_parent !== $item_id ) {
+			return new WP_Error( 'hlf_image_not_found', '이 매물에 속한 이미지가 아닙니다.', array( 'status' => 404 ) );
+		}
+
+		$current  = HLF_Meta_Schema::read_item( $item_id );
+		$exterior = ( (int) $current['exterior_image_id'] === $attachment_id ) ? 0 : (int) $current['exterior_image_id'];
+		$interior = array_values( array_diff( $current['interior_image_ids'], array( $attachment_id ) ) );
+
+		$result = self::set_images( $flyer_id, $item_id, $exterior, $interior );
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+
+		wp_delete_attachment( $attachment_id, true );
+		return true;
+	}
+
 	/** 화이트리스트 필드만 정규화해 저장. item_number/display_order 등 서버관리 필드는 무시된다. */
 	private static function apply_fields( int $item_id, array $fields ): void {
 		$schema   = HLF_Meta_Schema::item_fields();
@@ -261,8 +346,33 @@ final class HLF_Item_Repository {
 
 	/** item 하나를 계산 지표까지 붙여 직렬화(공개 템플릿/REST 공용). */
 	public static function to_array( WP_Post $item ): array {
-		$data              = HLF_Meta_Schema::read_item( $item->ID );
-		$data['metrics']   = hlf_calculate_item_metrics( $data );
+		$data                   = HLF_Meta_Schema::read_item( $item->ID );
+		$data['metrics']        = hlf_calculate_item_metrics( $data );
+		$data['image_previews'] = self::image_previews( $data );
 		return $data;
+	}
+
+	/**
+	 * 관리자 화면 미리보기 전용 — { attachment_id: 썸네일 URL } 맵. 브라우저(관리자 JS)는
+	 * wp_get_attachment_image_url()을 직접 호출할 수 없으므로 REST 응답에 같이 실어 보낸다.
+	 * exterior_image_id/interior_image_ids 원본 필드는 그대로 두고 이건 추가 정보일 뿐이다.
+	 */
+	private static function image_previews( array $data ): array {
+		$ids = array();
+		if ( ! empty( $data['exterior_image_id'] ) ) {
+			$ids[] = (int) $data['exterior_image_id'];
+		}
+		foreach ( $data['interior_image_ids'] as $id ) {
+			$ids[] = (int) $id;
+		}
+
+		$previews = array();
+		foreach ( array_unique( $ids ) as $id ) {
+			$url = wp_get_attachment_image_url( $id, 'thumbnail' );
+			if ( $url ) {
+				$previews[ $id ] = $url;
+			}
+		}
+		return $previews;
 	}
 }

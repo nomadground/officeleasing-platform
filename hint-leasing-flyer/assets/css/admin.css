@@ -70,3 +70,62 @@
 .hlf-admin .hlf-import-panel form { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; }
 .hlf-admin .hlf-import-panel .hlf-field { margin-bottom: 0; min-width: 180px; }
 .hlf-admin .hlf-import-pager { display: flex; align-items: center; gap: 10px; margin-top: 10px; font-size: 13px; }
+
+/* 매물 이미지(Phase 3) */
+.hlf-admin .hlf-image-section { margin-top: 16px; padding-top: 16px; border-top: 1px solid #dcdcde; }
+.hlf-admin .hlf-image-section form { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; margin-bottom: 10px; }
+.hlf-admin .hlf-image-section .hlf-field { margin-bottom: 0; min-width: 220px; }
+
+.hlf-admin .hlf-saved-image-grid,
+.hlf-admin .hlf-image-result-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+	gap: 10px;
+	margin: 10px 0;
+}
+.hlf-admin .hlf-saved-image {
+	position: relative;
+	padding: 6px;
+	background: #f6f7f7;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+	text-align: center;
+}
+.hlf-admin .hlf-saved-image.is-primary { border-color: #2271b1; background: #f0f6fc; }
+.hlf-admin .hlf-saved-image img,
+.hlf-admin .hlf-saved-image-missing {
+	display: block;
+	width: 100%;
+	height: 90px;
+	object-fit: cover;
+	border-radius: 3px;
+	background: #e0e0e0;
+}
+.hlf-admin .hlf-saved-image-missing { display: flex; align-items: center; justify-content: center; font-size: 11px; color: #787c82; }
+.hlf-admin .hlf-saved-image-badge {
+	position: absolute;
+	top: 4px;
+	left: 4px;
+	padding: 1px 6px;
+	color: #fff;
+	background: #2271b1;
+	border-radius: 8px;
+	font-size: 10px;
+	font-weight: 700;
+}
+.hlf-admin .hlf-saved-image-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; margin-top: 6px; }
+.hlf-admin .hlf-saved-image-actions .button { padding: 0 6px; min-height: 24px; line-height: 22px; font-size: 11px; }
+
+.hlf-admin .hlf-image-result {
+	position: relative;
+	display: block;
+	cursor: pointer;
+	border: 2px solid transparent;
+	border-radius: 4px;
+	overflow: hidden;
+}
+.hlf-admin .hlf-image-result img { display: block; width: 100%; height: 90px; object-fit: cover; }
+.hlf-admin .hlf-image-result input[type="checkbox"] { position: absolute; top: 4px; left: 4px; }
+.hlf-admin .hlf-image-result.is-selected { border-color: #2271b1; }
+
+.hlf-admin .hlf-image-import-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 8px; }

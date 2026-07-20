@@ -8,7 +8,9 @@
  *   - 쓰기 필드는 HLF_Meta_Schema 화이트리스트로만 반영(sanitize 포함)
  * 공개 열람은 이 REST가 아니라 template_include(HLF_Routes)로만 제공한다.
  *
- * refresh-source / images 는 Phase 2 범위이므로 라우트만 등록하고 501을 반환한다(골격).
+ * refresh-source는 아직 Phase 범위 밖이라 라우트만 등록하고 501을 반환한다(골격).
+ * 이미지 검색/가져오기/관리(Phase 3)는 실제로 구현되어 있다 — HLF_Image_Search_Service /
+ * HLF_Image_Import_Service / HLF_Item_Repository로 위임한다.
  */
 defined( 'ABSPATH' ) || exit;
 
@@ -112,16 +114,43 @@ final class HLF_REST_Controller {
 			),
 		) );
 
-		// --- Phase 2 범위: 라우트만 등록, 지금은 501 ---
+		// --- 아직 범위 밖: 라우트만 등록, 지금은 501 ---
 		register_rest_route( self::NS, '/items/(?P<item_id>\d+)/refresh-source', array(
 			'methods'             => WP_REST_Server::CREATABLE,
 			'callback'            => array( __CLASS__, 'phase2_stub' ),
 			'permission_callback' => array( __CLASS__, 'can_edit_flyers' ),
 		) );
-		register_rest_route( self::NS, '/images', array(
-			'methods'             => WP_REST_Server::CREATABLE,
-			'callback'            => array( __CLASS__, 'phase2_stub' ),
+
+		// 이미지 검색(Phase 3) — 특정 Flyer/Item에 종속되지 않는 순수 조회라 officeleasing 검색과
+		// 같은 패턴(can_edit_flyers)만 요구한다. 쿼리 파라미터는 q 하나.
+		register_rest_route( self::NS, '/images/search', array(
+			'methods'             => WP_REST_Server::READABLE,
+			'callback'            => array( __CLASS__, 'search_images' ),
 			'permission_callback' => array( __CLASS__, 'can_edit_flyers' ),
+			'args'                => array(
+				'q' => array( 'type' => 'string', 'required' => true ),
+			),
+		) );
+
+		// 선택한 이미지들을 실제로 내려받아 Attachment로 저장 + 이 Item에 연결.
+		register_rest_route( self::NS, '/flyers/(?P<id>\d+)/items/(?P<item_id>\d+)/images/import', array(
+			'methods'             => WP_REST_Server::CREATABLE,
+			'callback'            => array( __CLASS__, 'import_item_images' ),
+			'permission_callback' => array( __CLASS__, 'can_edit_this_flyer' ),
+		) );
+
+		// 대표 지정/위로/아래로 — 전부 "이미 이 Item에 속한 이미지 집합의 재배열"이므로 하나의
+		// PUT으로 처리한다(reorder_items와 같은 설계: 최종 상태 전체를 클라이언트가 계산해 보낸다).
+		register_rest_route( self::NS, '/flyers/(?P<id>\d+)/items/(?P<item_id>\d+)/images', array(
+			'methods'             => WP_REST_Server::EDITABLE,
+			'callback'            => array( __CLASS__, 'update_item_images' ),
+			'permission_callback' => array( __CLASS__, 'can_edit_this_flyer' ),
+		) );
+
+		register_rest_route( self::NS, '/flyers/(?P<id>\d+)/items/(?P<item_id>\d+)/images/(?P<attachment_id>\d+)', array(
+			'methods'             => WP_REST_Server::DELETABLE,
+			'callback'            => array( __CLASS__, 'delete_item_image' ),
+			'permission_callback' => array( __CLASS__, 'can_edit_this_flyer' ),
 		) );
 	}
 
@@ -288,6 +317,68 @@ final class HLF_REST_Controller {
 		$response = rest_ensure_response( HLF_Item_Repository::to_array( get_post( $item_id ) ) );
 		$response->set_status( 201 );
 		return $response;
+	}
+
+	/* ---------------- image handlers (Phase 3) ---------------- */
+
+	/** 이미지 검색. GET 쿼리 파라미터: q. 실제 검색은 HLF_Image_Search_Service가 전담. */
+	public static function search_images( WP_REST_Request $request ) {
+		$query  = (string) ( $request['q'] ?? '' );
+		$result = HLF_Image_Search_Service::search( $query );
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+		return rest_ensure_response( array( 'items' => $result ) );
+	}
+
+	/**
+	 * 선택된 검색 결과 이미지들을 이 Item에 가져온다. body: { images: [...], search_term }.
+	 * 실제 다운로드/Attachment 생성/Item 필드 반영은 HLF_Image_Import_Service가 전담.
+	 */
+	public static function import_item_images( WP_REST_Request $request ) {
+		$flyer_id = (int) $request['id'];
+		$item_id  = (int) $request['item_id'];
+		$params   = self::request_params( $request );
+		$images   = is_array( $params['images'] ?? null ) ? $params['images'] : array();
+		$search_term = sanitize_text_field( (string) ( $params['search_term'] ?? '' ) );
+
+		if ( empty( $images ) ) {
+			return new WP_Error( 'hlf_image_none_selected', '가져올 이미지를 선택해 주세요.', array( 'status' => 400 ) );
+		}
+
+		$result = HLF_Image_Import_Service::import_selected( $flyer_id, $item_id, $images, $search_term );
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+		return rest_ensure_response( $result );
+	}
+
+	/** 이미지 순서/대표 지정. body: { exterior_image_id, interior_image_ids }. */
+	public static function update_item_images( WP_REST_Request $request ) {
+		$flyer_id = (int) $request['id'];
+		$item_id  = (int) $request['item_id'];
+		$params   = self::request_params( $request );
+		$exterior = (int) ( $params['exterior_image_id'] ?? 0 );
+		$interior = is_array( $params['interior_image_ids'] ?? null ) ? array_map( 'intval', $params['interior_image_ids'] ) : array();
+
+		$result = HLF_Item_Repository::set_images( $flyer_id, $item_id, $exterior, $interior );
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+		return rest_ensure_response( HLF_Item_Repository::to_array( get_post( $item_id ) ) );
+	}
+
+	/** 이미지 하나 삭제(Item 필드에서 제거 + Attachment 자체도 삭제). */
+	public static function delete_item_image( WP_REST_Request $request ) {
+		$flyer_id      = (int) $request['id'];
+		$item_id       = (int) $request['item_id'];
+		$attachment_id = (int) $request['attachment_id'];
+
+		$result = HLF_Item_Repository::delete_image( $flyer_id, $item_id, $attachment_id );
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+		return rest_ensure_response( HLF_Item_Repository::to_array( get_post( $item_id ) ) );
 	}
 
 	/* ---------------- helpers ---------------- */
