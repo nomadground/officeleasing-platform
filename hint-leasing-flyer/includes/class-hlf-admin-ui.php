@@ -7,9 +7,26 @@
  * 전혀 갖지 않는다(Flyer/Item CRUD 로직은 HLF_Flyer_Repository/HLF_Item_Repository/
  * HLF_REST_Controller에 이미 있으므로 여기서 다시 구현하지 않는다).
  *
- * 편집 화면(EDIT_SLUG)은 목록에서만 진입하도록 관리자 메뉴에서 숨긴다(URL로는 계속 접근 가능) —
- * add_submenu_page로 등록해 hook suffix를 얻은 뒤 remove_submenu_page로 메뉴 노출만 제거하는
- * 워드프레스 표준 관용구를 쓴다.
+ * 편집 화면(EDIT_SLUG)은 목록에서만 진입하도록 관리자 메뉴에서 숨기되(URL로는 계속 접근 가능),
+ * remove_submenu_page()는 쓰지 않는다 — CSS로만 숨긴다. 이유(실제로 겪은 버그):
+ *
+ * remove_submenu_page()는 $submenu 전역 배열에서 그 항목을 지워버리는데, 그 순간 부모(LIST_SLUG)
+ * 아래 submenu가 "자기 자신을 가리키는 항목 1개"만 남게 된다. 워드프레스 코어
+ * (wp-admin/includes/menu.php)는 admin_menu 액션이 끝난 직후 "submenu가 1개뿐이고 그 항목이
+ * 부모와 같은 슬러그를 가리키면 그 submenu 배열 자체를 통째로 지운다"는 후처리를 한다 — 그러면
+ * EDIT_SLUG는 $submenu 어디에도 남지 않는다.
+ *
+ * 문제는 워드프레스가 각 관리자 페이지의 접근 권한을 검사할 때(user_can_access_admin_page())
+ * get_admin_page_parent()로 "이 페이지의 부모가 뭐였는지"를 $submenu를 훑어서 역추적한다는
+ * 것이다. $submenu에 흔적이 없으면 부모를 못 찾아 빈 문자열로 취급하고, 그 상태로 계산한
+ * hookname("admin_page_{$slug}")이 add_submenu_page() 등록 시점에 실제 부모(LIST_SLUG)로 계산해
+ * $_registered_pages에 저장해 둔 hookname("{$page_hook}_page_{$slug}", 부모의 sanitize_title
+ * 기반)과 달라진다. 결과: $_registered_pages에서 못 찾음 → user_can_access_admin_page()가 false →
+ * "Sorry, you are not allowed to access this page."(권한 없음) — capability는 정확히 맞아도
+ * 이 오류가 뜬다. 목록(LIST_SLUG)은 최상위 메뉴 슬러그 자체라 $menu 배열만으로 부모를 바로 찾을 수
+ * 있어 이 버그를 안 타서, "목록은 되는데 편집만 권한 오류"로 보이는 것이었다.
+ *
+ * 따라서 $submenu 등록은 그대로 두고(부모 추적이 항상 정상 동작하도록), 화면에서만 CSS로 숨긴다.
  */
 defined( 'ABSPATH' ) || exit;
 
@@ -24,6 +41,7 @@ final class HLF_Admin_UI {
 	public static function init(): void {
 		add_action( 'admin_menu', array( __CLASS__, 'register_menu' ) );
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_assets' ) );
+		add_action( 'admin_head', array( __CLASS__, 'hide_edit_submenu' ) );
 	}
 
 	public static function register_menu(): void {
@@ -54,9 +72,19 @@ final class HLF_Admin_UI {
 			self::EDIT_SLUG,
 			array( __CLASS__, 'render_edit_page' )
 		);
+	}
 
-		// 목록에서 "추가"/"수정" 버튼으로만 들어오게 하고, 좌측 메뉴에는 노출하지 않는다.
-		remove_submenu_page( self::LIST_SLUG, self::EDIT_SLUG );
+	/**
+	 * "Flyer 편집" 항목을 좌측 메뉴에서 시각적으로만 숨긴다(목록의 "추가"/"수정" 버튼으로만 들어오게
+	 * 하려는 목적). remove_submenu_page()를 쓰지 않는 이유는 클래스 docblock 참고 — $submenu 등록
+	 * 자체는 그대로 둬야 워드프레스의 페이지 접근 권한 판정(get_admin_page_parent 기반 hookname
+	 * 역추적)이 정상 동작한다.
+	 */
+	public static function hide_edit_submenu(): void {
+		printf(
+			'<style>#adminmenu a[href="admin.php?page=%s"]{display:none;}</style>',
+			esc_attr( self::EDIT_SLUG )
+		);
 	}
 
 	public static function render_list_page(): void {
