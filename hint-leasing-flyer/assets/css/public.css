@@ -37,26 +37,41 @@ body.hlf-public {
 .hlf-subaddress, .hlf-result-count { margin: 0 0 8px; color: var(--hlf-muted); font-size: 13px; }
 .hlf-empty { padding: 40px; text-align: center; color: var(--hlf-muted); border: 1px dashed var(--hlf-line); border-radius: 12px; }
 
-.hlf-listing-grid { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 8px; }
-.hlf-listing-card { background: var(--hlf-surface); border: 1px solid var(--hlf-line); border-radius: 10px; }
+.hlf-listing-grid { list-style: none; margin: 16px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
+.hlf-listing-card { background: var(--hlf-surface); border: 1px solid var(--hlf-line); border-radius: 12px; overflow: hidden; transition: box-shadow .15s, border-color .15s; }
+.hlf-listing-card:hover { border-color: var(--hlf-primary); box-shadow: 0 8px 20px rgba(29, 43, 51, .1); }
+.hlf-listing-link { display: flex; flex-direction: column; height: 100%; color: inherit; text-decoration: none; }
 /* 썸네일 칸(hlf-listing-thumb)은 이미지가 없는 매물에서도 항상 렌더링된다(빈 <span>) — 그래야
-   행마다 자식 개수가 달라 컬럼이 밀리는 일 없이 모든 행에서 주소/금액 위치가 그대로 정렬된다. */
-.hlf-listing-link { display: grid; grid-template-columns: 32px 52px minmax(0, 1.4fr) 2fr; align-items: center; gap: 12px; padding: 12px 14px; color: inherit; text-decoration: none; }
-.hlf-listing-link:hover { background: #fffdf4; }
-.hlf-listing-index { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 22px; color: #fff; background: var(--hlf-primary); border-radius: 6px; font-size: 11px; font-weight: 700; }
-.hlf-listing-thumb { display: block; width: 52px; height: 40px; }
-.hlf-listing-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 6px; }
+   이미지가 없는 카드도 같은 높이의 미디어 영역을 유지해 카드 높이가 들쭉날쭉해지지 않는다. */
+.hlf-listing-media { position: relative; aspect-ratio: 4 / 3; background: var(--hlf-line); }
+.hlf-listing-thumb, .hlf-listing-thumb img { display: block; width: 100%; height: 100%; }
+.hlf-listing-thumb img { object-fit: cover; }
+.hlf-listing-index { position: absolute; top: 8px; left: 8px; display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 22px; padding: 0 6px; color: #fff; background: var(--hlf-primary); border-radius: 6px; font-size: 11px; font-weight: 700; }
+.hlf-listing-body { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px 14px; }
+.hlf-listing-floor { color: var(--hlf-muted); font-size: 12px; font-weight: 700; }
 /* 긴 주소를 한 줄로 자르면 정작 필요한 동/건물명이 잘려나가는 경우가 많다 — 2줄까지는 그대로
    보여주고, 그 이상만 말줄임(line-clamp)한다. */
 .hlf-listing-address {
 	display: -webkit-box;
 	overflow: hidden;
 	font-weight: 800;
+	font-size: 15px;
 	color: var(--hlf-primary-strong);
 	-webkit-line-clamp: 2;
 	line-clamp: 2;
 	-webkit-box-orient: vertical;
 }
+.hlf-listing-areas { display: flex; gap: 14px; margin-top: 2px; padding-top: 8px; border-top: 1px solid var(--hlf-line); font-size: 12px; }
+.hlf-listing-area b { margin-right: 4px; color: var(--hlf-muted); font-size: 11px; font-weight: 700; }
+.hlf-listing-area strong { color: var(--hlf-ink); font-weight: 800; }
+.hlf-listing-prices { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 12px; font-weight: 700; color: var(--hlf-primary); }
+.hlf-chip { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.hlf-chip i { display: inline-grid; place-items: center; width: 18px; height: 18px; color: #fff; border-radius: 4px; font-size: 10px; font-style: normal; font-weight: 800; }
+.hlf-chip--deposit i { background: var(--hlf-primary); }
+.hlf-chip--rent i { color: var(--hlf-ink); background: #d5b65f; }
+.hlf-chip--maint i { background: #8d9aa1; }
+.hlf-listing-noc { margin-top: 4px; padding-top: 8px; border-top: 1px dashed var(--hlf-line); color: var(--hlf-muted); font-size: 12px; }
+.hlf-listing-noc strong { color: var(--hlf-primary-strong); font-weight: 900; }
 
 /* 상세 화면 갤러리(Phase 3) — 대표 이미지 하나를 크게, 나머지는 가로 스크롤 썸네일 스트립으로. */
 .hlf-gallery { margin: 16px 0; }
@@ -94,9 +109,8 @@ body.hlf-public {
 .hlf-footer-contact a:hover { background: var(--hlf-primary-strong); text-decoration: none; }
 
 @media (max-width: 700px) {
-	.hlf-listing-link { grid-template-columns: 28px 44px 1fr; }
-	.hlf-listing-thumb { width: 44px; height: 34px; }
-	.hlf-listing-link .hlf-lease-metrics { grid-column: 1 / -1; }
+	.hlf-listing-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+	.hlf-listing-body { padding: 10px 12px 12px; }
 	.hlf-property-details { grid-template-columns: 1fr; }
 	/* 4열 그대로 두면 좁은 화면에서 값이 줄바꿈되거나 뭉개져 정작 가장 중요한 숫자(보증금/임대료)를
 	   읽기 어려워진다 — 2열로 접어 각 칸에 충분한 너비를 준다. */
