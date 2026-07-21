@@ -29,6 +29,7 @@ body.hlf-public {
 .hlf-header .hlf-share-button { margin-left: auto; }
 .hlf-brand { font-weight: 800; letter-spacing: .06em; color: var(--hlf-primary); }
 .hlf-flyer-number { color: var(--hlf-muted); font-size: 13px; }
+.hlf-detail-badge { width: 22px; height: 20px; margin-right: 6px; font-size: 10px; vertical-align: middle; }
 /* padding으로 탭 영역을 넓혀 모바일에서 오터치 없이 누르기 쉽게 한다(시각적 크기는 거의 그대로). */
 .hlf-back { display: inline-block; padding: 6px 4px; margin: -6px -4px; color: var(--hlf-primary); text-decoration: none; font-weight: 700; }
 .hlf-badge { margin-left: auto; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; }
@@ -80,7 +81,11 @@ body.hlf-public {
 	gap: 10px;
 }
 .hlf-listing-main .hlf-lease-metrics { display: contents; }
-.hlf-listing-index { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 22px; color: #fff; background: var(--hlf-primary); border-radius: 6px; font-size: 11px; font-weight: 700; }
+/* 매물별 accent color(--hlf-item-accent, 각 요소의 inline style로 설정) — 리스트 번호 배지 /
+   NOC 차트 막대 / 지도 마커 / 상세 번호 배지가 전부 이 하나의 base 클래스를 공유해 같은 매물이면
+   항상 같은 색이 나온다. --hlf-item-accent가 없으면(구버전 캐시 등) 기존 단색으로 안전하게 대체. */
+.hlf-item-badge { display: inline-flex; align-items: center; justify-content: center; color: #fff; background: var(--hlf-item-accent, var(--hlf-primary)); border-radius: 6px; font-weight: 700; }
+.hlf-listing-index { width: 28px; height: 22px; font-size: 11px; }
 .hlf-listing-thumb { display: block; width: 52px; height: 40px; }
 .hlf-listing-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 6px; }
 .hlf-listing-address-block { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
@@ -144,9 +149,13 @@ body.hlf-public {
 .hlf-features { margin: 12px 0; color: var(--hlf-ink); font-weight: 700; line-height: 1.6; }
 .hlf-property-details { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; margin: 16px 0; }
 .hlf-basic-item { display: flex; justify-content: space-between; gap: 10px; padding: 8px; border-top: 1px solid var(--hlf-line); }
+/* 값이 긴 항목(예: 매물특징이 함께 들어간 건축물용도)은 2열 grid를 깨고 전체폭을 쓴다. */
+.hlf-basic-item--wide { grid-column: 1 / -1; }
 .hlf-basic-item dt { color: var(--hlf-muted); font-size: 13px; }
 .hlf-basic-item dd { margin: 0; color: var(--hlf-ink); font-size: 14px; font-weight: 700; text-align: right; }
-.hlf-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-top: 28px; padding-top: 14px; border-top: 1px solid var(--hlf-line); color: var(--hlf-muted); font-size: 12px; }
+.hlf-basic-item--wide dd { text-align: left; }
+.hlf-footer { display: flex; flex-direction: column; gap: 10px; margin-top: 28px; padding-top: 14px; border-top: 1px solid var(--hlf-line); color: var(--hlf-muted); font-size: 12px; }
+.hlf-footer-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
 /* 고객이 실제로 누르는 핵심 행동(전화 문의)이므로 일반 텍스트 링크보다 눈에 띄고 손가락으로
    누르기 쉬운 버튼 형태로 강조한다(44px 안팎의 터치 영역 확보). */
 .hlf-footer-contact a {
@@ -160,6 +169,9 @@ body.hlf-public {
 	white-space: nowrap;
 }
 .hlf-footer-contact a:hover { background: var(--hlf-primary-strong); text-decoration: none; }
+/* 저작권/무단 재배포 금지 고지 — 모든 공개 화면(리스트/상세) 및 인쇄물(같은 템플릿을 print.css
+   미디어쿼리로 재사용) 하단에 표시한다. */
+.hlf-footer-copyright { margin: 0; color: var(--hlf-muted); font-size: 11px; line-height: 1.6; }
 
 /* NOC(환산임대료) 비교 차트 — 서버가 계산한 값(hlf_calculate_item_metrics)을 그대로 막대로만
    그린다(계산 로직 재구현 없음, assets/js/public-flyer.js 참고). */
@@ -171,10 +183,13 @@ body.hlf-public {
 .hlf-noc-chart-item { display: grid; flex: 0 0 52px; grid-template-rows: 18px 1fr 20px; align-items: end; height: 148px; color: inherit; text-align: center; text-decoration: none; }
 .hlf-noc-chart-value { color: var(--hlf-ink); font-size: 11px; font-weight: 800; }
 .hlf-noc-chart-bar-wrap { display: flex; align-items: end; justify-content: center; height: 110px; }
-.hlf-noc-chart-bar { width: 24px; min-height: 10px; background: var(--hlf-primary); border-radius: 4px 4px 0 0; transition: background .15s; }
+/* 막대 색은 --hlf-item-accent(assets/js/public-flyer.js가 .hlf-noc-chart-item에 inline style로
+   설정)를 물려받는다 — 같은 매물이면 리스트 배지·지도 마커와 항상 같은 색. hover/active는 배경색을
+   고정 강조색으로 바꾸는 대신 filter로 어둡게 해 어떤 accent color든 같은 방식으로 강조되게 한다. */
+.hlf-noc-chart-bar { width: 24px; min-height: 10px; background: var(--hlf-item-accent, var(--hlf-primary)); border-radius: 4px 4px 0 0; transition: filter .15s; }
 .hlf-noc-chart-item:hover .hlf-noc-chart-bar,
 .hlf-noc-chart-item:focus-visible .hlf-noc-chart-bar,
-.hlf-noc-chart-item.is-active .hlf-noc-chart-bar { background: var(--hlf-primary-strong); }
+.hlf-noc-chart-item.is-active .hlf-noc-chart-bar { filter: brightness(.82); }
 .hlf-noc-chart-label { color: var(--hlf-muted); font-size: 10px; font-weight: 700; }
 .hlf-noc-chart-note { margin: 8px 0 0; color: var(--hlf-muted); font-size: 10px; }
 
@@ -193,15 +208,15 @@ body.hlf-public {
 	width: 26px;
 	height: 26px;
 	color: #fff;
-	background: var(--hlf-primary);
+	background: var(--hlf-item-accent, var(--hlf-primary));
 	border: 2px solid #fff;
 	border-radius: 50%;
 	font-size: 11px;
 	font-weight: 800;
 	box-shadow: 0 1px 4px rgba(0, 0, 0, .25);
-	transition: transform .15s, background .15s;
+	transition: transform .15s, filter .15s;
 }
-.hlf-map-marker.is-active { transform: scale(1.25); z-index: 5; background: var(--hlf-primary-strong); }
+.hlf-map-marker.is-active { transform: scale(1.25); z-index: 5; filter: brightness(.82); }
 .hlf-map-unavailable { margin: 22px 0; padding: 16px; color: var(--hlf-muted); font-size: 13px; text-align: center; border: 1px dashed var(--hlf-line); border-radius: 8px; }
 .hlf-map-address-fallback { margin: 8px 0 0; color: var(--hlf-muted); font-size: 12px; }
 .hlf-map-address-fallback a { color: var(--hlf-primary); font-weight: 700; }
@@ -209,7 +224,7 @@ body.hlf-public {
    어렵고, 인쇄물에 실제로 필요한 정보는 "어디에 있는지" 텍스트로 충분하다). */
 .hlf-map-print-fallback { display: none; }
 .hlf-map-print-fallback-item { display: flex; align-items: center; gap: 8px; padding: 4px 0; color: var(--hlf-ink); font-size: 12px; }
-.hlf-map-print-fallback-index { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 18px; color: #fff; background: var(--hlf-primary); border-radius: 4px; font-size: 10px; font-weight: 700; }
+.hlf-map-print-fallback-index { width: 22px; height: 18px; font-size: 10px; }
 
 @media (max-width: 700px) {
 	.hlf-detail-hero { grid-template-columns: 1fr; }
@@ -234,7 +249,9 @@ body.hlf-public {
 	/* 이 너비에서는 지표를 main grid에 합류(display:contents)시키지 않고 자체 2열 grid로 되돌린다
 	   (아래 .hlf-lease-metrics 규칙이 다시 적용되도록). */
 	.hlf-listing-main .hlf-lease-metrics { grid-area: metrics; display: grid; }
-	.hlf-property-details { grid-template-columns: 1fr; }
+	/* 기본정보(방향/주차/사용승인일 등)도 임대조건과 마찬가지로 모바일에서 1행 2열을 유지한다 —
+	   예전에는 여기서 1열로 무너뜨려 한 화면에 항목 하나만 보였다. */
+	.hlf-basic-item { padding: 8px 4px; }
 	/* 4열 그대로 두면 좁은 화면에서 값이 줄바꿈되거나 뭉개져 정작 가장 중요한 숫자(보증금/임대료)를
 	   읽기 어려워진다 — 2열로 접어 각 칸에 충분한 너비를 준다. */
 	.hlf-lease-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }

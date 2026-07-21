@@ -21,6 +21,14 @@
 		return escapeHtml( value ).replace( /"/g, '&quot;' ).replace( /'/g, '&#039;' );
 	}
 
+	// 매물별 고정 accent color. 리스트 번호 배지(서버 렌더링, includes/class-hlf-display-helpers.php의
+	// hlf_item_accent_color)와 여기(NOC 차트 막대·지도 마커, 클라이언트 렌더링)가 완전히 같은 배열/규칙을
+	// 써야 색이 어긋나지 않는다 — 이 배열을 바꾸면 PHP 쪽 팔레트도 함께 바꿀 것.
+	var ACCENT_PALETTE = [ '#355c73', '#a8582c', '#3d7a4f', '#7a4a9c', '#b8862e', '#3d6e8a', '#8a3d4a', '#4a7a3d' ];
+	function accentColor( order ) {
+		return ACCENT_PALETTE[ order % ACCENT_PALETTE.length ];
+	}
+
 	/* ---------------- 리스트 · 차트 · 지도 3자 연동 ---------------- */
 
 	// 매물 식별 키는 item_number(현재 플러그인에서 Flyer 내부 매물을 가리키는 유일하고 불변인 식별자)
@@ -94,7 +102,7 @@
 			if ( label.length < 2 ) { label = '0' + label; }
 			var title = it.address + ' NOC ' + noc.toFixed( 1 ) + '만원';
 			return (
-				'<a class="hlf-noc-chart-item" href="' + escapeAttr( it.url ) + '" data-hlf-listing-key="' + escapeAttr( it.key ) + '" title="' + escapeAttr( title ) + '" aria-label="' + escapeAttr( label + '번 매물 상세보기' ) + '">' +
+				'<a class="hlf-noc-chart-item" href="' + escapeAttr( it.url ) + '" data-hlf-listing-key="' + escapeAttr( it.key ) + '" title="' + escapeAttr( title ) + '" aria-label="' + escapeAttr( label + '번 매물 상세보기' ) + '" style="--hlf-item-accent:' + accentColor( it.order ) + '">' +
 					'<span class="hlf-noc-chart-value">' + noc.toFixed( 1 ) + '</span>' +
 					'<span class="hlf-noc-chart-bar-wrap"><span class="hlf-noc-chart-bar" style="height:' + height + '%"></span></span>' +
 					'<span class="hlf-noc-chart-label">' + escapeHtml( label ) + '</span>' +
@@ -267,6 +275,7 @@
 				marker.className = 'hlf-map-marker';
 				marker.textContent = label;
 				marker.title = it.address || '';
+				marker.style.setProperty( '--hlf-item-accent', accentColor( it.order ) );
 
 				new maps.CustomOverlay( {
 					map: map,

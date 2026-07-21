@@ -33,6 +33,7 @@ define( 'HLF_URL', plugin_dir_url( __FILE__ ) );
 define( 'HLF_REWRITE_VERSION', 1 );
 
 require_once HLF_DIR . 'includes/class-hlf-calculations.php';
+require_once HLF_DIR . 'includes/class-hlf-display-helpers.php';
 require_once HLF_DIR . 'includes/class-hlf-post-types.php';
 require_once HLF_DIR . 'includes/class-hlf-capabilities.php';
 require_once HLF_DIR . 'includes/class-hlf-meta-schema.php';

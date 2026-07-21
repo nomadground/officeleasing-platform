@@ -24,7 +24,7 @@ $noindex = ( 'published' !== $status );
 $chart_items = array();
 $map_items   = array();
 foreach ( $items as $i => $item ) {
-	$address = $item['road_address'] ?: $item['lot_address'];
+	$address = hlf_format_address( $item['road_address'], $item['lot_address'] )['main'];
 	$url     = HLF_Routes::item_url( $flyer['id'], $item['item_number'] );
 
 	$noc = $item['metrics']['noc'];
@@ -95,14 +95,15 @@ $kakao_js_key = defined( 'HLF_KAKAO_JS_KEY' ) ? HLF_KAKAO_JS_KEY : '';
 				<?php foreach ( $items as $i => $item ) :
 					$metrics = $item['metrics'];
 					$detail_url = HLF_Routes::item_url( $flyer['id'], $item['item_number'] );
-					$address = $item['road_address'] ?: $item['lot_address'];
-					$sub_address = ( $item['lot_address'] && $item['lot_address'] !== $address ) ? $item['lot_address'] : '';
+					$address_parts = hlf_format_address( $item['road_address'], $item['lot_address'] );
+					$address = $address_parts['main'];
+					$sub_address = $address_parts['sub'];
 					$floor = trim( ( $item['floor_current'] ?: '-' ) . '/' . ( $item['floor_total'] ?: '-' ) . '층' );
 					?>
 					<li class="hlf-listing-card">
 						<a class="hlf-listing-link" href="<?php echo esc_url( $detail_url ); ?>" data-hlf-listing-key="<?php echo esc_attr( $item['item_number'] ); ?>">
 							<span class="hlf-listing-main">
-								<span class="hlf-listing-index"><?php echo esc_html( sprintf( '%02d', $i + 1 ) ); ?></span>
+								<span class="hlf-item-badge hlf-listing-index" style="--hlf-item-accent:<?php echo esc_attr( hlf_item_accent_color( $i ) ); ?>"><?php echo esc_html( sprintf( '%02d', $i + 1 ) ); ?></span>
 								<span class="hlf-listing-thumb"><?php
 									if ( ! empty( $item['exterior_image_id'] ) ) {
 										echo wp_get_attachment_image( (int) $item['exterior_image_id'], 'hlf-item-thumb', false, array( 'alt' => esc_attr( $address ), 'loading' => 'lazy' ) );
@@ -190,7 +191,7 @@ $kakao_js_key = defined( 'HLF_KAKAO_JS_KEY' ) ? HLF_KAKAO_JS_KEY : '';
 					<div class="hlf-map-print-fallback">
 						<?php foreach ( $map_items as $map_item ) : ?>
 							<div class="hlf-map-print-fallback-item">
-								<span class="hlf-map-print-fallback-index"><?php echo esc_html( sprintf( '%02d', $map_item['order'] + 1 ) ); ?></span>
+								<span class="hlf-item-badge hlf-map-print-fallback-index" style="--hlf-item-accent:<?php echo esc_attr( hlf_item_accent_color( $map_item['order'] ) ); ?>"><?php echo esc_html( sprintf( '%02d', $map_item['order'] + 1 ) ); ?></span>
 								<span><?php echo esc_html( $map_item['address'] ); ?></span>
 							</div>
 						<?php endforeach; ?>
@@ -203,13 +204,20 @@ $kakao_js_key = defined( 'HLF_KAKAO_JS_KEY' ) ? HLF_KAKAO_JS_KEY : '';
 
 		<?php $contact = HLF_Flyer_Repository::public_contact( $flyer ); ?>
 		<footer class="hlf-footer">
-			<span>© HINT <?php echo esc_html( gmdate( 'Y' ) ); ?> · <?php echo esc_html( $flyer['flyer_number'] ); ?></span>
-			<span class="hlf-footer-contact">
-				<?php if ( $contact['name'] ) : ?>
-					<?php echo esc_html( $contact['name'] ); ?> ·
-				<?php endif; ?>
-				<a href="<?php echo esc_attr( 'tel:' . preg_replace( '/[^0-9+]/', '', $contact['phone'] ) ); ?>"><?php echo esc_html( $contact['phone'] ); ?></a>
-			</span>
+			<div class="hlf-footer-row">
+				<span>© HINT <?php echo esc_html( gmdate( 'Y' ) ); ?> · <?php echo esc_html( $flyer['flyer_number'] ); ?></span>
+				<span class="hlf-footer-contact">
+					<?php if ( $contact['name'] ) : ?>
+						<?php echo esc_html( $contact['name'] ); ?> ·
+					<?php endif; ?>
+					<a href="<?php echo esc_attr( 'tel:' . preg_replace( '/[^0-9+]/', '', $contact['phone'] ) ); ?>"><?php echo esc_html( $contact['phone'] ); ?></a>
+				</span>
+			</div>
+			<p class="hlf-footer-copyright">
+				본 자료는 힌트부동산중개법인의 임대 제안 자료입니다.<br>
+				무단 복제, 재배포, 수정 및 상업적 이용을 금합니다.<br>
+				© HINT Realty Co., Ltd. All Rights Reserved.
+			</p>
 		</footer>
 	</div>
 	<script src="<?php echo esc_url( HLF_URL . 'assets/js/public-flyer.js?v=' . HLF_VERSION ); ?>" defer></script>
