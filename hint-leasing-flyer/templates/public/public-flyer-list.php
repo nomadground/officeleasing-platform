@@ -96,34 +96,57 @@ $kakao_js_key = defined( 'HLF_KAKAO_JS_KEY' ) ? HLF_KAKAO_JS_KEY : '';
 					$metrics = $item['metrics'];
 					$detail_url = HLF_Routes::item_url( $flyer['id'], $item['item_number'] );
 					$address = $item['road_address'] ?: $item['lot_address'];
+					$sub_address = ( $item['lot_address'] && $item['lot_address'] !== $address ) ? $item['lot_address'] : '';
+					$floor = trim( ( $item['floor_current'] ?: '-' ) . '/' . ( $item['floor_total'] ?: '-' ) . '층' );
 					?>
 					<li class="hlf-listing-card">
 						<a class="hlf-listing-link" href="<?php echo esc_url( $detail_url ); ?>" data-hlf-listing-key="<?php echo esc_attr( $item['item_number'] ); ?>">
-							<span class="hlf-listing-index"><?php echo esc_html( sprintf( '%02d', $i + 1 ) ); ?></span>
-							<span class="hlf-listing-thumb"><?php
-								if ( ! empty( $item['exterior_image_id'] ) ) {
-									echo wp_get_attachment_image( (int) $item['exterior_image_id'], 'hlf-item-thumb', false, array( 'alt' => esc_attr( $address ), 'loading' => 'lazy' ) );
-								}
-							?></span>
-							<span class="hlf-listing-address"><?php echo esc_html( $address ); ?></span>
-							<span class="hlf-lease-metrics">
-								<span class="hlf-lease-metric">
-									<span class="hlf-lease-metric-label">보증금</span>
-									<span class="hlf-lease-metric-value"><?php echo esc_html( number_format( (float) $item['deposit_manwon'] ) ); ?>만원</span>
+							<span class="hlf-listing-main">
+								<span class="hlf-listing-index"><?php echo esc_html( sprintf( '%02d', $i + 1 ) ); ?></span>
+								<span class="hlf-listing-thumb"><?php
+									if ( ! empty( $item['exterior_image_id'] ) ) {
+										echo wp_get_attachment_image( (int) $item['exterior_image_id'], 'hlf-item-thumb', false, array( 'alt' => esc_attr( $address ), 'loading' => 'lazy' ) );
+									}
+								?></span>
+								<span class="hlf-listing-address-block">
+									<span class="hlf-listing-address"><?php echo esc_html( $address ); ?></span>
+									<?php if ( $sub_address ) : ?>
+										<span class="hlf-listing-subaddress"><?php echo esc_html( $sub_address ); ?></span>
+									<?php endif; ?>
 								</span>
-								<span class="hlf-lease-metric">
-									<span class="hlf-lease-metric-label">임대료</span>
-									<span class="hlf-lease-metric-value"><?php echo esc_html( number_format( (float) $item['monthly_rent_manwon'] ) ); ?>만원</span>
+								<span class="hlf-listing-floor">
+									<span class="hlf-lease-metric-label">층</span>
+									<span class="hlf-listing-floor-value"><?php echo esc_html( $floor ); ?></span>
 								</span>
-								<span class="hlf-lease-metric">
-									<span class="hlf-lease-metric-label">관리비</span>
-									<span class="hlf-lease-metric-value"><?php echo esc_html( number_format( (float) $item['maintenance_fee_manwon'] ) ); ?>만원</span>
+								<span class="hlf-listing-area">
+									<span class="hlf-lease-metric-label">전용면적</span>
+									<span class="hlf-listing-area-value"><?php echo esc_html( number_format( $metrics['exclusive_pyeong'], 1 ) ); ?>평</span>
 								</span>
-								<span class="hlf-lease-metric">
-									<span class="hlf-lease-metric-label">환산임대료(NOC)</span>
-									<span class="hlf-lease-metric-value"><?php echo esc_html( number_format( $metrics['noc'], 1 ) ); ?>만원/전용평</span>
+								<span class="hlf-lease-metrics">
+									<span class="hlf-lease-metric">
+										<span class="hlf-lease-metric-label">보증금</span>
+										<span class="hlf-lease-metric-value"><?php echo esc_html( number_format( (float) $item['deposit_manwon'] ) ); ?>만원</span>
+										<span class="hlf-lease-metric-sub">평당 <?php echo esc_html( number_format( $metrics['deposit_per_lease_pyeong'], 1 ) ); ?>만원</span>
+									</span>
+									<span class="hlf-lease-metric">
+										<span class="hlf-lease-metric-label">임대료</span>
+										<span class="hlf-lease-metric-value"><?php echo esc_html( number_format( (float) $item['monthly_rent_manwon'] ) ); ?>만원</span>
+										<span class="hlf-lease-metric-sub">평당 <?php echo esc_html( number_format( $metrics['rent_per_lease_pyeong'], 1 ) ); ?>만원</span>
+									</span>
+									<span class="hlf-lease-metric">
+										<span class="hlf-lease-metric-label">관리비</span>
+										<span class="hlf-lease-metric-value"><?php echo esc_html( number_format( (float) $item['maintenance_fee_manwon'] ) ); ?>만원</span>
+										<span class="hlf-lease-metric-sub">평당 <?php echo esc_html( number_format( $metrics['maintenance_per_lease_pyeong'], 1 ) ); ?>만원</span>
+									</span>
+									<span class="hlf-lease-metric hlf-lease-metric--noc">
+										<span class="hlf-lease-metric-label">환산임대료(NOC)</span>
+										<span class="hlf-lease-metric-value"><?php echo esc_html( number_format( $metrics['noc'], 1 ) ); ?>만원/전용평</span>
+									</span>
 								</span>
 							</span>
+							<?php if ( $item['features'] ) : ?>
+								<span class="hlf-listing-features"><?php echo esc_html( $item['features'] ); ?></span>
+							<?php endif; ?>
 						</a>
 					</li>
 				<?php endforeach; ?>

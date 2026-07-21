@@ -442,11 +442,44 @@
 		);
 	}
 
+	// 주소(도로명/지번/위도/경도)는 실제 업무 흐름상 "OCR로 채운 뒤 가장 먼저 확인·확정하는 값"이라
+	// renderItemForm()의 일반 필드 그리드에서 빼내 OCR 다음 순서(step 2)로 별도 배치한다
+	// (renderAddressBlock 참고). 나머지 조건 필드는 여기서 제외해 중복 렌더링을 막는다.
+	var ADDRESS_FIELD_KEYS = [ 'road_address', 'lot_address', 'latitude', 'longitude' ];
+
+	function renderAddressBlock( item ) {
+		var fields = ITEM_FIELDS.filter( function ( def ) { return ADDRESS_FIELD_KEYS.indexOf( def.key ) !== -1; } );
+		var fieldsHtml = fields.map( function ( def ) {
+			var value = item ? item[ def.key ] : '';
+			var fieldId = 'hlf-item-field-' + def.key;
+			var stepAttr = def.step ? ' step="' + def.step + '"' : '';
+			// 지번주소 필드에만 "주소 검색" 버튼을 붙인다 — 카카오 Local API(서버 프록시, REST 키는
+			// 클라이언트에 노출하지 않음)로 도로명주소/좌표를 자동 채운다. 설정 안 됐으면 버튼 클릭
+			// 시 서버가 501을 돌려주고 아래 상태 문구로만 안내한다(폼 자체는 그대로 동작).
+			var addressSearchHtml = ( def.key === 'lot_address' ) ?
+				' <button type="button" class="button button-small" id="hlf-address-search">주소 검색</button>' +
+				'<p class="hlf-admin-note" id="hlf-address-search-status"></p>' : '';
+			return (
+				'<div class="hlf-field"><label for="' + fieldId + '">' + HLFAdmin.escapeHtml( def.label ) + '</label>' +
+				'<input id="' + fieldId + '" type="' + def.type + '" name="' + def.key + '" value="' + HLFAdmin.escapeAttr( value === null || value === undefined ? '' : value ) + '"' + stepAttr + '>' +
+				addressSearchHtml +
+				'</div>'
+			);
+		} ).join( '' );
+		return (
+			'<div class="hlf-address-block">' +
+				'<h4>주소 확인</h4>' +
+				'<div class="hlf-field-grid">' + fieldsHtml + '</div>' +
+			'</div>'
+		);
+	}
+
 	function renderItemForm() {
 		var editing = state.editingItemId !== null;
 		var item = editing ? state.items.find( function ( i ) { return i.id === state.editingItemId; } ) : null;
 
 		var fieldsHtml = ITEM_FIELDS.map( function ( def ) {
+			if ( ADDRESS_FIELD_KEYS.indexOf( def.key ) !== -1 ) { return ''; } // renderAddressBlock()가 별도 렌더링.
 			var value = item ? item[ def.key ] : '';
 			var wideClass = def.wide ? ' hlf-field-wide' : '';
 			if ( def.type === 'checkbox' ) {
@@ -467,16 +500,9 @@
 			}
 			var stepAttr = def.step ? ' step="' + def.step + '"' : '';
 			var placeholderAttr = def.placeholder ? ' placeholder="' + HLFAdmin.escapeAttr( def.placeholder ) + '"' : '';
-			// 지번주소 필드에만 "주소 검색" 버튼을 붙인다 — 카카오 Local API(서버 프록시, REST 키는
-			// 클라이언트에 노출하지 않음)로 도로명주소/좌표를 자동 채운다. 설정 안 됐으면 버튼 클릭
-			// 시 서버가 501을 돌려주고 아래 상태 문구로만 안내한다(폼 자체는 그대로 동작).
-			var addressSearchHtml = ( def.key === 'lot_address' ) ?
-				' <button type="button" class="button button-small" id="hlf-address-search">주소 검색</button>' +
-				'<p class="hlf-admin-note" id="hlf-address-search-status"></p>' : '';
 			return (
 				'<div class="hlf-field' + wideClass + '"><label for="' + fieldId + '">' + HLFAdmin.escapeHtml( def.label ) + '</label>' +
 				'<input id="' + fieldId + '" type="' + def.type + '" name="' + def.key + '" value="' + HLFAdmin.escapeAttr( value === null || value === undefined ? '' : value ) + '"' + stepAttr + placeholderAttr + '>' +
-				addressSearchHtml +
 				'</div>'
 			);
 		} ).join( '' );
@@ -500,6 +526,7 @@
 			'<form id="hlf-item-form" class="hlf-item-form"' + ( editing ? '' : ' hidden' ) + '>' +
 				'<h3>' + ( editing ? '매물 수정 (' + HLFAdmin.escapeHtml( item.item_number ) + ')' : '매물 추가' ) + '</h3>' +
 				renderOcrSection() +
+				renderAddressBlock( item ) +
 				'<div class="hlf-field-grid">' + fieldsHtml + '</div>' +
 				metricsHtml +
 				'<button type="submit" class="button button-primary">저장</button> ' +
@@ -675,6 +702,7 @@
 		return (
 			'<div class="hlf-ocr-section">' +
 				'<h4>네이버부동산 캡처로 자동 입력 (선택)</h4>' +
+				'<p class="hlf-admin-note">필수 단계는 아닙니다 — 캡처만 붙이면 아래 입력 시간을 줄여줄 뿐, 건너뛰고 직접 입력해도 됩니다.</p>' +
 				'<div class="hlf-field"><label for="hlf-ocr-capture">캡처 이미지</label>' +
 					'<input type="file" id="hlf-ocr-capture" accept="image/*"></div>' +
 				'<img id="hlf-ocr-preview" class="hlf-ocr-preview" alt="캡처 미리보기" hidden>' +

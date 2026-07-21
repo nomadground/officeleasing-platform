@@ -79,24 +79,59 @@ $basic = array(
 			<p class="hlf-subaddress"><?php echo esc_html( $item['lot_address'] ); ?></p>
 		<?php endif; ?>
 
-		<?php if ( ! empty( $photo_ids ) ) : ?>
-			<section class="hlf-gallery" data-hlf-photos="<?php echo esc_attr( wp_json_encode( $photo_urls ) ); ?>">
-				<div class="hlf-gallery-main">
-					<button type="button" class="hlf-photo-open" data-hlf-lightbox-open data-hlf-lightbox-index="0" aria-label="사진 크게 보기">
-						<?php echo wp_get_attachment_image( $photo_ids[0], 'hlf-item-photo', false, array( 'alt' => esc_attr( $address ), 'loading' => 'eager' ) ); ?>
-					</button>
-				</div>
-				<?php if ( count( $photo_ids ) > 1 ) : ?>
-					<div class="hlf-gallery-thumbs">
-						<?php foreach ( array_slice( $photo_ids, 1 ) as $idx => $photo_id ) : ?>
-							<button type="button" class="hlf-photo-open" data-hlf-lightbox-open data-hlf-lightbox-index="<?php echo esc_attr( $idx + 1 ); ?>" aria-label="사진 크게 보기">
-								<?php echo wp_get_attachment_image( $photo_id, 'hlf-item-thumb', false, array( 'alt' => esc_attr( $address ), 'loading' => 'lazy' ) ); ?>
-							</button>
-						<?php endforeach; ?>
+		<?php
+		// 좌측: 사진 갤러리 / 우측: 지도(MVP 레이아웃) — 사진이 없으면 지도(또는 좌표 없음 안내)만
+		// 전체 너비로 넓어진다(hlf-detail-hero--map-only). 지도 쪽은 좌표 유무와 무관하게 항상 뭔가
+		// 렌더링되므로(실제 지도 또는 안내문) 오른쪽 칸이 비어 보이는 일은 없다.
+		?>
+		<div class="hlf-detail-hero<?php echo empty( $photo_ids ) ? ' hlf-detail-hero--map-only' : ''; ?>">
+			<?php if ( ! empty( $photo_ids ) ) : ?>
+				<section class="hlf-gallery" data-hlf-photos="<?php echo esc_attr( wp_json_encode( $photo_urls ) ); ?>">
+					<div class="hlf-gallery-main">
+						<button type="button" class="hlf-photo-open" data-hlf-lightbox-open data-hlf-lightbox-index="0" aria-label="사진 크게 보기">
+							<?php echo wp_get_attachment_image( $photo_ids[0], 'hlf-item-photo', false, array( 'alt' => esc_attr( $address ), 'loading' => 'eager' ) ); ?>
+						</button>
 					</div>
-				<?php endif; ?>
-			</section>
-		<?php endif; ?>
+					<?php if ( count( $photo_ids ) > 1 ) : ?>
+						<div class="hlf-gallery-thumbs">
+							<?php foreach ( array_slice( $photo_ids, 1 ) as $idx => $photo_id ) : ?>
+								<button type="button" class="hlf-photo-open" data-hlf-lightbox-open data-hlf-lightbox-index="<?php echo esc_attr( $idx + 1 ); ?>" aria-label="사진 크게 보기">
+									<?php echo wp_get_attachment_image( $photo_id, 'hlf-item-thumb', false, array( 'alt' => esc_attr( $address ), 'loading' => 'lazy' ) ); ?>
+								</button>
+							<?php endforeach; ?>
+						</div>
+					<?php endif; ?>
+				</section>
+			<?php endif; ?>
+
+			<?php if ( $has_coords ) : ?>
+				<section class="hlf-detail-map-panel" aria-labelledby="hlf-detail-map-title">
+					<div class="hlf-comparison-map-heading">
+						<h2 id="hlf-detail-map-title">위치</h2>
+					</div>
+					<div
+						class="hlf-comparison-map hlf-detail-map"
+						id="hlf-detail-map"
+						data-hlf-kakao-key="<?php echo esc_attr( $kakao_js_key ); ?>"
+						data-hlf-map-items="<?php echo esc_attr( wp_json_encode( $map_items ) ); ?>"
+					>
+						<p class="hlf-map-empty">지도를 불러오는 중입니다…</p>
+					</div>
+					<p class="hlf-map-address-fallback">
+						<?php echo esc_html( $address ); ?> ·
+						<a href="<?php echo esc_url( 'https://map.kakao.com/link/map/' . rawurlencode( $address ) . ',' . $item['latitude'] . ',' . $item['longitude'] ); ?>" target="_blank" rel="noreferrer">카카오맵에서 보기 ↗</a>
+					</p>
+					<div class="hlf-map-print-fallback">
+						<div class="hlf-map-print-fallback-item">
+							<span class="hlf-map-print-fallback-index">01</span>
+							<span><?php echo esc_html( $address ); ?></span>
+						</div>
+					</div>
+				</section>
+			<?php else : ?>
+				<p class="hlf-map-unavailable">이 매물은 아직 좌표가 등록되지 않아 위치 지도를 표시할 수 없습니다.</p>
+			<?php endif; ?>
+		</div>
 
 		<section class="hlf-lease-metrics hlf-detail-metrics">
 			<div class="hlf-lease-metric">
@@ -132,34 +167,6 @@ $basic = array(
 				</div>
 			<?php endforeach; ?>
 		</dl>
-
-		<?php if ( $has_coords ) : ?>
-			<section class="hlf-detail-map-panel" aria-labelledby="hlf-detail-map-title">
-				<div class="hlf-comparison-map-heading">
-					<h2 id="hlf-detail-map-title">위치</h2>
-				</div>
-				<div
-					class="hlf-comparison-map hlf-detail-map"
-					id="hlf-detail-map"
-					data-hlf-kakao-key="<?php echo esc_attr( $kakao_js_key ); ?>"
-					data-hlf-map-items="<?php echo esc_attr( wp_json_encode( $map_items ) ); ?>"
-				>
-					<p class="hlf-map-empty">지도를 불러오는 중입니다…</p>
-				</div>
-				<p class="hlf-map-address-fallback">
-					<?php echo esc_html( $address ); ?> ·
-					<a href="<?php echo esc_url( 'https://map.kakao.com/link/map/' . rawurlencode( $address ) . ',' . $item['latitude'] . ',' . $item['longitude'] ); ?>" target="_blank" rel="noreferrer">카카오맵에서 보기 ↗</a>
-				</p>
-				<div class="hlf-map-print-fallback">
-					<div class="hlf-map-print-fallback-item">
-						<span class="hlf-map-print-fallback-index">01</span>
-						<span><?php echo esc_html( $address ); ?></span>
-					</div>
-				</div>
-			</section>
-		<?php else : ?>
-			<p class="hlf-map-unavailable">이 매물은 아직 좌표가 등록되지 않아 위치 지도를 표시할 수 없습니다.</p>
-		<?php endif; ?>
 
 		<?php
 		// 문의처 우선순위: 이 매물의 개별 담당자(override, item_fields의 contact_name/contact_phone)

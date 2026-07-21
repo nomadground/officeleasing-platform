@@ -73,6 +73,9 @@
 
 /* 네이버부동산 캡처 OCR(선택 입력 보조) — Item 필드 그리드 위에 표시. */
 .hlf-admin .hlf-ocr-section { margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid #dcdcde; }
+/* 주소 확인(step 2) — OCR 다음, 나머지 조건 필드 앞. renderAddressBlock()가 렌더링. */
+.hlf-admin .hlf-address-block { margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid #dcdcde; }
+.hlf-admin .hlf-address-block h4 { margin: 0 0 8px; }
 .hlf-admin .hlf-ocr-section h4 { margin: 0 0 8px; }
 .hlf-admin .hlf-ocr-preview { display: block; max-width: 100%; max-height: 220px; margin: 8px 0; object-fit: contain; background: #f0f0f1; border-radius: 4px; }
 .hlf-admin .hlf-ocr-preview[hidden] { display: none; }
