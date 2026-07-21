@@ -499,6 +499,7 @@
 		return (
 			'<form id="hlf-item-form" class="hlf-item-form"' + ( editing ? '' : ' hidden' ) + '>' +
 				'<h3>' + ( editing ? '매물 수정 (' + HLFAdmin.escapeHtml( item.item_number ) + ')' : '매물 추가' ) + '</h3>' +
+				renderOcrSection() +
 				'<div class="hlf-field-grid">' + fieldsHtml + '</div>' +
 				metricsHtml +
 				'<button type="submit" class="button button-primary">저장</button> ' +
@@ -659,6 +660,265 @@
 			} );
 	}
 
+	/* ---------------- 네이버부동산 캡처 OCR(선택 입력 보조) ----------------
+	 * Tesseract.js(CDN, kor+eng)로 캡처 이미지에서 텍스트를 뽑아 항목 필드에 자동으로 채워 넣는다.
+	 * 실제 OCR 엔진 연동이며 가짜 결과를 만들지 않는다 — 다만 추출 결과는 항상 "제안값"이고
+	 * 사용자가 원문/필드를 직접 확인·수정한 뒤에만 저장 버튼으로 실제 저장된다(자동 저장 없음).
+	 * 서버 계산(NOC 등)과는 무관하다 — 여기서 하는 일은 이미지 속 텍스트를 필드값 후보로
+	 * 정규화하는 것뿐이고, 그 값들로 파생 지표를 계산하는 로직은 두지 않는다(그건 서버 몫).
+	 */
+	var OCR_SCRIPT_URL = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+	var OCR_MAX_MONEY = 1000000;
+	var OCR_MAX_AREA_SQM = 1000000;
+
+	function renderOcrSection() {
+		return (
+			'<div class="hlf-ocr-section">' +
+				'<h4>네이버부동산 캡처로 자동 입력 (선택)</h4>' +
+				'<div class="hlf-field"><label for="hlf-ocr-capture">캡처 이미지</label>' +
+					'<input type="file" id="hlf-ocr-capture" accept="image/*"></div>' +
+				'<img id="hlf-ocr-preview" class="hlf-ocr-preview" alt="캡처 미리보기" hidden>' +
+				'<button type="button" class="button" id="hlf-ocr-run" disabled>텍스트 추출</button>' +
+				'<p class="hlf-admin-note" id="hlf-ocr-status"></p>' +
+				'<div class="hlf-field hlf-field-wide"><label for="hlf-ocr-text">추출된 원문(직접 수정 가능)</label>' +
+					'<textarea id="hlf-ocr-text" class="hlf-ocr-textarea" rows="6"></textarea></div>' +
+				'<button type="button" class="button button-primary" id="hlf-ocr-apply">원문에서 항목 채우기</button>' +
+			'</div>'
+		);
+	}
+
+	function ocrNormalizeMoney( value ) {
+		if ( value === null || value === undefined ) { return ''; }
+		var raw = String( value ).replace( /,/g, '' ).replace( /\s+/g, '' ).trim();
+		if ( ! raw || raw === '-' ) { return ''; }
+		var eokMatch = raw.match( /(\d+(?:\.\d+)?)억/ );
+		var remainder = raw.replace( /\d+(?:\.\d+)?억/, '' );
+		var remainderMatch = remainder.match( /\d+(?:\.\d+)?/ );
+		if ( eokMatch || remainderMatch ) {
+			var total = ( eokMatch ? Number( eokMatch[ 1 ] ) * 10000 : 0 ) + ( remainderMatch ? Number( remainderMatch[ 0 ] ) : 0 );
+			return isFinite( total ) ? Math.min( OCR_MAX_MONEY, Math.max( 0, total ) ) : '';
+		}
+		var numberMatch = raw.match( /\d+(?:\.\d+)?/ );
+		var number = numberMatch ? Number( numberMatch[ 0 ] ) : NaN;
+		return isFinite( number ) ? Math.min( OCR_MAX_MONEY, Math.max( 0, number ) ) : '';
+	}
+
+	function ocrNormalizeAreaSqm( value ) {
+		if ( value === null || value === undefined ) { return ''; }
+		var raw = String( value ).replace( /,/g, '' ).trim();
+		if ( ! raw || raw === '-' ) { return ''; }
+		var numberMatch = raw.match( /\d+(?:\.\d+)?/ );
+		if ( ! numberMatch ) { return ''; }
+		var number = Number( numberMatch[ 0 ] );
+		if ( ! isFinite( number ) ) { return ''; }
+		return Math.min( OCR_MAX_AREA_SQM, raw.indexOf( '평' ) !== -1 ? number / 0.3025 : number );
+	}
+
+	function ocrNormalizeText( text ) {
+		return String( text || '' )
+			.replace( /\r/g, '' )
+			.replace( /m(?:²|2|\^2)/gi, '㎡' )
+			.replace( /월\s*세/g, '월세' )
+			.replace( /관\s*리\s*비/g, '관리비' )
+			.replace( /(\d)\s+(?=\d)/g, '$1' )
+			.replace( /\s*,\s*/g, ',' );
+	}
+
+	// 라벨(예: "전용면적") 뒤에 오는 값을 줄 안 또는 다음 줄에서 찾는다. 네이버부동산 캡처는
+	// "라벨 값"이 같은 줄이거나(표 형태) 라벨 다음 줄에 값만 있는 경우(카드 형태) 둘 다 흔하다.
+	function ocrLabeledValue( text, labels ) {
+		var lines = String( text || '' ).split( /\n/ ).map( function ( l ) { return l.trim(); } ).filter( Boolean );
+		var sortedLabels = labels.slice().sort( function ( a, b ) { return b.length - a.length; } );
+		for ( var i = 0; i < lines.length; i++ ) {
+			var line = lines[ i ];
+			var label = sortedLabels.find( function ( candidate ) { return line.toLowerCase().indexOf( candidate.toLowerCase() ) !== -1; } );
+			if ( ! label ) { continue; }
+			var labelIndex = line.toLowerCase().indexOf( label.toLowerCase() );
+			var sameLine = line.slice( labelIndex + label.length ).replace( /^[\s:：\-|]+/, '' ).trim();
+			if ( sameLine ) { return sameLine; }
+			if ( lines[ i + 1 ] ) { return lines[ i + 1 ]; }
+		}
+		return '';
+	}
+
+	// 보증금/월세를 "보증금 3억 / 월세 350" 또는 "3억/350" 형태에서 뽑는다(라벨 없는 슬래시 표기 fallback 포함).
+	function ocrParseLeaseAmounts( text ) {
+		var slash = text.match( /([\d억,.\s]+(?:만원)?)\s*\/\s*([\d억,.\s]+(?:만원)?)/ );
+		var depositLabel = text.match( /보증금\s*([\d억,.\s]+(?:만원)?)/ );
+		var rentLabel = text.match( /(?:월세|임대료)\s*([\d억,.\s]+(?:만원)?)/ );
+		var feeLabel = text.match( /관리비\s*([\d억,.\s]+(?:만원)?)/ );
+		return {
+			deposit_manwon: ocrNormalizeMoney( ( depositLabel && depositLabel[ 1 ] ) || ( slash && slash[ 1 ] ) ),
+			monthly_rent_manwon: ocrNormalizeMoney( ( rentLabel && rentLabel[ 1 ] ) || ( slash && slash[ 2 ] ) ),
+			maintenance_fee_manwon: ocrNormalizeMoney( feeLabel && feeLabel[ 1 ] ),
+		};
+	}
+
+	function ocrParseFloor( text ) {
+		var pair = text.match( /(?:해당층\s*\/\s*총층\s*[:：]?\s*)?(B?\d+(?:~\d+)?)\s*층?\s*\/\s*(\d+)\s*층?/i );
+		return { floor_current: ( pair && pair[ 1 ] ) || '', floor_total: ( pair && pair[ 2 ] ) || '' };
+	}
+
+	function ocrParseAreas( text ) {
+		var pair = text.match( /(\d+(?:\.\d+)?)\s*㎡\s*\/\s*(\d+(?:\.\d+)?)\s*㎡/ );
+		var contract = ocrLabeledValue( text, [ '계약면적', '임대면적' ] );
+		var exclusive = ocrLabeledValue( text, [ '전용면적' ] );
+		return {
+			lease_area_sqm: ocrNormalizeAreaSqm( ( pair && pair[ 1 ] ) || contract ),
+			exclusive_area_sqm: ocrNormalizeAreaSqm( ( pair && pair[ 2 ] ) || exclusive ),
+		};
+	}
+
+	// 난방/사무실 수/화장실 수/위반건축물 여부는 HLF Item 스키마에 없는 필드라 의도적으로 추출하지
+	// 않는다(요청서 확인 결과 불필요 — 실제로 표시할 곳이 없는 값을 폼에 채우면 혼란만 준다).
+	function ocrParsePropertyTable( text ) {
+		return {
+			lot_address: ocrLabeledValue( text, [ '소재지' ] ),
+			features: ocrLabeledValue( text, [ '매물특징' ] ),
+			maintenance_fee_manwon: ocrNormalizeMoney( ocrLabeledValue( text, [ '월관리비', '관리비' ] ) ),
+			direction: ocrLabeledValue( text, [ '방향' ] ),
+			available_date_text: ocrLabeledValue( text, [ '입주가능일' ] ),
+			total_parking: ocrLabeledValue( text, [ '총주차대수' ] ),
+			approval_date: ocrLabeledValue( text, [ '사용승인일' ] ),
+			building_use: ocrLabeledValue( text, [ '건축물 용도', '건축물용도' ] ),
+		};
+	}
+
+	function ocrParseArticleNo( text ) {
+		var labeled = ocrLabeledValue( text, [ '매물번호', '확인매물번호' ] );
+		var digits = labeled.match( /\d{8,12}/ );
+		return digits ? digits[ 0 ] : '';
+	}
+
+	function parseOcrText( rawText ) {
+		var text = ocrNormalizeText( rawText );
+		var values = Object.assign(
+			{ article_no: ocrParseArticleNo( text ) },
+			ocrParseLeaseAmounts( text ),
+			ocrParseAreas( text ),
+			ocrParseFloor( text ),
+			ocrParsePropertyTable( text )
+		);
+		// 라벨 기반 관리비(ocrParsePropertyTable)가 비어 있으면 슬래시/라벨 조합(ocrParseLeaseAmounts)
+		// 결과를 덮어쓰지 않도록 빈 값은 제거한다 — Object.assign 순서상 뒤 항목이 이기므로.
+		Object.keys( values ).forEach( function ( key ) {
+			if ( values[ key ] === '' ) { delete values[ key ]; }
+		} );
+		return values;
+	}
+
+	// 파싱 결과를 폼에 채운다 — 값이 있는 필드만 덮어쓰고, 추출 못 한 필드는 기존 입력을 그대로 둔다.
+	function applyOcrValuesToForm( form, values ) {
+		Object.keys( values ).forEach( function ( key ) {
+			var input = form.elements[ key ];
+			if ( ! input ) { return; }
+			input.value = values[ key ];
+		} );
+	}
+
+	function ocrPreprocessImage( file ) {
+		return new Promise( function ( resolve, reject ) {
+			var reader = new FileReader();
+			reader.onerror = reject;
+			reader.onload = function () {
+				var image = new Image();
+				image.onerror = reject;
+				image.onload = function () {
+					var scale = Math.min( 1.8, Math.max( 1, 1600 / Math.max( image.width, image.height ) ) );
+					var canvas = document.createElement( 'canvas' );
+					canvas.width = Math.round( image.width * scale );
+					canvas.height = Math.round( image.height * scale );
+					var context = canvas.getContext( '2d', { willReadFrequently: true } );
+					context.drawImage( image, 0, 0, canvas.width, canvas.height );
+					var pixels = context.getImageData( 0, 0, canvas.width, canvas.height );
+					for ( var i = 0; i < pixels.data.length; i += 4 ) {
+						var gray = pixels.data[ i ] * .299 + pixels.data[ i + 1 ] * .587 + pixels.data[ i + 2 ] * .114;
+						var contrast = Math.max( 0, Math.min( 255, ( gray - 128 ) * 1.35 + 128 ) );
+						pixels.data[ i ] = contrast;
+						pixels.data[ i + 1 ] = contrast;
+						pixels.data[ i + 2 ] = contrast;
+					}
+					context.putImageData( pixels, 0, 0 );
+					resolve( canvas.toDataURL( 'image/png' ) );
+				};
+				image.src = reader.result;
+			};
+			reader.readAsDataURL( file );
+		} );
+	}
+
+	var ocrEngineLoader = null;
+	function loadOcrEngine() {
+		if ( window.Tesseract ) { return Promise.resolve( window.Tesseract ); }
+		if ( ocrEngineLoader ) { return ocrEngineLoader; }
+		ocrEngineLoader = new Promise( function ( resolve, reject ) {
+			var script = document.createElement( 'script' );
+			script.src = OCR_SCRIPT_URL;
+			script.onload = function () { window.Tesseract ? resolve( window.Tesseract ) : reject( new Error( 'OCR 엔진을 찾을 수 없습니다.' ) ); };
+			script.onerror = function () { reject( new Error( 'OCR 엔진을 불러오지 못했습니다.' ) ); };
+			document.head.appendChild( script );
+		} );
+		return ocrEngineLoader;
+	}
+
+	function bindOcrSection( form ) {
+		var captureInput = document.getElementById( 'hlf-ocr-capture' );
+		var preview = document.getElementById( 'hlf-ocr-preview' );
+		var runButton = document.getElementById( 'hlf-ocr-run' );
+		var statusEl = document.getElementById( 'hlf-ocr-status' );
+		var textArea = document.getElementById( 'hlf-ocr-text' );
+		var applyButton = document.getElementById( 'hlf-ocr-apply' );
+		if ( ! captureInput || ! runButton || ! textArea || ! applyButton ) { return; }
+
+		captureInput.addEventListener( 'change', function () {
+			var file = captureInput.files && captureInput.files[ 0 ];
+			runButton.disabled = ! file;
+			if ( ! file ) { preview.hidden = true; return; }
+			var reader = new FileReader();
+			reader.onload = function () {
+				preview.src = reader.result;
+				preview.hidden = false;
+			};
+			reader.readAsDataURL( file );
+		} );
+
+		runButton.addEventListener( 'click', function () {
+			var file = captureInput.files && captureInput.files[ 0 ];
+			if ( ! file ) {
+				statusEl.textContent = '먼저 네이버부동산 캡처 이미지를 선택해 주세요.';
+				return;
+			}
+			runButton.disabled = true;
+			statusEl.textContent = 'OCR 엔진을 준비하고 있습니다. 첫 실행은 조금 걸릴 수 있습니다.';
+
+			loadOcrEngine()
+				.then( function ( tesseract ) {
+					return tesseract.createWorker( 'kor+eng' ).then( function ( worker ) {
+						return ocrPreprocessImage( file ).then( function ( processedImage ) {
+							return worker.recognize( processedImage ).then( function ( result ) {
+								return worker.terminate().then( function () { return result; } );
+							} );
+						} );
+					} );
+				} )
+				.then( function ( result ) {
+					textArea.value = ( result && result.data && result.data.text ) || '';
+					applyOcrValuesToForm( form, parseOcrText( textArea.value ) );
+					statusEl.textContent = 'OCR 추출이 완료되었습니다. 항목을 확인한 뒤 저장해 주세요.';
+					runButton.disabled = false;
+				} )
+				.catch( function () {
+					statusEl.textContent = 'OCR 엔진을 불러오지 못했습니다. 원문 입력란에 텍스트를 직접 넣거나 항목을 수동 입력해 주세요.';
+					runButton.disabled = false;
+				} );
+		} );
+
+		applyButton.addEventListener( 'click', function () {
+			applyOcrValuesToForm( form, parseOcrText( textArea.value ) );
+			statusEl.textContent = 'OCR 원문에서 입력 필드를 채웠습니다. 내용을 확인해 주세요.';
+		} );
+	}
+
 	function readItemForm( form ) {
 		var out = {};
 		ITEM_FIELDS.forEach( function ( def ) {
@@ -680,6 +940,8 @@
 		var itemForm = document.getElementById( 'hlf-item-form' );
 		var cancelButton = document.getElementById( 'hlf-item-cancel' );
 		var itemError = itemForm.querySelector( '[data-hlf-item-error]' );
+
+		bindOcrSection( itemForm );
 
 		if ( addButton && ! addButton.disabled ) {
 			addButton.addEventListener( 'click', function () {
