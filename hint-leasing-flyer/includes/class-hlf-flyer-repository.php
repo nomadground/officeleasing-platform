@@ -164,7 +164,7 @@ final class HLF_Flyer_Repository {
 			'created'      => $flyer->post_date_gmt,
 			'modified'     => $flyer->post_modified_gmt,
 			'url'          => HLF_Routes::flyer_url( $flyer->ID ),
-			'item_count'   => count( HLF_Item_Repository::get_items( $flyer->ID ) ),
+			'item_count'   => HLF_Item_Repository::count_items( $flyer->ID ),
 		);
 		return array_merge( $base, HLF_Meta_Schema::read_flyer( $flyer->ID ) );
 	}

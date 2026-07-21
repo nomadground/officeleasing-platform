@@ -34,6 +34,23 @@ final class HLF_Item_Repository {
 		) );
 	}
 
+	/**
+	 * item 개수만 필요할 때(Flyer 목록의 item_count 표시 등) get_items()보다 가볍게 센다 —
+	 * get_items()는 display_order 정렬을 위해 postmeta JOIN + 전체 포스트 객체 hydration이
+	 * 필요하지만, 개수만 셀 때는 정렬도 postmeta도 필요 없다(fields=>ids로 ID만 가져옴).
+	 * Flyer 목록 REST(HLF_Flyer_Repository::to_array)가 Flyer마다 이 메서드를 한 번씩 호출하므로
+	 * (N+1), 이 한 번의 비용을 최소화하는 것이 목록 페이지네이션 응답 속도에 직접 영향을 준다.
+	 */
+	public static function count_items( int $flyer_id ): int {
+		return count( get_posts( array(
+			'post_type'      => HLF_Post_Types::ITEM,
+			'post_parent'    => $flyer_id,
+			'post_status'    => array( 'publish', 'inherit', 'draft' ),
+			'posts_per_page' => -1,
+			'fields'         => 'ids',
+		) ) );
+	}
+
 	public static function get_item_by_number( int $flyer_id, string $item_number ): ?WP_Post {
 		$items = get_posts( array(
 			'post_type'      => HLF_Post_Types::ITEM,
