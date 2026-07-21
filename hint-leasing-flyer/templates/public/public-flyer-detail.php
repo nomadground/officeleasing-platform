@@ -54,30 +54,40 @@ $map_items    = $has_coords ? array( array(
 
 // 값이 없는 항목은 아예 출력하지 않는다(빈 항목은 모바일 1행 2열 grid에서 자리만 차지하고 정보가
 // 없다). 주차/엘리베이터는 예외 — "불가"/"없음"도 그 자체로 유효한 답이므로 항상 표시한다.
+// 순서는 미리보기 목업의 Property Details 순서(해당층/입주가능일 → 임대·전용면적 → 건축물용도·
+// 사용승인일 → 방향 → 엘리베이터·주차)를 따른다.
+// 각 항목은 ['value'=>단순 텍스트] 또는 ['main'=>..., 'sub'=>...](임대/전용면적처럼 강조색+보조줄
+// 2단 표기가 필요한 경우) 형태로 담는다.
 $basic = array();
 if ( $item['floor_current'] || $item['floor_total'] ) {
-	$basic['해당층'] = trim( ( $item['floor_current'] ?: '-' ) . ' / ' . ( $item['floor_total'] ?: '-' ) . '층' );
+	$basic['해당층'] = array( 'value' => trim( ( $item['floor_current'] ?: '-' ) . ' / ' . ( $item['floor_total'] ?: '-' ) . '층' ) );
+}
+if ( $item['available_date_text'] ) {
+	$basic['입주가능일'] = array( 'value' => $item['available_date_text'] );
 }
 if ( $item['lease_area_sqm'] ) {
-	$basic['공급면적'] = number_format( (float) $item['lease_area_sqm'], 1 ) . '㎡ (' . number_format( $metrics['lease_pyeong'], 1 ) . '평)';
+	$basic['임대면적'] = array(
+		'main' => number_format( (float) $item['lease_area_sqm'], 1 ) . '㎡',
+		'sub'  => number_format( $metrics['lease_pyeong'], 1 ) . '평',
+	);
 }
 if ( $item['exclusive_area_sqm'] ) {
-	$basic['전용면적'] = number_format( (float) $item['exclusive_area_sqm'], 1 ) . '㎡ (' . number_format( $metrics['exclusive_pyeong'], 1 ) . '평)';
-}
-if ( $item['direction'] ) {
-	$basic['방향'] = $item['direction'];
-}
-$basic['주차']       = $item['parking_available'] ? ( $item['total_parking'] ?: '가능' ) : '불가';
-$basic['엘리베이터'] = $item['elevator_available'] ? '있음' : '없음';
-if ( $item['available_date_text'] ) {
-	$basic['입주가능일'] = $item['available_date_text'];
-}
-if ( $item['approval_date'] ) {
-	$basic['사용승인일'] = $item['approval_date'];
+	$basic['전용면적'] = array(
+		'main' => number_format( (float) $item['exclusive_area_sqm'], 1 ) . '㎡',
+		'sub'  => number_format( $metrics['exclusive_pyeong'], 1 ) . '평',
+	);
 }
 if ( $item['building_use'] ) {
-	$basic['건축물용도'] = $item['building_use'];
+	$basic['건축물용도'] = array( 'value' => $item['building_use'] );
 }
+if ( $item['approval_date'] ) {
+	$basic['사용승인일'] = array( 'value' => $item['approval_date'] );
+}
+if ( $item['direction'] ) {
+	$basic['방향(주된출입구)'] = array( 'value' => $item['direction'] );
+}
+$basic['엘리베이터'] = array( 'value' => $item['elevator_available'] ? '있음' : '없음' );
+$basic['주차']       = array( 'value' => $item['parking_available'] ? ( $item['total_parking'] ?: '가능' ) : '불가' );
 ?>
 <!doctype html>
 <html <?php language_attributes(); ?>>
@@ -96,24 +106,23 @@ if ( $item['building_use'] ) {
 	<div class="hlf-shell">
 		<header class="hlf-header">
 			<a class="hlf-back" href="<?php echo esc_url( $flyer['url'] ); ?>">← 목록</a>
-			<span class="hlf-flyer-number">
-				<span class="hlf-item-badge hlf-detail-badge" style="--hlf-item-accent:<?php echo esc_attr( hlf_item_accent_color( $item_order ) ); ?>"><?php echo esc_html( sprintf( '%02d', $item_order + 1 ) ); ?></span>
-				<?php echo esc_html( $flyer['flyer_number'] . ' · ' . $item['item_number'] ); ?>
+			<span class="hlf-item-badge hlf-detail-badge" style="--hlf-item-accent:<?php echo esc_attr( hlf_item_accent_color( $item_order ) ); ?>"><?php echo esc_html( sprintf( '%02d', $item_order + 1 ) ); ?></span>
+			<span class="hlf-header-address">
+				<span class="hlf-header-address-main"><?php echo esc_html( $address ); ?></span>
+				<?php if ( $address_parts['sub'] ) : ?>
+					<span class="hlf-header-address-sub"><?php echo esc_html( $address_parts['sub'] ); ?></span>
+				<?php endif; ?>
 			</span>
-			<button type="button" class="hlf-share-button" data-hlf-share-url="<?php echo esc_attr( HLF_Routes::item_url( $flyer['id'], $item['item_number'] ) ); ?>">
-				공유 <span class="hlf-share-status" data-hlf-share-status></span>
-			</button>
+			<span class="hlf-header-actions">
+				<button type="button" class="hlf-share-button" data-hlf-share-url="<?php echo esc_attr( HLF_Routes::item_url( $flyer['id'], $item['item_number'] ) ); ?>">공유<span class="hlf-share-status" data-hlf-share-status></span></button>
+				<button type="button" class="hlf-print-button" data-hlf-print>인쇄</button>
+			</span>
 		</header>
 
-		<h1 class="hlf-title"><?php echo esc_html( $address ); ?></h1>
-		<?php if ( $address_parts['sub'] ) : ?>
-			<p class="hlf-subaddress"><?php echo esc_html( $address_parts['sub'] ); ?></p>
-		<?php endif; ?>
-
 		<?php
-		// 좌측: 사진 갤러리 / 우측: 지도(MVP 레이아웃) — 사진이 없으면 지도(또는 좌표 없음 안내)만
-		// 전체 너비로 넓어진다(hlf-detail-hero--map-only). 지도 쪽은 좌표 유무와 무관하게 항상 뭔가
-		// 렌더링되므로(실제 지도 또는 안내문) 오른쪽 칸이 비어 보이는 일은 없다.
+		// 좌측: 사진 갤러리 / 우측: 지도(가로 50:50, 높이도 맞춤) — 사진이 없으면 지도(또는 좌표 없음
+		// 안내)만 전체 너비로 넓어진다(hlf-detail-hero--map-only). 지도 쪽은 좌표 유무와 무관하게
+		// 항상 뭔가 렌더링되므로(실제 지도 또는 안내문) 오른쪽 칸이 비어 보이는 일은 없다.
 		?>
 		<div class="hlf-detail-hero<?php echo empty( $photo_ids ) ? ' hlf-detail-hero--map-only' : ''; ?>">
 			<?php if ( ! empty( $photo_ids ) ) : ?>
@@ -148,13 +157,9 @@ if ( $item['building_use'] ) {
 					>
 						<p class="hlf-map-empty">지도를 불러오는 중입니다…</p>
 					</div>
-					<p class="hlf-map-address-fallback">
-						<?php echo esc_html( $address ); ?> ·
-						<a href="<?php echo esc_url( 'https://map.kakao.com/link/map/' . rawurlencode( $address ) . ',' . $item['latitude'] . ',' . $item['longitude'] ); ?>" target="_blank" rel="noreferrer">카카오맵에서 보기 ↗</a>
-					</p>
 					<div class="hlf-map-print-fallback">
 						<div class="hlf-map-print-fallback-item">
-							<span class="hlf-map-print-fallback-index">01</span>
+							<span class="hlf-item-badge hlf-map-print-fallback-index" style="--hlf-item-accent:<?php echo esc_attr( hlf_item_accent_color( $item_order ) ); ?>"><?php echo esc_html( sprintf( '%02d', $item_order + 1 ) ); ?></span>
 							<span><?php echo esc_html( $address ); ?></span>
 						</div>
 					</div>
@@ -164,48 +169,60 @@ if ( $item['building_use'] ) {
 			<?php endif; ?>
 		</div>
 
-		<section class="hlf-lease-metrics hlf-detail-metrics">
-			<div class="hlf-lease-metric">
-				<span class="hlf-lease-metric-label">보증금</span>
-				<span class="hlf-lease-metric-value"><?php echo esc_html( number_format( (float) $item['deposit_manwon'] ) ); ?>만원</span>
-				<span class="hlf-lease-metric-sub">공급평당 <?php echo esc_html( number_format( $metrics['deposit_per_lease_pyeong'], 1 ) ); ?>만원</span>
+		<section class="hlf-panel">
+			<div class="hlf-panel-heading-row">
+				<h2 class="hlf-panel-heading">Leasing Info</h2>
+				<?php if ( $item['features'] ) : ?>
+					<p class="hlf-panel-note"><?php echo esc_html( $item['features'] ); ?></p>
+				<?php endif; ?>
 			</div>
-			<div class="hlf-lease-metric">
-				<span class="hlf-lease-metric-label">임대료</span>
-				<span class="hlf-lease-metric-value"><?php echo esc_html( number_format( (float) $item['monthly_rent_manwon'] ) ); ?>만원</span>
-				<span class="hlf-lease-metric-sub">공급평당 <?php echo esc_html( number_format( $metrics['rent_per_lease_pyeong'], 1 ) ); ?>만원</span>
-			</div>
-			<div class="hlf-lease-metric">
-				<span class="hlf-lease-metric-label">관리비</span>
-				<span class="hlf-lease-metric-value"><?php echo esc_html( number_format( (float) $item['maintenance_fee_manwon'] ) ); ?>만원</span>
-				<span class="hlf-lease-metric-sub">공급평당 <?php echo esc_html( number_format( $metrics['maintenance_per_lease_pyeong'], 1 ) ); ?>만원</span>
-			</div>
-			<div class="hlf-lease-metric">
-				<span class="hlf-lease-metric-label">환산임대료(NOC)</span>
-				<span class="hlf-lease-metric-value"><?php echo esc_html( number_format( $metrics['noc'], 1 ) ); ?>만원/전용평</span>
+			<div class="hlf-lease-metrics hlf-detail-metrics">
+				<div class="hlf-lease-metric">
+					<span class="hlf-lease-metric-label">보증금</span>
+					<span class="hlf-lease-metric-value"><?php echo esc_html( number_format( (float) $item['deposit_manwon'] ) ); ?>만원</span>
+					<span class="hlf-lease-metric-sub">임대평당 <?php echo esc_html( number_format( $metrics['deposit_per_lease_pyeong'], 1 ) ); ?>만원</span>
+				</div>
+				<div class="hlf-lease-metric">
+					<span class="hlf-lease-metric-label">임대료</span>
+					<span class="hlf-lease-metric-value"><?php echo esc_html( number_format( (float) $item['monthly_rent_manwon'] ) ); ?>만원</span>
+					<span class="hlf-lease-metric-sub">임대평당 <?php echo esc_html( number_format( $metrics['rent_per_lease_pyeong'], 1 ) ); ?>만원</span>
+				</div>
+				<div class="hlf-lease-metric">
+					<span class="hlf-lease-metric-label">관리비</span>
+					<span class="hlf-lease-metric-value"><?php echo esc_html( number_format( (float) $item['maintenance_fee_manwon'] ) ); ?>만원</span>
+					<span class="hlf-lease-metric-sub">임대평당 <?php echo esc_html( number_format( $metrics['maintenance_per_lease_pyeong'], 1 ) ); ?>만원</span>
+				</div>
+				<div class="hlf-lease-metric hlf-lease-metric--noc">
+					<span class="hlf-lease-metric-label">환산임대료</span>
+					<span class="hlf-lease-metric-value"><?php echo esc_html( number_format( $metrics['noc'], 1 ) ); ?>만원</span>
+					<span class="hlf-lease-metric-sub">NOC</span>
+				</div>
 			</div>
 		</section>
 
-		<?php if ( $item['features'] ) : ?>
-			<p class="hlf-features"><?php echo esc_html( $item['features'] ); ?></p>
-		<?php endif; ?>
-
-		<?php
-		// 글자 수 기준으로 넓힐지 정하면 한글 조합면적 표기("2,036.4㎡ (616.0평)" 등, 17자)까지
-		// 오탐되어 GPT/Claude 요청서의 2열 짝(전용면적|임대면적 등)이 깨진다. 그래서 실제로 자유
-		// 텍스트라 길어질 수 있는 필드(건축물용도 — 복합 용도가 나열될 수 있음)만 이름으로 지정한다.
-		$basic_wide_labels = array( '건축물용도' );
-		?>
-		<dl class="hlf-property-details">
-			<?php foreach ( $basic as $label => $value ) :
-				$is_wide = in_array( $label, $basic_wide_labels, true );
-				?>
-				<div class="hlf-basic-item<?php echo $is_wide ? ' hlf-basic-item--wide' : ''; ?>">
-					<dt><?php echo esc_html( $label ); ?></dt>
-					<dd><?php echo esc_html( $value ); ?></dd>
-				</div>
-			<?php endforeach; ?>
-		</dl>
+		<section class="hlf-panel">
+			<h2 class="hlf-panel-heading">Property Details</h2>
+			<?php
+			// 글자 수 기준으로 넓힐지 정하면 한글 조합면적 표기까지 오탐되어 2열 짝이 깨진다. 그래서
+			// 실제로 자유 텍스트라 길어질 수 있는 필드(건축물용도 — 복합 용도가 나열될 수 있음)만
+			// 이름으로 지정한다.
+			$basic_wide_labels = array( '건축물용도' );
+			?>
+			<dl class="hlf-property-details">
+				<?php foreach ( $basic as $label => $entry ) :
+					$is_wide = in_array( $label, $basic_wide_labels, true );
+					?>
+					<div class="hlf-basic-item<?php echo $is_wide ? ' hlf-basic-item--wide' : ''; ?>">
+						<dt><?php echo esc_html( $label ); ?></dt>
+						<?php if ( isset( $entry['main'] ) ) : ?>
+							<dd class="hlf-basic-item--accent"><span class="hlf-basic-value-main"><?php echo esc_html( $entry['main'] ); ?></span><span class="hlf-basic-value-sub"><?php echo esc_html( $entry['sub'] ); ?></span></dd>
+						<?php else : ?>
+							<dd><?php echo esc_html( $entry['value'] ); ?></dd>
+						<?php endif; ?>
+					</div>
+				<?php endforeach; ?>
+			</dl>
+		</section>
 
 		<?php
 		// 문의처 우선순위: 이 매물의 개별 담당자(override, item_fields의 contact_name/contact_phone)
@@ -215,7 +232,7 @@ if ( $item['building_use'] ) {
 		?>
 		<footer class="hlf-footer">
 			<div class="hlf-footer-row">
-				<span>© HINT <?php echo esc_html( gmdate( 'Y' ) ); ?> · <?php echo esc_html( $flyer['flyer_number'] ); ?></span>
+				<p class="hlf-footer-copyright">© HINT Co., Ltd. All Rights Reserved. 무단 복제 및 재배포 금지</p>
 				<span class="hlf-footer-contact">
 					<?php if ( $contact['name'] ) : ?>
 						<?php echo esc_html( $contact['name'] ); ?> ·
@@ -223,11 +240,6 @@ if ( $item['building_use'] ) {
 					<a href="<?php echo esc_attr( 'tel:' . preg_replace( '/[^0-9+]/', '', $contact['phone'] ) ); ?>"><?php echo esc_html( $contact['phone'] ); ?></a>
 				</span>
 			</div>
-			<p class="hlf-footer-copyright">
-				본 자료는 힌트부동산중개법인의 임대 제안 자료입니다.<br>
-				무단 복제, 재배포, 수정 및 상업적 이용을 금합니다.<br>
-				© HINT Realty Co., Ltd. All Rights Reserved.
-			</p>
 		</footer>
 	</div>
 

@@ -1,6 +1,7 @@
 <?php
 /**
- * 공개 Flyer 목록 (Phase 1 골격 + Phase 4: NOC 비교차트/위치 비교 지도). 인쇄 밀도는 Phase 4+ 후속.
+ * 공개 Flyer 목록 (Phase 1 골격 + Phase 4: NOC 비교차트/위치 비교 지도 + UX 완성 패치). 인쇄 밀도는
+ * Phase 4+ 후속.
  * $hlf_context: ['flyer'=>[], 'status'=>string, 'items'=>[[...]]] — HLF_Routes::render()가 주입.
  *
  * 서버 렌더링 이유(요청서 1-E): SEO/공유 안정성, 공개 데이터 노출 최소화.
@@ -69,23 +70,20 @@ $kakao_js_key = defined( 'HLF_KAKAO_JS_KEY' ) ? HLF_KAKAO_JS_KEY : '';
 <body class="hlf-public hlf-list">
 	<div class="hlf-shell">
 		<header class="hlf-header">
-			<span class="hlf-brand">HINT Leasing Flyer</span>
-			<span class="hlf-flyer-number"><?php echo esc_html( $flyer['flyer_number'] ); ?></span>
+			<span class="hlf-brand"><span class="hlf-brand-main">HINT</span><span class="hlf-brand-sub">㈜힌트부동산중개법인</span></span>
 			<?php if ( 'archived' === $status ) : ?>
 				<span class="hlf-badge hlf-badge--archived">보관된 목록</span>
 			<?php elseif ( 'draft' === $status ) : ?>
 				<span class="hlf-badge hlf-badge--draft">미발행 미리보기</span>
 			<?php endif; ?>
+			<span class="hlf-header-actions">
+				<button type="button" class="hlf-share-button" data-hlf-share-url="<?php echo esc_attr( $flyer['url'] ); ?>">공유<span class="hlf-share-status" data-hlf-share-status></span></button>
+				<button type="button" class="hlf-print-button" data-hlf-print>인쇄</button>
+			</span>
 		</header>
 
 		<div class="hlf-title-row">
-			<div>
-				<h1 class="hlf-title"><?php echo esc_html( $flyer['title'] ); ?></h1>
-				<p class="hlf-result-count"><?php echo esc_html( count( $items ) ); ?>개 매물</p>
-			</div>
-			<button type="button" class="hlf-share-button" data-hlf-share-url="<?php echo esc_attr( $flyer['url'] ); ?>">
-				공유 <span class="hlf-share-status" data-hlf-share-status></span>
-			</button>
+			<p class="hlf-result-count"><?php echo esc_html( count( $items ) ); ?>개 매물</p>
 		</div>
 
 		<?php if ( empty( $items ) ) : ?>
@@ -103,25 +101,30 @@ $kakao_js_key = defined( 'HLF_KAKAO_JS_KEY' ) ? HLF_KAKAO_JS_KEY : '';
 					<li class="hlf-listing-card">
 						<a class="hlf-listing-link" href="<?php echo esc_url( $detail_url ); ?>" data-hlf-listing-key="<?php echo esc_attr( $item['item_number'] ); ?>">
 							<span class="hlf-listing-main">
-								<span class="hlf-item-badge hlf-listing-index" style="--hlf-item-accent:<?php echo esc_attr( hlf_item_accent_color( $i ) ); ?>"><?php echo esc_html( sprintf( '%02d', $i + 1 ) ); ?></span>
-								<span class="hlf-listing-thumb"><?php
-									if ( ! empty( $item['exterior_image_id'] ) ) {
-										echo wp_get_attachment_image( (int) $item['exterior_image_id'], 'hlf-item-thumb', false, array( 'alt' => esc_attr( $address ), 'loading' => 'lazy' ) );
-									}
-								?></span>
-								<span class="hlf-listing-address-block">
-									<span class="hlf-listing-address"><?php echo esc_html( $address ); ?></span>
-									<?php if ( $sub_address ) : ?>
-										<span class="hlf-listing-subaddress"><?php echo esc_html( $sub_address ); ?></span>
-									<?php endif; ?>
+								<span class="hlf-listing-idaddr">
+									<span class="hlf-item-badge hlf-listing-index" style="--hlf-item-accent:<?php echo esc_attr( hlf_item_accent_color( $i ) ); ?>"><?php echo esc_html( sprintf( '%02d', $i + 1 ) ); ?></span>
+									<span class="hlf-listing-address-block">
+										<span class="hlf-listing-address"><span class="hlf-address-highlight"><?php echo esc_html( $address ); ?></span></span>
+										<?php if ( $sub_address ) : ?>
+											<span class="hlf-listing-subaddress"><?php echo esc_html( $sub_address ); ?></span>
+										<?php endif; ?>
+									</span>
 								</span>
-								<span class="hlf-listing-floor">
-									<span class="hlf-lease-metric-label">층</span>
-									<span class="hlf-listing-floor-value"><?php echo esc_html( $floor ); ?></span>
-								</span>
-								<span class="hlf-listing-area">
-									<span class="hlf-lease-metric-label">전용면적</span>
-									<span class="hlf-listing-area-value"><?php echo esc_html( number_format( $metrics['exclusive_pyeong'], 1 ) ); ?>평</span>
+								<span class="hlf-listing-meta">
+									<span class="hlf-listing-floor">
+										<span class="hlf-lease-metric-label">층</span>
+										<span class="hlf-listing-floor-value"><?php echo esc_html( $floor ); ?></span>
+									</span>
+									<span class="hlf-listing-lease-area">
+										<span class="hlf-lease-metric-label">임대면적</span>
+										<span class="hlf-listing-area-value"><?php echo esc_html( $item['lease_area_sqm'] ? number_format( (float) $item['lease_area_sqm'], 1 ) . '㎡' : '-' ); ?></span>
+										<span class="hlf-listing-area-sub"><?php echo esc_html( number_format( $metrics['lease_pyeong'], 1 ) ); ?>평</span>
+									</span>
+									<span class="hlf-listing-area">
+										<span class="hlf-lease-metric-label">전용면적</span>
+										<span class="hlf-listing-area-value"><?php echo esc_html( $item['exclusive_area_sqm'] ? number_format( (float) $item['exclusive_area_sqm'], 1 ) . '㎡' : '-' ); ?></span>
+										<span class="hlf-listing-area-sub"><?php echo esc_html( number_format( $metrics['exclusive_pyeong'], 1 ) ); ?>평</span>
+									</span>
 								</span>
 								<span class="hlf-lease-metrics">
 									<span class="hlf-lease-metric">
@@ -140,14 +143,12 @@ $kakao_js_key = defined( 'HLF_KAKAO_JS_KEY' ) ? HLF_KAKAO_JS_KEY : '';
 										<span class="hlf-lease-metric-sub">평당 <?php echo esc_html( number_format( $metrics['maintenance_per_lease_pyeong'], 1 ) ); ?>만원</span>
 									</span>
 									<span class="hlf-lease-metric hlf-lease-metric--noc">
-										<span class="hlf-lease-metric-label">환산임대료(NOC)</span>
-										<span class="hlf-lease-metric-value"><?php echo esc_html( number_format( $metrics['noc'], 1 ) ); ?>만원/전용평</span>
+										<span class="hlf-lease-metric-label">환산임대료</span>
+										<span class="hlf-lease-metric-value"><?php echo esc_html( number_format( $metrics['noc'], 1 ) ); ?>만원</span>
+										<span class="hlf-lease-metric-sub">(NOC)</span>
 									</span>
 								</span>
 							</span>
-							<?php if ( $item['features'] ) : ?>
-								<span class="hlf-listing-features"><?php echo esc_html( $item['features'] ); ?></span>
-							<?php endif; ?>
 						</a>
 					</li>
 				<?php endforeach; ?>
@@ -157,7 +158,10 @@ $kakao_js_key = defined( 'HLF_KAKAO_JS_KEY' ) ? HLF_KAKAO_JS_KEY : '';
 				<section class="hlf-noc-chart-panel" aria-labelledby="hlf-noc-chart-title">
 					<div class="hlf-noc-chart-heading">
 						<h2 id="hlf-noc-chart-title">매물별 환산임대료 비교</h2>
-						<p class="hlf-noc-chart-unit">단위: 만원/전용평</p>
+						<div class="hlf-noc-chart-heading-side">
+							<span class="hlf-noc-chart-eyebrow">NOC COMPARISON</span>
+							<p class="hlf-noc-chart-unit">단위:만원/전용면적(평)</p>
+						</div>
 					</div>
 					<div
 						class="hlf-noc-chart"
@@ -166,7 +170,6 @@ $kakao_js_key = defined( 'HLF_KAKAO_JS_KEY' ) ? HLF_KAKAO_JS_KEY : '';
 						aria-label="현재 리스트 매물의 NOC(환산임대료) 비교 차트"
 						data-hlf-noc-items="<?php echo esc_attr( wp_json_encode( $chart_items ) ); ?>"
 					></div>
-					<p class="hlf-noc-chart-note">※ 비교 가독성을 위해 현재 매물 범위에 맞춰 막대 높이를 조정했습니다.</p>
 				</section>
 			<?php endif; ?>
 
@@ -205,7 +208,7 @@ $kakao_js_key = defined( 'HLF_KAKAO_JS_KEY' ) ? HLF_KAKAO_JS_KEY : '';
 		<?php $contact = HLF_Flyer_Repository::public_contact( $flyer ); ?>
 		<footer class="hlf-footer">
 			<div class="hlf-footer-row">
-				<span>© HINT <?php echo esc_html( gmdate( 'Y' ) ); ?> · <?php echo esc_html( $flyer['flyer_number'] ); ?></span>
+				<p class="hlf-footer-copyright">© HINT Co., Ltd. All Rights Reserved. 무단 복제 및 재배포 금지</p>
 				<span class="hlf-footer-contact">
 					<?php if ( $contact['name'] ) : ?>
 						<?php echo esc_html( $contact['name'] ); ?> ·
@@ -213,11 +216,6 @@ $kakao_js_key = defined( 'HLF_KAKAO_JS_KEY' ) ? HLF_KAKAO_JS_KEY : '';
 					<a href="<?php echo esc_attr( 'tel:' . preg_replace( '/[^0-9+]/', '', $contact['phone'] ) ); ?>"><?php echo esc_html( $contact['phone'] ); ?></a>
 				</span>
 			</div>
-			<p class="hlf-footer-copyright">
-				본 자료는 힌트부동산중개법인의 임대 제안 자료입니다.<br>
-				무단 복제, 재배포, 수정 및 상업적 이용을 금합니다.<br>
-				© HINT Realty Co., Ltd. All Rights Reserved.
-			</p>
 		</footer>
 	</div>
 	<script src="<?php echo esc_url( HLF_URL . 'assets/js/public-flyer.js?v=' . HLF_VERSION ); ?>" defer></script>
