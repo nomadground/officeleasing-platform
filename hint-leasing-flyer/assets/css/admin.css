@@ -80,6 +80,29 @@
 .hlf-admin .hlf-ocr-preview { display: block; max-width: 100%; max-height: 220px; margin: 8px 0; object-fit: contain; background: #f0f0f1; border-radius: 4px; }
 .hlf-admin .hlf-ocr-preview[hidden] { display: none; }
 .hlf-admin .hlf-ocr-textarea { width: 100%; font-family: monospace; font-size: 12px; resize: vertical; }
+.hlf-admin .hlf-ocr-mode { margin: 10px 0; padding: 8px 10px; border: 1px solid #dcdcde; border-radius: 4px; }
+.hlf-admin .hlf-ocr-mode legend { padding: 0 4px; font-size: 12px; font-weight: 600; }
+.hlf-admin .hlf-ocr-mode label { display: inline-flex; align-items: center; gap: 4px; margin-right: 16px; font-size: 13px; font-weight: normal; }
+.hlf-admin .hlf-ocr-confirm-list { margin-top: 10px; padding: 10px 12px; background: #fcf9e8; border: 1px solid #e0d489; border-radius: 4px; }
+.hlf-admin .hlf-ocr-confirm-list[hidden] { display: none; }
+.hlf-admin .hlf-ocr-confirm-list ul { margin: 6px 0; padding-left: 18px; }
+.hlf-admin .hlf-ocr-confirm-old { color: #787c82; text-decoration: line-through; }
+.hlf-admin .hlf-ocr-confirm-new { font-weight: 600; }
+/* 자동입력된 필드 강조 — 방금 OCR/주소검색으로 채워졌음을 표시(사용자 수정 또는 일정 시간 후 자동 해제). */
+.hlf-admin .hlf-field--autofilled { background: #fff8db; border-color: #dba617; }
+
+/* 주소 검색 후보 목록 — "다음" 우편번호 검색처럼 클릭으로 확정(자동확정 없음). */
+.hlf-admin .hlf-address-results { margin: 6px 0 0; padding: 0; list-style: none; border: 1px solid #dcdcde; border-radius: 4px; max-height: 220px; overflow-y: auto; }
+.hlf-admin .hlf-address-results[hidden] { display: none; }
+.hlf-admin .hlf-address-results li { border-bottom: 1px solid #f0f0f1; }
+.hlf-admin .hlf-address-results li:last-child { border-bottom: 0; }
+.hlf-admin .hlf-address-candidate { display: flex; flex-direction: column; width: 100%; padding: 8px 10px; text-align: left; background: none; border: 0; cursor: pointer; }
+.hlf-admin .hlf-address-candidate:hover { background: #f0f6fc; }
+.hlf-admin .hlf-address-candidate strong { font-size: 13px; }
+.hlf-admin .hlf-address-candidate span { color: #646970; font-size: 12px; }
+/* 주소 확정 후 작은 지도 미리보기(요청서 3-7) — 좌표 없거나 SDK 로드 실패 시 그냥 숨긴다. */
+.hlf-admin .hlf-address-map { width: 100%; height: 180px; margin-top: 10px; background: #f0f0f1; border-radius: 4px; }
+.hlf-admin .hlf-address-map[hidden] { display: none; }
 
 /* 매물 사진 — WordPress Media Library(wp.media)에서 선택. */
 .hlf-admin .hlf-image-section { margin-top: 16px; padding-top: 16px; border-top: 1px solid #dcdcde; }

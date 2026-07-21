@@ -143,7 +143,7 @@ final class HLF_REST_Controller {
 			'callback'            => array( __CLASS__, 'search_kakao_address' ),
 			'permission_callback' => array( __CLASS__, 'can_edit_flyers' ),
 			'args'                => array(
-				'q' => array( 'type' => 'string', 'required' => true ),
+				'q' => array( 'type' => 'string', 'required' => true, 'maxLength' => 200 ),
 			),
 		) );
 	}
@@ -347,20 +347,32 @@ final class HLF_REST_Controller {
 
 	/* ---------------- 카카오 주소 검색 ---------------- */
 
+	/** 한 번에 클라이언트로 내려주는 주소 후보 최대 개수(카카오 응답 그대로 다 주지 않고 상위 N개만). */
+	const KAKAO_ADDRESS_MAX_CANDIDATES = 10;
+
 	/**
-	 * 지번주소로 도로명주소·좌표를 조회한다(카카오 Local API, https://dapi.kakao.com/v2/local/search/address.json).
-	 * REST API 키는 wp-config.php의 define('HLF_KAKAO_REST_API_KEY', ...)로만 받는다(Naver 자격증명과
-	 * 같은 패턴 — 옵션 테이블 방식 채택 안 함). 키가 없으면 501을 반환해 "주소 검색 버튼만 비활성화되고
-	 * 나머지 관리자 화면은 그대로 동작"하도록 한다(Item 위도/경도 수동 입력은 이 기능과 무관하게 항상 가능).
+	 * 지번주소로 도로명주소·좌표 후보 목록을 조회한다(카카오 Local API,
+	 * https://dapi.kakao.com/v2/local/search/address.json). REST API 키는 wp-config.php의
+	 * define('HLF_KAKAO_REST_API_KEY', ...)로만 받는다(Naver 자격증명과 같은 패턴 — 옵션 테이블 방식
+	 * 채택 안 함). 키가 없으면 501을 반환해 "주소 검색 버튼만 비활성화되고 나머지 관리자 화면은 그대로
+	 * 동작"하도록 한다(Item 위도/경도 수동 입력은 이 기능과 무관하게 항상 가능).
+	 *
+	 * 결과가 1건이든 여러 건이든 서버가 자동으로 확정하지 않는다 — 관리자 화면이 항상 후보 목록을
+	 * 보여주고 사용자가 클릭으로 확정한다(회원가입 폼의 주소검색 팝업과 같은 패턴, 오탐으로 엉뚱한
+	 * 좌표가 저장되는 것을 막기 위함). 이 엔드포인트는 정렬만 책임지고, 확정 클릭은 클라이언트가
+	 * 이미 받은 목록 중 하나를 그대로 골라 폼에 채우는 것뿐이라 별도 확정 API가 필요 없다.
 	 */
 	public static function search_kakao_address( WP_REST_Request $request ) {
 		if ( ! defined( 'HLF_KAKAO_REST_API_KEY' ) || ! HLF_KAKAO_REST_API_KEY ) {
-			return new WP_Error( 'hlf_kakao_not_configured', '카카오 주소 검색 설정이 필요합니다. 관리자에게 문의해 주세요.', array( 'status' => 501 ) );
+			return new WP_Error( 'hlf_kakao_not_configured', '카카오 REST API 키가 설정되지 않았습니다.', array( 'status' => 501 ) );
 		}
 
 		$query = trim( (string) ( $request['q'] ?? '' ) );
 		if ( '' === $query ) {
 			return new WP_Error( 'hlf_kakao_query_required', '검색할 주소를 입력해 주세요.', array( 'status' => 400 ) );
+		}
+		if ( mb_strlen( $query ) > 200 ) {
+			return new WP_Error( 'hlf_kakao_query_too_long', '검색어가 너무 깁니다.', array( 'status' => 400 ) );
 		}
 
 		$response = wp_remote_get(
@@ -371,26 +383,94 @@ final class HLF_REST_Controller {
 			)
 		);
 		if ( is_wp_error( $response ) ) {
-			return new WP_Error( 'hlf_kakao_request_failed', '주소 조회 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.', array( 'status' => 502 ) );
+			return new WP_Error( 'hlf_kakao_request_failed', '주소 검색 중 오류가 발생했습니다.', array( 'status' => 502 ) );
 		}
 
 		$code = wp_remote_retrieve_response_code( $response );
 		if ( 200 !== $code ) {
-			return new WP_Error( 'hlf_kakao_request_failed', '주소 조회에 실패했습니다(카카오 응답 코드 ' . $code . ').', array( 'status' => 502 ) );
+			return new WP_Error( 'hlf_kakao_request_failed', '주소 검색 중 오류가 발생했습니다.', array( 'status' => 502 ) );
 		}
 
-		$body   = json_decode( wp_remote_retrieve_body( $response ), true );
-		$result = $body['documents'][0] ?? null;
-		if ( ! $result ) {
-			return new WP_Error( 'hlf_kakao_no_result', '일치하는 주소를 찾지 못했습니다. 지번을 더 정확하게 입력해 주세요.', array( 'status' => 404 ) );
+		$body      = json_decode( wp_remote_retrieve_body( $response ), true );
+		$documents = is_array( $body['documents'] ?? null ) ? $body['documents'] : array();
+		if ( empty( $documents ) ) {
+			return new WP_Error( 'hlf_kakao_no_result', '주소 검색 결과를 찾지 못했습니다.', array( 'status' => 404 ) );
 		}
 
-		return rest_ensure_response( array(
-			'road_address' => (string) ( $result['road_address']['address_name'] ?? '' ),
-			'lot_address'  => (string) ( $result['address']['address_name'] ?? $query ),
-			'latitude'     => (string) ( $result['y'] ?? '' ),
-			'longitude'    => (string) ( $result['x'] ?? '' ),
-		) );
+		$sorted   = self::sort_kakao_candidates( $documents, $query );
+		$results  = array_map( array( __CLASS__, 'map_kakao_document' ), array_slice( $sorted, 0, self::KAKAO_ADDRESS_MAX_CANDIDATES ) );
+
+		return rest_ensure_response( array( 'results' => $results ) );
+	}
+
+	/** 카카오 문서(document) 1건을 관리자 폼이 바로 쓰는 필드 이름(road_address/lot_address/latitude/longitude)으로 변환. */
+	private static function map_kakao_document( array $doc ): array {
+		return array(
+			'road_address'      => (string) ( $doc['road_address']['address_name'] ?? '' ),
+			'lot_address'       => (string) ( $doc['address']['address_name'] ?? $doc['address_name'] ?? '' ),
+			'latitude'          => (string) ( $doc['y'] ?? '' ),
+			'longitude'         => (string) ( $doc['x'] ?? '' ),
+			'region_1depth_name' => (string) ( $doc['address']['region_1depth_name'] ?? '' ),
+			'region_2depth_name' => (string) ( $doc['address']['region_2depth_name'] ?? '' ),
+			'region_3depth_name' => (string) ( $doc['address']['region_3depth_name'] ?? '' ),
+		);
+	}
+
+	/**
+	 * 우선순위 4단계(요청서 3-5): ① 입력 지번주소와 정확히 일치(법정동+본번·부번이 일치하고, 그 뒤에
+	 * 다른 텍스트가 붙지 않는 "깨끗한" 지번주소) → ② 동일 법정동+본번·부번 일치(뒤에 참고용 텍스트가
+	 * 더 붙어 있어도 인정) → ③ 지번(address) 타입이지만 본번·부번이 다른 결과 → ④ 나머지(지번 정보
+	 * 자체가 없는 도로명 전용 결과 등). "정확히 일치"를 전체 문자열 완전 일치로 판정하지 않는 이유:
+	 * 카카오는 항상 "시/도 + 구/군 + 동 + 번지" 풀네임으로 응답하는데, 사용자는 보통 "삼성동 159-8"처럼
+	 * 짧게만 입력하므로 전체 문자열 일치는 사실상 절대 만족되지 않는다 — 법정동+번지 일치 여부와
+	 * "번지 뒤에 잡음이 붙어있는지"로 ①/②를 가른다.
+	 *
+	 * usort는 안정 정렬이 아니므로(PHP 명세상 보장 안 됨) 원본 인덱스를 tie-breaker로 함께 비교해
+	 * 같은 순위 안에서는 카카오 응답 순서를 그대로 보존한다.
+	 */
+	private static function sort_kakao_candidates( array $documents, string $query ): array {
+		list( $query_main_no, $query_sub_no ) = self::extract_bunji( $query );
+
+		$scored = array();
+		foreach ( $documents as $index => $doc ) {
+			$address = $doc['address'] ?? null;
+			$score   = 4; // ④ 나머지(지번 정보 없음).
+
+			if ( is_array( $address ) ) {
+				$score = 3; // ③ 지번 타입이지만 본번·부번 불일치.
+
+				$region_3 = (string) ( $address['region_3depth_name'] ?? '' );
+				$main_no  = (string) ( $address['main_address_no'] ?? '' );
+				$sub_no   = (string) ( $address['sub_address_no'] ?? '' );
+				$same_bunji = $query_main_no !== '' && $main_no === $query_main_no
+					&& ( $query_sub_no === '' ? true : $sub_no === $query_sub_no )
+					&& ( '' === $region_3 || false !== mb_strpos( $query, $region_3 ) );
+
+				if ( $same_bunji ) {
+					$address_name = rtrim( (string) ( $address['address_name'] ?? '' ) );
+					$bunji_text   = $sub_no !== '' ? ( $main_no . '-' . $sub_no ) : $main_no;
+					// 번지 숫자 뒤에 다른 텍스트가 붙어 있지 않으면(문자열이 정확히 그 번지로 끝나면)
+					// "깨끗한" 지번주소로 보고 ①, 붙어 있으면(예: "…159-8번지 인근") ②로 내린다.
+					$score = str_ends_with( $address_name, $bunji_text ) ? 1 : 2;
+				}
+			}
+
+			$scored[] = array( 'score' => $score, 'index' => $index, 'doc' => $doc );
+		}
+
+		usort( $scored, static function ( $a, $b ) {
+			return $a['score'] <=> $b['score'] ?: $a['index'] <=> $b['index'];
+		} );
+
+		return array_map( static function ( $s ) { return $s['doc']; }, $scored );
+	}
+
+	/** 입력 지번주소 문자열에서 "본번-부번"(예: "159-8" -> ['159','8'], "159" -> ['159','']) 추출. */
+	private static function extract_bunji( string $query ): array {
+		if ( preg_match( '/(\d+)(?:-(\d+))?(?!.*\d)/u', $query, $m ) ) {
+			return array( $m[1], $m[2] ?? '' );
+		}
+		return array( '', '' );
 	}
 
 	/* ---------------- helpers ---------------- */

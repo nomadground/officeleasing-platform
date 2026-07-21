@@ -454,11 +454,14 @@
 			var fieldId = 'hlf-item-field-' + def.key;
 			var stepAttr = def.step ? ' step="' + def.step + '"' : '';
 			// 지번주소 필드에만 "주소 검색" 버튼을 붙인다 — 카카오 Local API(서버 프록시, REST 키는
-			// 클라이언트에 노출하지 않음)로 도로명주소/좌표를 자동 채운다. 설정 안 됐으면 버튼 클릭
-			// 시 서버가 501을 돌려주고 아래 상태 문구로만 안내한다(폼 자체는 그대로 동작).
+			// 클라이언트에 노출하지 않음)로 도로명주소/좌표 후보를 조회한다. 결과는 1건이든 여러 건이든
+			// 바로 채우지 않고 목록으로 보여준 뒤 사용자가 클릭한 것만 폼에 반영한다("다음" 우편번호
+			// 검색과 같은 방식 — 자동확정 시 오탐으로 엉뚱한 좌표가 저장되는 걸 막는다). 키가 설정 안
+			// 됐으면 버튼 클릭 시 서버가 501을 돌려주고 아래 상태 문구로만 안내한다(폼 자체는 정상 동작).
 			var addressSearchHtml = ( def.key === 'lot_address' ) ?
 				' <button type="button" class="button button-small" id="hlf-address-search">주소 검색</button>' +
-				'<p class="hlf-admin-note" id="hlf-address-search-status"></p>' : '';
+				'<p class="hlf-admin-note" id="hlf-address-search-status"></p>' +
+				'<ul class="hlf-address-results" id="hlf-address-results" hidden></ul>' : '';
 			return (
 				'<div class="hlf-field"><label for="' + fieldId + '">' + HLFAdmin.escapeHtml( def.label ) + '</label>' +
 				'<input id="' + fieldId + '" type="' + def.type + '" name="' + def.key + '" value="' + HLFAdmin.escapeAttr( value === null || value === undefined ? '' : value ) + '"' + stepAttr + '>' +
@@ -470,6 +473,9 @@
 			'<div class="hlf-address-block">' +
 				'<h4>주소 확인</h4>' +
 				'<div class="hlf-field-grid">' + fieldsHtml + '</div>' +
+				// 좌표가 확정된 뒤에만 채워지는 작은 지도 미리보기 — 키 미설정/SDK 로드 실패 시에도
+				// 이 영역만 숨겨질 뿐 나머지 입력은 그대로 동작한다(요청서 3-7).
+				'<div class="hlf-address-map" id="hlf-address-map" hidden></div>' +
 			'</div>'
 		);
 	}
@@ -538,6 +544,156 @@
 			// 있어야만(=수정 모드) 다룰 수 있다 — 추가(생성) 모드에서는 안내문만 보여준다.
 			( editing ? renderImageSection( item ) : '' )
 		);
+	}
+
+	/* ---------------- 카카오 주소 검색(후보 목록 클릭 확정) + 지도 미리보기 ----------------
+	 * "다음" 우편번호 검색과 같은 흐름: 검색 → 후보 목록(지번+도로명 함께 표시) → 클릭으로 확정.
+	 * 결과가 1건이어도 자동으로 채우지 않는다(요청서 3-2/3-5) — 오탐으로 엉뚱한 좌표가 저장되는
+	 * 사고를 목록 확인 한 단계로 줄인다. 정렬 우선순위 자체는 서버(HLF_REST_Controller::
+	 * search_kakao_address)가 이미 계산해 순서대로 내려주므로, 여기서는 순서를 그대로 렌더링만 한다.
+	 */
+	var ADDRESS_SEARCH_DEBOUNCE_MS = 700;
+	var addressSearchDebounceTimer = null;
+	var addressSearchRequestSeq = 0; // 오래된 응답이 최신 응답을 덮어쓰지 않도록.
+
+	function bindAddressSearch( form ) {
+		var button = document.getElementById( 'hlf-address-search' );
+		var lotInput = form.elements.lot_address;
+		if ( ! button || ! lotInput ) { return; }
+
+		function runSearch() {
+			var statusEl = document.getElementById( 'hlf-address-search-status' );
+			var resultsEl = document.getElementById( 'hlf-address-results' );
+			var query = ( lotInput.value || '' ).trim();
+			if ( ! query ) {
+				if ( statusEl ) { statusEl.textContent = '지번주소를 입력해 주세요.'; }
+				if ( resultsEl ) { resultsEl.hidden = true; resultsEl.innerHTML = ''; }
+				return;
+			}
+			var requestId = ++addressSearchRequestSeq;
+			button.disabled = true;
+			if ( statusEl ) { statusEl.textContent = '주소를 조회하고 있습니다…'; }
+
+			HLFAdmin.apiFetch( 'kakao/address-search?q=' + encodeURIComponent( query ) )
+				.then( function ( body ) {
+					if ( requestId !== addressSearchRequestSeq ) { return; } // 더 최신 요청이 있음 — 이 응답은 버림.
+					var candidates = body.results || [];
+					if ( statusEl ) {
+						statusEl.textContent = candidates.length > 1
+							? '검색 결과 ' + candidates.length + '건 — 목록에서 정확한 주소를 선택해 주세요.'
+							: '검색 결과를 확인하고 선택해 주세요.';
+					}
+					renderAddressResults( resultsEl, candidates );
+				} )
+				.catch( function ( err ) {
+					if ( requestId !== addressSearchRequestSeq ) { return; }
+					if ( statusEl ) { statusEl.textContent = err.message; }
+					if ( resultsEl ) { resultsEl.hidden = true; resultsEl.innerHTML = ''; }
+				} )
+				.then( function () {
+					if ( requestId === addressSearchRequestSeq ) { button.disabled = false; }
+				} );
+		}
+
+		function renderAddressResults( resultsEl, candidates ) {
+			if ( ! resultsEl ) { return; }
+			if ( ! candidates.length ) { resultsEl.hidden = true; resultsEl.innerHTML = ''; return; }
+			resultsEl.innerHTML = candidates.map( function ( c, index ) {
+				return (
+					'<li><button type="button" class="hlf-address-candidate" data-hlf-address-index="' + index + '">' +
+						'<strong>' + HLFAdmin.escapeHtml( c.lot_address || '(지번주소 없음)' ) + '</strong>' +
+						( c.road_address ? '<span>' + HLFAdmin.escapeHtml( c.road_address ) + '</span>' : '' ) +
+					'</button></li>'
+				);
+			} ).join( '' );
+			resultsEl.hidden = false;
+			resultsEl.dataset.candidates = JSON.stringify( candidates );
+		}
+
+		button.addEventListener( 'click', function () {
+			if ( addressSearchDebounceTimer ) { clearTimeout( addressSearchDebounceTimer ); }
+			runSearch();
+		} );
+
+		// 지번주소 입력 후 잠시 멈추면 자동으로도 조회한다(요청서 3-1) — 매 키입력마다 호출하지 않도록
+		// debounce. 자동조회 역시 후보를 목록으로만 보여줄 뿐 자동으로 채우지 않는다(3-2와 동일 원칙).
+		lotInput.addEventListener( 'input', function () {
+			if ( addressSearchDebounceTimer ) { clearTimeout( addressSearchDebounceTimer ); }
+			addressSearchDebounceTimer = setTimeout( runSearch, ADDRESS_SEARCH_DEBOUNCE_MS );
+		} );
+
+		var resultsEl = document.getElementById( 'hlf-address-results' );
+		if ( resultsEl ) {
+			resultsEl.addEventListener( 'click', function ( event ) {
+				var candidateButton = event.target.closest( '[data-hlf-address-index]' );
+				if ( ! candidateButton ) { return; }
+				var candidates = JSON.parse( resultsEl.dataset.candidates || '[]' );
+				var chosen = candidates[ Number( candidateButton.getAttribute( 'data-hlf-address-index' ) ) ];
+				if ( ! chosen ) { return; }
+
+				if ( chosen.lot_address ) { lotInput.value = chosen.lot_address; }
+				if ( chosen.road_address ) { form.elements.road_address.value = chosen.road_address; }
+				if ( chosen.latitude ) { form.elements.latitude.value = chosen.latitude; }
+				if ( chosen.longitude ) { form.elements.longitude.value = chosen.longitude; }
+
+				resultsEl.hidden = true;
+				resultsEl.innerHTML = '';
+				var statusEl = document.getElementById( 'hlf-address-search-status' );
+				if ( statusEl ) { statusEl.textContent = '선택한 주소로 도로명주소·좌표를 입력했습니다.'; }
+
+				showAddressPreview( chosen.latitude, chosen.longitude );
+			} );
+		}
+
+		// 수정 화면에 이미 좌표가 있으면(기존 매물) 진입 시점에도 미리보기를 바로 보여준다.
+		if ( form.elements.latitude.value && form.elements.longitude.value ) {
+			showAddressPreview( form.elements.latitude.value, form.elements.longitude.value );
+		}
+	}
+
+	/* ---------------- 카카오 지도 미리보기(관리자 전용, 좌표 확정 매물 1개만) ---------------- */
+
+	var addressMapLoader = null;
+	function loadAddressMapSdk() {
+		if ( window.kakao && window.kakao.maps ) { return Promise.resolve( window.kakao.maps ); }
+		if ( addressMapLoader ) { return addressMapLoader; }
+		var key = HLF_ADMIN.kakaoJsKey;
+		if ( ! key ) { return Promise.reject( new Error( '지도 SDK를 불러오지 못했습니다.' ) ); }
+		addressMapLoader = new Promise( function ( resolve, reject ) {
+			var script = document.createElement( 'script' );
+			script.src = 'https://dapi.kakao.com/v2/maps/sdk.js?appkey=' + encodeURIComponent( key ) + '&autoload=false';
+			script.onload = function () {
+				if ( window.kakao && window.kakao.maps && window.kakao.maps.load ) {
+					window.kakao.maps.load( function () { resolve( window.kakao.maps ); } );
+				} else {
+					reject( new Error( '지도 SDK를 불러오지 못했습니다.' ) );
+				}
+			};
+			script.onerror = function () { reject( new Error( '지도 SDK를 불러오지 못했습니다.' ) ); };
+			document.head.appendChild( script );
+		} );
+		return addressMapLoader;
+	}
+
+	function showAddressPreview( lat, lng ) {
+		var container = document.getElementById( 'hlf-address-map' );
+		if ( ! container || ! lat || ! lng ) { return; }
+		var latNum = Number( lat );
+		var lngNum = Number( lng );
+		if ( ! isFinite( latNum ) || ! isFinite( lngNum ) ) { return; }
+
+		loadAddressMapSdk()
+			.then( function ( maps ) {
+				container.hidden = false;
+				container.innerHTML = '';
+				var map = new maps.Map( container, { center: new maps.LatLng( latNum, lngNum ), level: 4 } );
+				new maps.Marker( { map: map, position: new maps.LatLng( latNum, lngNum ) } );
+			} )
+			.catch( function () {
+				// 키 미설정/SDK 로드 실패 시에도 나머지 입력은 그대로 동작해야 한다(요청서 3-7) — 지도
+				// 영역만 숨긴다. 콘솔에는 개발 확인용으로만 남긴다.
+				container.hidden = true;
+			} );
 	}
 
 	/* ---------------- 매물 사진(WordPress Media Library) ---------------- */
@@ -710,14 +866,40 @@
 				'<p class="hlf-admin-note" id="hlf-ocr-status"></p>' +
 				'<div class="hlf-field hlf-field-wide"><label for="hlf-ocr-text">추출된 원문(직접 수정 가능)</label>' +
 					'<textarea id="hlf-ocr-text" class="hlf-ocr-textarea" rows="6"></textarea></div>' +
+				// 기존 값 보호(요청서 2-7) — 기본값은 항상 "빈 항목만 자동입력". 이미 값이 있는 필드까지
+				// 덮어쓰거나(전체 덮어쓰기) 항목마다 확인하고 싶을 때만 사용자가 직접 바꾼다.
+				'<fieldset class="hlf-ocr-mode"><legend>자동입력 방식</legend>' +
+					'<label><input type="radio" name="hlf-ocr-mode" value="empty-only" checked> 빈 항목만 자동입력(기본)</label>' +
+					'<label><input type="radio" name="hlf-ocr-mode" value="overwrite-all"> 전체 덮어쓰기</label>' +
+					'<label><input type="radio" name="hlf-ocr-mode" value="confirm-each"> 항목별 확인</label>' +
+				'</fieldset>' +
 				'<button type="button" class="button button-primary" id="hlf-ocr-apply">원문에서 항목 채우기</button>' +
+				'<div id="hlf-ocr-confirm-list" class="hlf-ocr-confirm-list" hidden></div>' +
 			'</div>'
 		);
 	}
 
+	// 2-8 개선: 보증금/임대료/관리비/면적처럼 "숫자만 나와야 하는" 좁은 범위의 값에서 Tesseract가
+	// 흔히 혼동하는 문자(O/o↔0, l/I↔1, S↔5, B↔8, Z↔2, G↔6)를 숫자로 교정한다. 이 값들은 이미
+	// 라벨로 좁혀진 짧은 조각이라(자유 문장이 아님) 전역 치환해도 실제 단어를 깨뜨릴 위험이 낮다 —
+	// 자유 텍스트 필드(매물특징 등)에는 이 함수를 쓰지 않는다.
+	function ocrFixDigitConfusion( text ) {
+		return String( text || '' ).replace( /[OolISBZG]/g, function ( ch ) {
+			switch ( ch ) {
+				case 'O': case 'o': return '0';
+				case 'l': case 'I': return '1';
+				case 'S': return '5';
+				case 'B': return '8';
+				case 'Z': return '2';
+				case 'G': return '6';
+				default: return ch;
+			}
+		} );
+	}
+
 	function ocrNormalizeMoney( value ) {
 		if ( value === null || value === undefined ) { return ''; }
-		var raw = String( value ).replace( /,/g, '' ).replace( /\s+/g, '' ).trim();
+		var raw = ocrFixDigitConfusion( String( value ).replace( /,/g, '' ).replace( /\s+/g, '' ).trim() );
 		if ( ! raw || raw === '-' ) { return ''; }
 		var eokMatch = raw.match( /(\d+(?:\.\d+)?)억/ );
 		var remainder = raw.replace( /\d+(?:\.\d+)?억/, '' );
@@ -733,7 +915,7 @@
 
 	function ocrNormalizeAreaSqm( value ) {
 		if ( value === null || value === undefined ) { return ''; }
-		var raw = String( value ).replace( /,/g, '' ).trim();
+		var raw = ocrFixDigitConfusion( String( value ).replace( /,/g, '' ).trim() );
 		if ( ! raw || raw === '-' ) { return ''; }
 		var numberMatch = raw.match( /\d+(?:\.\d+)?/ );
 		if ( ! numberMatch ) { return ''; }
@@ -835,12 +1017,67 @@
 		return values;
 	}
 
-	// 파싱 결과를 폼에 채운다 — 값이 있는 필드만 덮어쓰고, 추출 못 한 필드는 기존 입력을 그대로 둔다.
-	function applyOcrValuesToForm( form, values ) {
+	// 자동입력된 필드는 잠시 강조 표시했다가(요청서 2-5) 사용자가 직접 고치거나 일정 시간이 지나면
+	// 강조를 지운다 — 어떤 값이 방금 자동으로 채워졌는지 한눈에 보이게 하되 영구 표시로 남기지 않는다.
+	var AUTOFILL_HIGHLIGHT_MS = 6000;
+	function markAutofilled( input ) {
+		input.classList.add( 'hlf-field--autofilled' );
+		if ( input._hlfAutofillTimer ) { clearTimeout( input._hlfAutofillTimer ); }
+		input._hlfAutofillTimer = setTimeout( function () {
+			input.classList.remove( 'hlf-field--autofilled' );
+		}, AUTOFILL_HIGHLIGHT_MS );
+		if ( ! input._hlfAutofillClearBound ) {
+			input._hlfAutofillClearBound = true;
+			input.addEventListener( 'input', function () {
+				input.classList.remove( 'hlf-field--autofilled' );
+				if ( input._hlfAutofillTimer ) { clearTimeout( input._hlfAutofillTimer ); }
+			} );
+		}
+	}
+
+	/**
+	 * 파싱 결과를 폼에 채운다. mode(요청서 2-7, 기본값은 항상 'empty-only'):
+	 *  - 'empty-only'    : 현재 값이 비어 있는 필드만 채운다(기존 값이 있는 필드는 절대 건드리지 않음).
+	 *  - 'overwrite-all' : 추출된 값이 있는 필드는 기존 값과 무관하게 전부 덮어쓴다.
+	 *  - 'confirm-each'  : 값이 비어 있는 필드는 바로 채우고, 기존 값과 충돌하는 필드만 목록으로 반환해
+	 *                      호출자가 사용자 확인 UI를 그린 뒤 개별 승인된 것만 applyConfirmedOcrValues로 채운다.
+	 * 반환값: confirm-each에서 사용자 확인이 필요한 [{key,label,oldValue,newValue}] 목록(그 외 모드는 항상 빈 배열).
+	 */
+	function applyOcrValuesToForm( form, values, mode ) {
+		mode = mode || 'empty-only';
+		var pending = [];
+		var fieldLabels = {};
+		ITEM_FIELDS.concat( [
+			{ key: 'road_address', label: '도로명주소' }, { key: 'lot_address', label: '지번주소' },
+			{ key: 'latitude', label: '위도' }, { key: 'longitude', label: '경도' },
+		] ).forEach( function ( def ) { fieldLabels[ def.key ] = def.label; } );
+
 		Object.keys( values ).forEach( function ( key ) {
 			var input = form.elements[ key ];
 			if ( ! input ) { return; }
-			input.value = values[ key ];
+			var current = input.type === 'checkbox' ? input.checked : input.value;
+			var isEmpty = current === '' || current === null || current === undefined || current === false;
+
+			if ( isEmpty || 'overwrite-all' === mode ) {
+				input.value = values[ key ];
+				markAutofilled( input );
+				return;
+			}
+			if ( 'confirm-each' === mode ) {
+				pending.push( { key: key, label: fieldLabels[ key ] || key, oldValue: current, newValue: values[ key ] } );
+			}
+			// 'empty-only'이고 이미 값이 있으면 아무것도 하지 않는다(기존 값 보호가 기본 동작).
+		} );
+		return pending;
+	}
+
+	/** confirm-each 모드에서 사용자가 체크한 항목만 실제로 폼에 반영한다. */
+	function applyConfirmedOcrValues( form, confirmed ) {
+		confirmed.forEach( function ( entry ) {
+			var input = form.elements[ entry.key ];
+			if ( ! input ) { return; }
+			input.value = entry.newValue;
+			markAutofilled( input );
 		} );
 	}
 
@@ -889,6 +1126,41 @@
 		return ocrEngineLoader;
 	}
 
+	function currentOcrMode( form ) {
+		var checked = form.querySelector( 'input[name="hlf-ocr-mode"]:checked' );
+		return checked ? checked.value : 'empty-only';
+	}
+
+	// confirm-each 모드에서 기존 값과 충돌하는 필드만 "기존값 → 제안값 [적용]" 목록으로 보여주고,
+	// 사용자가 체크한 것만 실제로 반영한다(2-7 "항목별 확인").
+	function renderOcrConfirmList( form, listEl, pending ) {
+		if ( ! pending.length ) { listEl.hidden = true; listEl.innerHTML = ''; return; }
+		listEl.hidden = false;
+		listEl.innerHTML =
+			'<p class="hlf-admin-note">이미 값이 있는 항목입니다 — 적용할 항목만 체크한 뒤 반영해 주세요.</p>' +
+			'<ul>' + pending.map( function ( entry, index ) {
+				return (
+					'<li><label>' +
+						'<input type="checkbox" data-hlf-ocr-confirm-index="' + index + '" checked> ' +
+						'<strong>' + HLFAdmin.escapeHtml( entry.label ) + '</strong>: ' +
+						'<span class="hlf-ocr-confirm-old">' + HLFAdmin.escapeHtml( String( entry.oldValue ) ) + '</span>' +
+						' → <span class="hlf-ocr-confirm-new">' + HLFAdmin.escapeHtml( String( entry.newValue ) ) + '</span>' +
+					'</label></li>'
+				);
+			} ).join( '' ) + '</ul>' +
+			'<button type="button" class="button button-small" id="hlf-ocr-confirm-apply">체크한 항목 반영</button>';
+
+		document.getElementById( 'hlf-ocr-confirm-apply' ).addEventListener( 'click', function () {
+			var confirmed = pending.filter( function ( entry, index ) {
+				var box = listEl.querySelector( '[data-hlf-ocr-confirm-index="' + index + '"]' );
+				return box && box.checked;
+			} );
+			applyConfirmedOcrValues( form, confirmed );
+			listEl.hidden = true;
+			listEl.innerHTML = '';
+		} );
+	}
+
 	function bindOcrSection( form ) {
 		var captureInput = document.getElementById( 'hlf-ocr-capture' );
 		var preview = document.getElementById( 'hlf-ocr-preview' );
@@ -896,7 +1168,18 @@
 		var statusEl = document.getElementById( 'hlf-ocr-status' );
 		var textArea = document.getElementById( 'hlf-ocr-text' );
 		var applyButton = document.getElementById( 'hlf-ocr-apply' );
+		var confirmListEl = document.getElementById( 'hlf-ocr-confirm-list' );
 		if ( ! captureInput || ! runButton || ! textArea || ! applyButton ) { return; }
+
+		function applyAndReport( rawText ) {
+			var pending = applyOcrValuesToForm( form, parseOcrText( rawText ), currentOcrMode( form ) );
+			if ( pending.length ) {
+				renderOcrConfirmList( form, confirmListEl, pending );
+				statusEl.textContent = '일부 항목만 자동입력되었습니다. 내용을 확인해 주세요.';
+			} else {
+				statusEl.textContent = 'OCR 원문에서 입력 필드를 채웠습니다. 내용을 확인해 주세요.';
+			}
+		}
 
 		captureInput.addEventListener( 'change', function () {
 			var file = captureInput.files && captureInput.files[ 0 ];
@@ -913,37 +1196,60 @@
 		runButton.addEventListener( 'click', function () {
 			var file = captureInput.files && captureInput.files[ 0 ];
 			if ( ! file ) {
-				statusEl.textContent = '먼저 네이버부동산 캡처 이미지를 선택해 주세요.';
+				statusEl.textContent = '이미지를 선택해 주세요.';
 				return;
 			}
 			runButton.disabled = true;
 			statusEl.textContent = 'OCR 엔진을 준비하고 있습니다. 첫 실행은 조금 걸릴 수 있습니다.';
 
 			loadOcrEngine()
+				.catch( function () {
+					// 라이브러리 자체를 못 불러온 경우(CDN 차단/네트워크 오류)와 인식 실패를 구분해서
+					// 안내한다 — 사용자가 재시도할지 수동 입력으로 넘어갈지 판단할 수 있도록.
+					var err = new Error( 'OCR 라이브러리를 불러오지 못했습니다.' );
+					err.hlfStage = 'engine-load';
+					throw err;
+				} )
 				.then( function ( tesseract ) {
 					return tesseract.createWorker( 'kor+eng' ).then( function ( worker ) {
-						return ocrPreprocessImage( file ).then( function ( processedImage ) {
-							return worker.recognize( processedImage ).then( function ( result ) {
-								return worker.terminate().then( function () { return result; } );
+						// 2-8 개선: 네이버부동산 캡처는 표 형태 구조가 많아 기본 자동모드(PSM 3)보다
+						// PSM 6(균일한 텍스트 블록)이 대체로 더 정확하다 — 실제 캡처 샘플로 재현/A-B
+						// 비교는 이 환경(네트워크로 Tesseract CDN에 접근 불가)에서 직접 실행할 수
+						// 없었으므로, 설치 후 실제 캡처로 확인해 볼 것(완료 보고의 "알려진 한계" 참고).
+						var setPsm = worker.setParameters ? worker.setParameters( { tessedit_pageseg_mode: '6' } ) : Promise.resolve();
+						return setPsm.then( function () {
+							return ocrPreprocessImage( file ).then( function ( processedImage ) {
+								return worker.recognize( processedImage ).then( function ( result ) {
+									return worker.terminate().then( function () { return result; } );
+								} );
 							} );
 						} );
+					} ).catch( function ( err ) {
+						err.hlfStage = err.hlfStage || 'recognize';
+						throw err;
 					} );
 				} )
 				.then( function ( result ) {
-					textArea.value = ( result && result.data && result.data.text ) || '';
-					applyOcrValuesToForm( form, parseOcrText( textArea.value ) );
-					statusEl.textContent = 'OCR 추출이 완료되었습니다. 항목을 확인한 뒤 저장해 주세요.';
+					var text = ( result && result.data && result.data.text ) || '';
+					textArea.value = text;
+					if ( ! text.trim() ) {
+						statusEl.textContent = '이미지에서 텍스트를 인식하지 못했습니다.';
+						runButton.disabled = false;
+						return;
+					}
+					applyAndReport( text );
 					runButton.disabled = false;
 				} )
-				.catch( function () {
-					statusEl.textContent = 'OCR 엔진을 불러오지 못했습니다. 원문 입력란에 텍스트를 직접 넣거나 항목을 수동 입력해 주세요.';
+				.catch( function ( err ) {
+					statusEl.textContent = 'engine-load' === err.hlfStage
+						? 'OCR 라이브러리를 불러오지 못했습니다.'
+						: '이미지에서 텍스트를 인식하지 못했습니다.';
 					runButton.disabled = false;
 				} );
 		} );
 
 		applyButton.addEventListener( 'click', function () {
-			applyOcrValuesToForm( form, parseOcrText( textArea.value ) );
-			statusEl.textContent = 'OCR 원문에서 입력 필드를 채웠습니다. 내용을 확인해 주세요.';
+			applyAndReport( textArea.value );
 		} );
 	}
 
@@ -1017,33 +1323,7 @@
 				} );
 		} );
 
-		var addressSearchButton = document.getElementById( 'hlf-address-search' );
-		if ( addressSearchButton ) {
-			addressSearchButton.addEventListener( 'click', function () {
-				var statusEl = document.getElementById( 'hlf-address-search-status' );
-				var query = ( itemForm.elements.lot_address.value || '' ).trim();
-				if ( ! query ) {
-					if ( statusEl ) { statusEl.textContent = '지번주소를 입력해 주세요.'; }
-					return;
-				}
-				addressSearchButton.disabled = true;
-				if ( statusEl ) { statusEl.textContent = '주소를 조회하고 있습니다…'; }
-
-				HLFAdmin.apiFetch( 'kakao/address-search?q=' + encodeURIComponent( query ) )
-					.then( function ( result ) {
-						if ( result.road_address ) { itemForm.elements.road_address.value = result.road_address; }
-						if ( result.latitude ) { itemForm.elements.latitude.value = result.latitude; }
-						if ( result.longitude ) { itemForm.elements.longitude.value = result.longitude; }
-						if ( statusEl ) { statusEl.textContent = '도로명주소·좌표를 자동 입력했습니다.'; }
-					} )
-					.catch( function ( err ) {
-						if ( statusEl ) { statusEl.textContent = err.message; }
-					} )
-					.then( function () {
-						addressSearchButton.disabled = false;
-					} );
-			} );
-		}
+		bindAddressSearch( itemForm );
 
 		document.getElementById( 'hlf-items-table-wrap' ).addEventListener( 'click', function ( event ) {
 			var editBtn = event.target.closest( '[data-hlf-edit-item]' );

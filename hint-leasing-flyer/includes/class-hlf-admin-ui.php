@@ -125,6 +125,9 @@ final class HLF_Admin_UI {
 
 		$flyer_id          = isset( $_GET['flyer_id'] ) ? absint( wp_unslash( $_GET['flyer_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- 읽기 전용 화면 진입 파라미터, 상태변경 없음.
 		$shared['flyerId'] = $flyer_id > 0 ? $flyer_id : null;
+		// 지도 미리보기(요청서 3-7)는 공개 화면과 동일하게 JS Key만 쓴다 — 도메인 제한 방식의 공개
+		// 키라 브라우저에 노출돼도 안전하다(REST 키와 달리 서버 프록시를 거칠 필요가 없다).
+		$shared['kakaoJsKey'] = defined( 'HLF_KAKAO_JS_KEY' ) ? HLF_KAKAO_JS_KEY : '';
 		wp_enqueue_script( 'hlf-admin-flyer-edit', HLF_URL . 'assets/js/admin-flyer-edit.js', array( 'hlf-admin-common' ), HLF_VERSION, true );
 		wp_localize_script( 'hlf-admin-common', 'HLF_ADMIN', $shared );
 	}
