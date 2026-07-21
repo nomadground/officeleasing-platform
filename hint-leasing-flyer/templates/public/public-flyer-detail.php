@@ -1,6 +1,6 @@
 <?php
 /**
- * 공개 Flyer 상세 (Phase 1 최소 골격). 갤러리/지도/인쇄/차트는 Phase 4+에서.
+ * 공개 Flyer 상세 (Phase 1 골격 + Phase 4: 사진 라이트박스/평당단가/공유). 지도는 Phase 4+ 후속.
  * $hlf_context: ['flyer'=>[], 'status'=>string, 'item'=>[...], 'items'=>[...]]
  */
 defined( 'ABSPATH' ) || exit;
@@ -22,6 +22,11 @@ foreach ( $item['interior_image_ids'] as $image_id ) {
 	$photo_ids[] = (int) $image_id;
 }
 $photo_ids = array_values( array_unique( array_filter( $photo_ids ) ) );
+
+// 라이트박스(이전/다음)용 원본 크기 URL — 썸네일 클릭 시 축소판이 아니라 큰 사진을 보여준다.
+$photo_urls = array_map( static function ( $id ) {
+	return wp_get_attachment_image_url( $id, 'hlf-item-photo' );
+}, $photo_ids );
 
 $basic = array(
 	'해당층'       => trim( ( $item['floor_current'] ?: '-' ) . ' / ' . ( $item['floor_total'] ?: '-' ) . '층' ),
@@ -53,6 +58,9 @@ $basic = array(
 		<header class="hlf-header">
 			<a class="hlf-back" href="<?php echo esc_url( $flyer['url'] ); ?>">← 목록</a>
 			<span class="hlf-flyer-number"><?php echo esc_html( $flyer['flyer_number'] . ' · ' . $item['item_number'] ); ?></span>
+			<button type="button" class="hlf-share-button" data-hlf-share-url="<?php echo esc_attr( HLF_Routes::item_url( $flyer['id'], $item['item_number'] ) ); ?>">
+				공유 <span class="hlf-share-status" data-hlf-share-status></span>
+			</button>
 		</header>
 
 		<h1 class="hlf-title"><?php echo esc_html( $address ); ?></h1>
@@ -61,14 +69,18 @@ $basic = array(
 		<?php endif; ?>
 
 		<?php if ( ! empty( $photo_ids ) ) : ?>
-			<section class="hlf-gallery">
+			<section class="hlf-gallery" data-hlf-photos="<?php echo esc_attr( wp_json_encode( $photo_urls ) ); ?>">
 				<div class="hlf-gallery-main">
-					<?php echo wp_get_attachment_image( $photo_ids[0], 'hlf-item-photo', false, array( 'alt' => esc_attr( $address ), 'loading' => 'eager' ) ); ?>
+					<button type="button" class="hlf-photo-open" data-hlf-lightbox-open data-hlf-lightbox-index="0" aria-label="사진 크게 보기">
+						<?php echo wp_get_attachment_image( $photo_ids[0], 'hlf-item-photo', false, array( 'alt' => esc_attr( $address ), 'loading' => 'eager' ) ); ?>
+					</button>
 				</div>
 				<?php if ( count( $photo_ids ) > 1 ) : ?>
 					<div class="hlf-gallery-thumbs">
-						<?php foreach ( array_slice( $photo_ids, 1 ) as $photo_id ) : ?>
-							<?php echo wp_get_attachment_image( $photo_id, 'hlf-item-thumb', false, array( 'alt' => esc_attr( $address ), 'loading' => 'lazy' ) ); ?>
+						<?php foreach ( array_slice( $photo_ids, 1 ) as $idx => $photo_id ) : ?>
+							<button type="button" class="hlf-photo-open" data-hlf-lightbox-open data-hlf-lightbox-index="<?php echo esc_attr( $idx + 1 ); ?>" aria-label="사진 크게 보기">
+								<?php echo wp_get_attachment_image( $photo_id, 'hlf-item-thumb', false, array( 'alt' => esc_attr( $address ), 'loading' => 'lazy' ) ); ?>
+							</button>
 						<?php endforeach; ?>
 					</div>
 				<?php endif; ?>
@@ -76,10 +88,25 @@ $basic = array(
 		<?php endif; ?>
 
 		<section class="hlf-lease-metrics hlf-detail-metrics">
-			<div class="hlf-lease-metric"><span class="hlf-lease-metric-label">보증금</span><span class="hlf-lease-metric-value"><?php echo esc_html( number_format( (float) $item['deposit_manwon'] ) ); ?>만원</span></div>
-			<div class="hlf-lease-metric"><span class="hlf-lease-metric-label">임대료</span><span class="hlf-lease-metric-value"><?php echo esc_html( number_format( (float) $item['monthly_rent_manwon'] ) ); ?>만원</span></div>
-			<div class="hlf-lease-metric"><span class="hlf-lease-metric-label">관리비</span><span class="hlf-lease-metric-value"><?php echo esc_html( number_format( (float) $item['maintenance_fee_manwon'] ) ); ?>만원</span></div>
-			<div class="hlf-lease-metric"><span class="hlf-lease-metric-label">환산임대료(NOC)</span><span class="hlf-lease-metric-value"><?php echo esc_html( number_format( $metrics['noc'], 1 ) ); ?>만원/전용평</span></div>
+			<div class="hlf-lease-metric">
+				<span class="hlf-lease-metric-label">보증금</span>
+				<span class="hlf-lease-metric-value"><?php echo esc_html( number_format( (float) $item['deposit_manwon'] ) ); ?>만원</span>
+				<span class="hlf-lease-metric-sub">공급평당 <?php echo esc_html( number_format( $metrics['deposit_per_lease_pyeong'], 1 ) ); ?>만원</span>
+			</div>
+			<div class="hlf-lease-metric">
+				<span class="hlf-lease-metric-label">임대료</span>
+				<span class="hlf-lease-metric-value"><?php echo esc_html( number_format( (float) $item['monthly_rent_manwon'] ) ); ?>만원</span>
+				<span class="hlf-lease-metric-sub">공급평당 <?php echo esc_html( number_format( $metrics['rent_per_lease_pyeong'], 1 ) ); ?>만원</span>
+			</div>
+			<div class="hlf-lease-metric">
+				<span class="hlf-lease-metric-label">관리비</span>
+				<span class="hlf-lease-metric-value"><?php echo esc_html( number_format( (float) $item['maintenance_fee_manwon'] ) ); ?>만원</span>
+				<span class="hlf-lease-metric-sub">공급평당 <?php echo esc_html( number_format( $metrics['maintenance_per_lease_pyeong'], 1 ) ); ?>만원</span>
+			</div>
+			<div class="hlf-lease-metric">
+				<span class="hlf-lease-metric-label">환산임대료(NOC)</span>
+				<span class="hlf-lease-metric-value"><?php echo esc_html( number_format( $metrics['noc'], 1 ) ); ?>만원/전용평</span>
+			</div>
 		</section>
 
 		<?php if ( $item['features'] ) : ?>
@@ -111,6 +138,18 @@ $basic = array(
 			</span>
 		</footer>
 	</div>
+
+	<div class="hlf-lightbox" id="hlf-lightbox" hidden>
+		<div class="hlf-lightbox-content">
+			<img class="hlf-lightbox-image" id="hlf-lightbox-image" src="" alt="">
+			<button type="button" class="hlf-lightbox-button hlf-lightbox-close" data-hlf-lightbox-close aria-label="닫기">✕</button>
+			<?php if ( count( $photo_ids ) > 1 ) : ?>
+				<button type="button" class="hlf-lightbox-button hlf-lightbox-prev" data-hlf-lightbox-prev aria-label="이전 사진">‹</button>
+				<button type="button" class="hlf-lightbox-button hlf-lightbox-next" data-hlf-lightbox-next aria-label="다음 사진">›</button>
+			<?php endif; ?>
+		</div>
+	</div>
+	<script src="<?php echo esc_url( HLF_URL . 'assets/js/public-flyer.js?v=' . HLF_VERSION ); ?>" defer></script>
 </body>
 </html>
 <?php

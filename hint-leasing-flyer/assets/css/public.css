@@ -26,6 +26,7 @@ body.hlf-public {
 }
 .hlf-shell { width: min(1100px, calc(100% - 32px)); margin: 0 auto; padding: 24px 0 48px; }
 .hlf-header { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--hlf-line); }
+.hlf-header .hlf-share-button { margin-left: auto; }
 .hlf-brand { font-weight: 800; letter-spacing: .06em; color: var(--hlf-primary); }
 .hlf-flyer-number { color: var(--hlf-muted); font-size: 13px; }
 /* padding으로 탭 영역을 넓혀 모바일에서 오터치 없이 누르기 쉽게 한다(시각적 크기는 거의 그대로). */
@@ -36,6 +37,31 @@ body.hlf-public {
 .hlf-title { margin: 20px 0 4px; color: var(--hlf-primary-strong); font-size: clamp(24px, 4vw, 34px); letter-spacing: -.04em; }
 .hlf-subaddress, .hlf-result-count { margin: 0 0 8px; color: var(--hlf-muted); font-size: 13px; }
 .hlf-empty { padding: 40px; text-align: center; color: var(--hlf-muted); border: 1px dashed var(--hlf-line); border-radius: 12px; }
+
+.hlf-title-row { display: flex; align-items: end; justify-content: space-between; gap: 12px; }
+.hlf-title-row .hlf-title { margin-top: 20px; }
+/* 공유 버튼: 내부 ID/REST endpoint 없이 이미 화면에 있는 공개 URL만 클립보드에 복사한다
+   (assets/js/public-flyer.js — Clipboard API, 실패 시 execCommand('copy') fallback). */
+.hlf-share-button {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	min-height: 36px;
+	padding: 0 14px;
+	color: var(--hlf-primary);
+	background: var(--hlf-surface);
+	border: 1px solid var(--hlf-line);
+	border-radius: 8px;
+	font: inherit;
+	font-weight: 700;
+	font-size: 13px;
+	cursor: pointer;
+	white-space: nowrap;
+}
+.hlf-share-button:hover { background: #f5f8fa; border-color: var(--hlf-primary); }
+.hlf-share-status { color: var(--hlf-muted); font-size: 11px; font-weight: 500; }
+.hlf-share-status.is-success { color: #2f7a4f; }
+.hlf-share-status.is-error { color: #aa433f; }
 
 .hlf-listing-grid { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 8px; }
 .hlf-listing-card { background: var(--hlf-surface); border: 1px solid var(--hlf-line); border-radius: 10px; }
@@ -64,12 +90,27 @@ body.hlf-public {
 .hlf-gallery-main img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .hlf-gallery-thumbs { display: flex; gap: 8px; margin-top: 8px; overflow-x: auto; padding-bottom: 2px; }
 .hlf-gallery-thumbs img { flex: 0 0 auto; width: 84px; height: 60px; object-fit: cover; border-radius: 8px; }
+.hlf-photo-open { display: block; width: 100%; height: 100%; padding: 0; border: 0; background: transparent; cursor: pointer; }
+.hlf-gallery-thumbs .hlf-photo-open { flex: 0 0 auto; width: 84px; }
+.hlf-photo-open:focus-visible { outline: 2px solid var(--hlf-primary); outline-offset: 2px; }
+
+/* 사진 라이트박스(이전/다음) — JS(assets/js/public-flyer.js)가 hidden 속성만 토글한다. */
+.hlf-lightbox[hidden] { display: none; }
+.hlf-lightbox { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 24px; background: rgba(20, 33, 42, .9); }
+.hlf-lightbox-content { position: relative; display: grid; place-items: center; width: min(1400px, 96vw); height: 92vh; }
+.hlf-lightbox-image { width: auto; height: auto; max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px; }
+.hlf-lightbox-button { position: absolute; display: grid; width: 40px; height: 40px; place-items: center; color: #fff; background: rgba(53, 92, 115, .9); border: 0; border-radius: 50%; font-size: 20px; line-height: 1; cursor: pointer; }
+.hlf-lightbox-button:hover { background: var(--hlf-primary-strong); }
+.hlf-lightbox-close { top: -6px; right: -6px; }
+.hlf-lightbox-prev { top: 50%; left: -6px; transform: translateY(-50%); }
+.hlf-lightbox-next { top: 50%; right: -6px; transform: translateY(-50%); }
 
 .hlf-lease-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
 .hlf-lease-metric { min-width: 0; padding: 4px 8px; text-align: center; border-left: 1px solid var(--hlf-line); }
 .hlf-lease-metric:first-child { border-left: 0; }
 .hlf-lease-metric-label { display: block; color: var(--hlf-muted); font-size: 10px; font-weight: 700; }
 .hlf-lease-metric-value { display: block; margin-top: 2px; color: var(--hlf-primary); font-size: 15px; font-weight: 900; white-space: nowrap; }
+.hlf-lease-metric-sub { display: block; margin-top: 2px; color: var(--hlf-muted); font-size: 10px; font-weight: 500; white-space: nowrap; }
 
 .hlf-detail-metrics { margin: 16px 0; }
 .hlf-detail-metrics .hlf-lease-metric { padding: 12px 10px; border: 1px solid var(--hlf-line); border-radius: 8px; }
@@ -93,7 +134,26 @@ body.hlf-public {
 }
 .hlf-footer-contact a:hover { background: var(--hlf-primary-strong); text-decoration: none; }
 
+/* NOC(환산임대료) 비교 차트 — 서버가 계산한 값(hlf_calculate_item_metrics)을 그대로 막대로만
+   그린다(계산 로직 재구현 없음, assets/js/public-flyer.js 참고). */
+.hlf-noc-chart-panel { margin: 22px 0; padding: 16px 18px 14px; background: var(--hlf-surface); border: 1px solid var(--hlf-line); border-radius: 10px; }
+.hlf-noc-chart-heading { display: flex; align-items: end; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.hlf-noc-chart-heading h2 { margin: 0; color: var(--hlf-primary); font-size: 16px; letter-spacing: -.02em; }
+.hlf-noc-chart-unit { margin: 0; color: var(--hlf-muted); font-size: 11px; }
+.hlf-noc-chart { display: flex; align-items: end; gap: 14px; min-height: 168px; padding: 14px 4px 0; overflow-x: auto; border-bottom: 1px solid var(--hlf-line); }
+.hlf-noc-chart-item { display: grid; flex: 0 0 52px; grid-template-rows: 18px 1fr 20px; align-items: end; height: 148px; color: inherit; text-align: center; text-decoration: none; }
+.hlf-noc-chart-value { color: var(--hlf-ink); font-size: 11px; font-weight: 800; }
+.hlf-noc-chart-bar-wrap { display: flex; align-items: end; justify-content: center; height: 110px; }
+.hlf-noc-chart-bar { width: 24px; min-height: 10px; background: var(--hlf-primary); border-radius: 4px 4px 0 0; transition: background .15s; }
+.hlf-noc-chart-item:hover .hlf-noc-chart-bar,
+.hlf-noc-chart-item:focus-visible .hlf-noc-chart-bar { background: var(--hlf-primary-strong); }
+.hlf-noc-chart-label { color: var(--hlf-muted); font-size: 10px; font-weight: 700; }
+.hlf-noc-chart-note { margin: 8px 0 0; color: var(--hlf-muted); font-size: 10px; }
+
 @media (max-width: 700px) {
+	.hlf-noc-chart { gap: 10px; }
+	.hlf-noc-chart-item { flex-basis: 44px; }
+	.hlf-noc-chart-bar { width: 20px; }
 	.hlf-listing-link { grid-template-columns: 28px 44px 1fr; }
 	.hlf-listing-thumb { width: 44px; height: 34px; }
 	.hlf-listing-link .hlf-lease-metrics { grid-column: 1 / -1; }

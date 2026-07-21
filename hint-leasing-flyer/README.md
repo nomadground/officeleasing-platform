@@ -40,32 +40,33 @@ officeleasing-core / ACF가 없어도 활성화·동작한다(데이터 접근�
   경우에만 허용한다(검색을 우회해 draft/private id를 직접 넘기는 경로 차단, 403). officeleasing의
   업무용 `listing_status`(협의중/거래완료 등) ACF 필드는 이 게이트와 무관한 정보성 값이다.
 
-## Phase 3 구현 범위 — 이미지 검색·선택(Image Search & Selection MVP)
-- 계층 분리: `class-hlf-image-search-service.php`(검색어 검증 + provider 위임) →
-  `class-hlf-naver-image-search-provider.php`(네이버 이미지 검색 API 연동, `class-hlf-image-search-provider-interface.php`
-  구현) → `class-hlf-image-url-guard.php`(SSRF 방어: http/https만, 사설·루프백·링크로컬 IP 차단,
-  redirect마다 재검증) → `class-hlf-image-import-service.php`(다운로드+Attachment 생성+중복 방지) →
-  `class-hlf-item-repository.php::set_images()/delete_image()`(Item 필드 저장, 소유권 검증).
+## Phase 3 구현 범위 — 매물 사진(WordPress Media Library)
+- 이미지는 외부 검색·다운로드가 아니라 워드프레스 기본 Media Library(`wp.media`)에서 관리자가
+  직접 선택한다 — 새로 업로드하거나, 사이트에 이미 있는 미디어를 그대로 골라도 된다.
+- 저장은 항상 `class-hlf-item-repository.php::set_images()`/`delete_image()`를 통해서만 한다(REST
+  컨트롤러·템플릿에서 `update_post_meta()` 직접 호출 없음). `set_images()`는 선택한 attachment ID가
+  "실제로 존재하는 attachment 포스트인지"만 확인한다 — 소유권(post_parent가 이 item_id인지)은 검증하지
+  않는다(다른 글/다른 매물에 이미 쓰이고 있는 미디어도 선택할 수 있어야 하므로). post_parent를 이
+  item_id로 재설정(reparent)하지도 않는다 — 공유 중인 첨부의 소속을 바꾸면 다른 곳에 영향을 줄 수 있다.
+- `delete_image()`는 Item의 `exterior_image_id`/`interior_image_ids`에서 뗄 뿐 Attachment 파일 자체는
+  절대 삭제하지 않는다(detach-only) — Media Library에서 고른 이미지는 사이트 다른 곳에서도 쓰이고
+  있을 수 있다.
 - 새 메타 필드는 추가하지 않았다 — 기존에 예약돼 있던 `exterior_image_id`(대표)/`interior_image_ids`
   (나머지)를 그대로 쓴다. 둘 다 `writable_fields()` 밖이라 일반 Item PUT으로는 못 바꾸고, 전용
   setter(`set_images()`)만 쓸 수 있으며 `set_snapshot_metadata()`와 같은 "쓰고 다시 읽어 검증" 패턴이다.
-- 인증정보는 `wp-config.php`의 `define('HLF_NAVER_CLIENT_ID', ...)` / `define('HLF_NAVER_CLIENT_SECRET', ...)`
-  로만 받는다(옵션 테이블 방식 채택 안 함). 미설정 시 검색 기능만 비활성화되고 관리자 화면·저장된
-  이미지 관리(삭제/순서 변경)는 그대로 동작한다.
-- REST: `GET /images/search`, `POST /flyers/{id}/items/{item_id}/images/import`,
-  `PUT .../images`(대표 지정/순서 변경), `DELETE .../images/{attachment_id}`.
-- 관리자 UI: Item 편집 폼에 "매물 이미지" 섹션 — 검색어는 `road_address` → `lot_address` 순으로
-  자동 채움(건물명 필드는 Item 스키마에 없어 우선순위에서 제외, 아래 "알려진 제한" 참고), 수정 가능,
-  검색 버튼을 눌러야만 요청. 가져오기 전 "이 이미지에 대한 사용 권한을 확인했습니다" 체크가 필수.
+- REST: `PUT /flyers/{id}/items/{item_id}/images`(대표 지정), `DELETE .../images/{attachment_id}`(detach).
+- 관리자 UI: Item 편집 폼에 "매물 사진" 섹션 — "사진 선택" 버튼이 `wp.media({multiple:true,
+  library:{type:'image'}})` 모달을 열고, 업로드/기존 미디어 선택 둘 다 표준 그대로 지원한다. 대표사진은
+  각 썸네일 아래 라디오 버튼으로 표시·변경. 삭제는 이 매물에서만 뗀다(파일은 유지). 이미지 순서 변경
+  UI는 아직 없다(대표/나머지 구분만).
 - 공개/Print: 대표 이미지가 상세 화면 상단에 크게, 나머지는 썸네일 스트립으로. 목록 화면에도 작은
   대표 썸네일. 이미지가 없으면 아무 마크업도 렌더링하지 않는다(깨진 img 없음). Print는 대표 이미지만
   출력하고 썸네일 스트립은 숨긴다(한 장짜리 인쇄물이 여러 장으로 늘어지지 않도록).
 
 ## 후속 단계에서 제외
-OCR, AI 이미지 적합성 판별, 워터마크 제거/자동 보정, 얼굴·번호판 블러, 네이버 외 다중 provider 실제
-구현, 이미지 Drag & Drop/크롭 편집기, officeleasing 원본 이미지 자동 동기화, PDF 생성, 인쇄 밀도별
-레이아웃, 검색 지역(region) 필터, 10개 제한/재정렬의 동시성·트랜잭션 처리(현재 저사용량 내부 운영
-기준으로는 불필요) — 후속 phase.
+AI 이미지 적합성 판별, 워터마크 제거/자동 보정, 얼굴·번호판 블러, 이미지 Drag & Drop/크롭 편집기,
+이미지 순서 변경(위/아래) UI, officeleasing 원본 이미지 자동 동기화, PDF 생성, 인쇄 밀도별 레이아웃,
+10개 제한/재정렬의 동시성·트랜잭션 처리(현재 저사용량 내부 운영 기준으로는 불필요) — 후속 phase.
 
 ## 검증
 ```

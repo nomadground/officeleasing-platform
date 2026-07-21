@@ -109,9 +109,6 @@ final class HLF_Admin_UI {
 			'editUrlBase'  => admin_url( 'admin.php?page=' . self::EDIT_SLUG . '&flyer_id=' ),
 			'maxItems'     => HLF_Item_Repository::MAX_ITEMS_PER_FLYER,
 			'defaultPhone' => HLF_Flyer_Repository::DEFAULT_PHONE,
-			// 설정 안 됐을 때 REST 호출 없이 검색 폼 자체를 숨기고 안내만 보여주기 위한 사전 확인
-			// (요청서: "관리자 화면이 깨지지 않아야 함 / 이미지 검색 기능만 비활성화").
-			'imageSearchConfigured' => HLF_Image_Search_Service::is_configured(),
 		);
 
 		wp_enqueue_script( 'hlf-admin-common', HLF_URL . 'assets/js/admin-common.js', array(), HLF_VERSION, true );
@@ -121,6 +118,10 @@ final class HLF_Admin_UI {
 			wp_localize_script( 'hlf-admin-common', 'HLF_ADMIN', $shared );
 			return;
 		}
+
+		// Item 편집 화면에서만 wp.media 모달을 쓴다(매물 이미지 선택) — 다른 화면까지 전역으로
+		// 로드할 필요는 없다.
+		wp_enqueue_media();
 
 		$flyer_id          = isset( $_GET['flyer_id'] ) ? absint( wp_unslash( $_GET['flyer_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- 읽기 전용 화면 진입 파라미터, 상태변경 없음.
 		$shared['flyerId'] = $flyer_id > 0 ? $flyer_id : null;

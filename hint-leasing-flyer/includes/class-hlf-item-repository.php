@@ -247,11 +247,12 @@ final class HLF_Item_Repository {
 	}
 
 	/**
-	 * 이미지 목록 저장(요청서 Phase 3). $exterior_image_id/$interior_image_ids에 넣을 수 있는 값은
-	 * 반드시 "이미 이 item_id를 post_parent로 갖는 attachment"여야 한다 — 검증 없이 그대로 저장하면
-	 * 클라이언트가 임의의(타인 소유일 수도 있는) attachment_id를 이 Item의 대표/목록 이미지로
-	 * 지정할 수 있게 된다. reorder()가 "요청한 ID 집합이 실제 이 Flyer의 item 집합과 일치하는지"를
-	 * 검증하는 것과 같은 이유다.
+	 * 이미지 목록 저장. $exterior_image_id/$interior_image_ids는 관리자가 WordPress Media
+	 * Library(wp.media)에서 고른 attachment ID다 — 새로 업로드했거나, 사이트에 이미 있던(post_parent가
+	 * 이 item_id가 아닐 수 있는) 미디어를 그대로 선택할 수도 있다. 그래서 소유권(post_parent) 검증은
+	 * 하지 않고 "실제로 존재하는 attachment 포스트인지"만 확인한다. post_parent를 이 item_id로
+	 * 재설정(reparent)하지도 않는다 — 공유 중인 첨부의 소속을 바꾸면 다른 곳(다른 글/다른 매물)에
+	 * 영향을 줄 수 있으므로 ID만 그대로 저장한다.
 	 */
 	public static function set_images( int $flyer_id, int $item_id, int $exterior_image_id, array $interior_image_ids ): bool|WP_Error {
 		$guard = HLF_Flyer_Repository::assert_not_archived( $flyer_id );
@@ -267,19 +268,12 @@ final class HLF_Item_Repository {
 		$interior_image_ids = array_values( array_unique( array_map( 'intval', $interior_image_ids ) ) );
 		$requested          = $exterior_image_id > 0 ? array_merge( array( $exterior_image_id ), $interior_image_ids ) : $interior_image_ids;
 
-		$owned_attachment_ids = get_posts( array(
-			'post_type'      => 'attachment',
-			'post_parent'    => $item_id,
-			'post_status'    => 'inherit',
-			'posts_per_page' => -1,
-			'fields'         => 'ids',
-		) );
-
 		foreach ( $requested as $id ) {
-			if ( ! in_array( $id, $owned_attachment_ids, true ) ) {
+			$attachment = get_post( $id );
+			if ( ! $attachment || 'attachment' !== $attachment->post_type ) {
 				return new WP_Error(
-					'hlf_image_not_owned',
-					'이 매물에 속하지 않은 이미지는 지정할 수 없습니다.',
+					'hlf_image_invalid',
+					'선택한 항목 중 유효하지 않은 이미지가 있습니다.',
 					array( 'status' => 400 )
 				);
 			}
@@ -301,7 +295,12 @@ final class HLF_Item_Repository {
 		return true;
 	}
 
-	/** 이미지 하나를 Item에서 떼어내고(exterior/interior 양쪽 다 확인) Attachment 자체도 삭제한다. */
+	/**
+	 * 이미지 하나를 이 Item의 exterior_image_id/interior_image_ids에서만 떼어낸다(detach) —
+	 * Attachment 자체(파일)는 절대 지우지 않는다. Media Library에서 고른 이미지는 사이트 다른
+	 * 곳(다른 글/다른 매물)에서도 쓰이고 있을 수 있어, 여기서 파일까지 삭제하면 그쪽까지 함께
+	 * 사라지는 사고가 난다.
+	 */
 	public static function delete_image( int $flyer_id, int $item_id, int $attachment_id ): bool|WP_Error {
 		$guard = HLF_Flyer_Repository::assert_not_archived( $flyer_id );
 		if ( is_wp_error( $guard ) ) {
@@ -313,22 +312,17 @@ final class HLF_Item_Repository {
 			return new WP_Error( 'hlf_item_not_found', '해당 Flyer에 속한 매물이 아닙니다.', array( 'status' => 404 ) );
 		}
 
-		$attachment = get_post( $attachment_id );
-		if ( ! $attachment || 'attachment' !== $attachment->post_type || (int) $attachment->post_parent !== $item_id ) {
-			return new WP_Error( 'hlf_image_not_found', '이 매물에 속한 이미지가 아닙니다.', array( 'status' => 404 ) );
+		$current  = HLF_Meta_Schema::read_item( $item_id );
+		$is_exterior = ( (int) $current['exterior_image_id'] === $attachment_id );
+		$is_interior = in_array( $attachment_id, $current['interior_image_ids'], true );
+		if ( ! $is_exterior && ! $is_interior ) {
+			return new WP_Error( 'hlf_image_not_found', '이 매물에 지정된 이미지가 아닙니다.', array( 'status' => 404 ) );
 		}
 
-		$current  = HLF_Meta_Schema::read_item( $item_id );
-		$exterior = ( (int) $current['exterior_image_id'] === $attachment_id ) ? 0 : (int) $current['exterior_image_id'];
+		$exterior = $is_exterior ? 0 : (int) $current['exterior_image_id'];
 		$interior = array_values( array_diff( $current['interior_image_ids'], array( $attachment_id ) ) );
 
-		$result = self::set_images( $flyer_id, $item_id, $exterior, $interior );
-		if ( is_wp_error( $result ) ) {
-			return $result;
-		}
-
-		wp_delete_attachment( $attachment_id, true );
-		return true;
+		return self::set_images( $flyer_id, $item_id, $exterior, $interior );
 	}
 
 	/** 화이트리스트 필드만 정규화해 저장. item_number/display_order 등 서버관리 필드는 무시된다. */
