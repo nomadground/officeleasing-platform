@@ -21,6 +21,42 @@
 		return escapeHtml( value ).replace( /"/g, '&quot;' ).replace( /'/g, '&#039;' );
 	}
 
+	/* ---------------- 리스트 · 차트 · 지도 3자 연동 ---------------- */
+
+	// 매물 식별 키는 item_number(현재 플러그인에서 Flyer 내부 매물을 가리키는 유일하고 불변인 식별자)
+	// 로 통일한다. 리스트 행(서버가 data-hlf-listing-key로 렌더링), NOC 차트 막대, 지도 마커(둘 다 이
+	// 파일이 그린다) — 이 중 하나에 마우스오버/포커스하면 같은 key를 가진 나머지 엘리먼트에도
+	// .is-active를 함께 토글한다.
+	var ListingSync = ( function () {
+		var groups = {};
+		function setActive( key ) {
+			Object.keys( groups ).forEach( function ( k ) {
+				var isActive = ( k === key );
+				groups[ k ].forEach( function ( el ) { el.classList.toggle( 'is-active', isActive ); } );
+			} );
+		}
+		function clearActive() {
+			Object.keys( groups ).forEach( function ( k ) {
+				groups[ k ].forEach( function ( el ) { el.classList.remove( 'is-active' ); } );
+			} );
+		}
+		function register( key, el ) {
+			if ( ! key || ! el ) { return; }
+			( groups[ key ] = groups[ key ] || [] ).push( el );
+			el.addEventListener( 'mouseenter', function () { setActive( key ); } );
+			el.addEventListener( 'mouseleave', clearActive );
+			el.addEventListener( 'focus', function () { setActive( key ); } );
+			el.addEventListener( 'blur', clearActive );
+		}
+		return { register: register };
+	} )();
+
+	function registerListingRows() {
+		document.querySelectorAll( '[data-hlf-listing-key]' ).forEach( function ( el ) {
+			ListingSync.register( el.getAttribute( 'data-hlf-listing-key' ), el );
+		} );
+	}
+
 	/* ---------------- NOC 비교 차트 ---------------- */
 
 	// MVP 기준본(renderNocChart)과 동일한 적응형 스케일 알고리즘 — 현재 매물 범위(최댓값-최솟값)의
@@ -58,13 +94,17 @@
 			if ( label.length < 2 ) { label = '0' + label; }
 			var title = it.address + ' NOC ' + noc.toFixed( 1 ) + '만원';
 			return (
-				'<a class="hlf-noc-chart-item" href="' + escapeAttr( it.url ) + '" title="' + escapeAttr( title ) + '" aria-label="' + escapeAttr( label + '번 매물 상세보기' ) + '">' +
+				'<a class="hlf-noc-chart-item" href="' + escapeAttr( it.url ) + '" data-hlf-listing-key="' + escapeAttr( it.key ) + '" title="' + escapeAttr( title ) + '" aria-label="' + escapeAttr( label + '번 매물 상세보기' ) + '">' +
 					'<span class="hlf-noc-chart-value">' + noc.toFixed( 1 ) + '</span>' +
 					'<span class="hlf-noc-chart-bar-wrap"><span class="hlf-noc-chart-bar" style="height:' + height + '%"></span></span>' +
 					'<span class="hlf-noc-chart-label">' + escapeHtml( label ) + '</span>' +
 				'</a>'
 			);
 		} ).join( '' );
+
+		el.querySelectorAll( '[data-hlf-listing-key]' ).forEach( function ( barEl ) {
+			ListingSync.register( barEl.getAttribute( 'data-hlf-listing-key' ), barEl );
+		} );
 	}
 
 	/* ---------------- 공유 링크(Clipboard API + fallback) ---------------- */
@@ -169,9 +209,92 @@
 		} );
 	}
 
+	/* ---------------- 카카오 지도(비교 지도 + 상세 개별 지도) ---------------- */
+
+	var kakaoMapLoader = null;
+
+	// SDK는 한 번만 불러온다(같은 페이지에 지도가 여러 개일 일은 없지만, 방어적으로 캐시).
+	function loadKakaoMapSdk( key ) {
+		if ( window.kakao && window.kakao.maps ) { return Promise.resolve( window.kakao.maps ); }
+		if ( kakaoMapLoader ) { return kakaoMapLoader; }
+		if ( ! key ) { return Promise.reject( new Error( '카카오 JavaScript 키가 설정되지 않았습니다.' ) ); }
+		kakaoMapLoader = new Promise( function ( resolve, reject ) {
+			var script = document.createElement( 'script' );
+			script.src = 'https://dapi.kakao.com/v2/maps/sdk.js?appkey=' + encodeURIComponent( key ) + '&autoload=false';
+			script.onload = function () {
+				if ( window.kakao && window.kakao.maps && window.kakao.maps.load ) {
+					window.kakao.maps.load( function () { resolve( window.kakao.maps ); } );
+				} else {
+					reject( new Error( '카카오 지도 SDK를 찾을 수 없습니다.' ) );
+				}
+			};
+			script.onerror = function () { reject( new Error( '카카오 지도 SDK를 불러오지 못했습니다.' ) ); };
+			document.head.appendChild( script );
+		} );
+		return kakaoMapLoader;
+	}
+
+	// 비교 지도(여러 매물)와 상세 개별 지도(매물 1개)는 같은 렌더링 로직을 그대로 쓴다 — 좌표가 1개면
+	// bounds 계산 없이 그 지점으로 센터를 맞추고, 여러 개면 LatLngBounds로 전부 화면에 들어오게 맞춘다.
+	function initMapContainer( container ) {
+		var key = container.getAttribute( 'data-hlf-kakao-key' ) || '';
+		var items;
+		try {
+			items = JSON.parse( container.getAttribute( 'data-hlf-map-items' ) || '[]' );
+		} catch ( e ) {
+			items = [];
+		}
+		if ( ! items.length ) { return; }
+
+		loadKakaoMapSdk( key ).then( function ( maps ) {
+			container.innerHTML = '';
+			var first = items[ 0 ];
+			var map = new maps.Map( container, { center: new maps.LatLng( first.lat, first.lng ), level: 5 } );
+
+			if ( items.length === 1 ) {
+				map.setLevel( 4 );
+			} else {
+				var bounds = new maps.LatLngBounds();
+				items.forEach( function ( it ) { bounds.extend( new maps.LatLng( it.lat, it.lng ) ); } );
+				map.setBounds( bounds );
+			}
+
+			items.forEach( function ( it ) {
+				var label = String( it.order + 1 );
+				if ( label.length < 2 ) { label = '0' + label; }
+
+				var marker = document.createElement( 'div' );
+				marker.className = 'hlf-map-marker';
+				marker.textContent = label;
+				marker.title = it.address || '';
+
+				new maps.CustomOverlay( {
+					map: map,
+					position: new maps.LatLng( it.lat, it.lng ),
+					content: marker,
+					yAnchor: 1,
+				} );
+
+				if ( it.url ) {
+					marker.style.cursor = 'pointer';
+					marker.addEventListener( 'click', function () { window.location.href = it.url; } );
+				}
+				if ( it.key ) { ListingSync.register( it.key, marker ); }
+			} );
+		} ).catch( function ( error ) {
+			container.innerHTML = '<p class="hlf-map-empty">카카오 지도를 불러오지 못했습니다. (' + escapeHtml( error.message ) + ')</p>';
+		} );
+	}
+
+	function initMaps() {
+		document.querySelectorAll( '[data-hlf-map-items]' ).forEach( initMapContainer );
+	}
+
 	document.addEventListener( 'DOMContentLoaded', function () {
+		registerListingRows();
 		renderNocChart();
 		bindShareButtons();
 		bindLightbox();
+		initMaps();
 	} );
 } )();

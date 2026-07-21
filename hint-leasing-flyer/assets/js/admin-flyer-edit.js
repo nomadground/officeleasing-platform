@@ -467,9 +467,17 @@
 			}
 			var stepAttr = def.step ? ' step="' + def.step + '"' : '';
 			var placeholderAttr = def.placeholder ? ' placeholder="' + HLFAdmin.escapeAttr( def.placeholder ) + '"' : '';
+			// 지번주소 필드에만 "주소 검색" 버튼을 붙인다 — 카카오 Local API(서버 프록시, REST 키는
+			// 클라이언트에 노출하지 않음)로 도로명주소/좌표를 자동 채운다. 설정 안 됐으면 버튼 클릭
+			// 시 서버가 501을 돌려주고 아래 상태 문구로만 안내한다(폼 자체는 그대로 동작).
+			var addressSearchHtml = ( def.key === 'lot_address' ) ?
+				' <button type="button" class="button button-small" id="hlf-address-search">주소 검색</button>' +
+				'<p class="hlf-admin-note" id="hlf-address-search-status"></p>' : '';
 			return (
 				'<div class="hlf-field' + wideClass + '"><label for="' + fieldId + '">' + HLFAdmin.escapeHtml( def.label ) + '</label>' +
-				'<input id="' + fieldId + '" type="' + def.type + '" name="' + def.key + '" value="' + HLFAdmin.escapeAttr( value === null || value === undefined ? '' : value ) + '"' + stepAttr + placeholderAttr + '></div>'
+				'<input id="' + fieldId + '" type="' + def.type + '" name="' + def.key + '" value="' + HLFAdmin.escapeAttr( value === null || value === undefined ? '' : value ) + '"' + stepAttr + placeholderAttr + '>' +
+				addressSearchHtml +
+				'</div>'
 			);
 		} ).join( '' );
 
@@ -718,6 +726,34 @@
 					submitButton.disabled = false;
 				} );
 		} );
+
+		var addressSearchButton = document.getElementById( 'hlf-address-search' );
+		if ( addressSearchButton ) {
+			addressSearchButton.addEventListener( 'click', function () {
+				var statusEl = document.getElementById( 'hlf-address-search-status' );
+				var query = ( itemForm.elements.lot_address.value || '' ).trim();
+				if ( ! query ) {
+					if ( statusEl ) { statusEl.textContent = '지번주소를 입력해 주세요.'; }
+					return;
+				}
+				addressSearchButton.disabled = true;
+				if ( statusEl ) { statusEl.textContent = '주소를 조회하고 있습니다…'; }
+
+				HLFAdmin.apiFetch( 'kakao/address-search?q=' + encodeURIComponent( query ) )
+					.then( function ( result ) {
+						if ( result.road_address ) { itemForm.elements.road_address.value = result.road_address; }
+						if ( result.latitude ) { itemForm.elements.latitude.value = result.latitude; }
+						if ( result.longitude ) { itemForm.elements.longitude.value = result.longitude; }
+						if ( statusEl ) { statusEl.textContent = '도로명주소·좌표를 자동 입력했습니다.'; }
+					} )
+					.catch( function ( err ) {
+						if ( statusEl ) { statusEl.textContent = err.message; }
+					} )
+					.then( function () {
+						addressSearchButton.disabled = false;
+					} );
+			} );
+		}
 
 		document.getElementById( 'hlf-items-table-wrap' ).addEventListener( 'click', function ( event ) {
 			var editBtn = event.target.closest( '[data-hlf-edit-item]' );

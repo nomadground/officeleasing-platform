@@ -68,7 +68,9 @@ body.hlf-public {
 /* 썸네일 칸(hlf-listing-thumb)은 이미지가 없는 매물에서도 항상 렌더링된다(빈 <span>) — 그래야
    행마다 자식 개수가 달라 컬럼이 밀리는 일 없이 모든 행에서 주소/금액 위치가 그대로 정렬된다. */
 .hlf-listing-link { display: grid; grid-template-columns: 32px 52px minmax(0, 1.4fr) 2fr; align-items: center; gap: 12px; padding: 12px 14px; color: inherit; text-decoration: none; }
-.hlf-listing-link:hover { background: #fffdf4; }
+/* :hover와 .is-active(리스트·차트·지도 3자 연동, assets/js/public-flyer.js ListingSync)는 같은
+   강조 색을 쓴다 — 어느 쪽에서 시작된 강조인지와 무관하게 항상 같은 시각 언어로 보이게 한다. */
+.hlf-listing-link:hover, .hlf-listing-link.is-active { background: #fffdf4; }
 .hlf-listing-index { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 22px; color: #fff; background: var(--hlf-primary); border-radius: 6px; font-size: 11px; font-weight: 700; }
 .hlf-listing-thumb { display: block; width: 52px; height: 40px; }
 .hlf-listing-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 6px; }
@@ -146,9 +148,43 @@ body.hlf-public {
 .hlf-noc-chart-bar-wrap { display: flex; align-items: end; justify-content: center; height: 110px; }
 .hlf-noc-chart-bar { width: 24px; min-height: 10px; background: var(--hlf-primary); border-radius: 4px 4px 0 0; transition: background .15s; }
 .hlf-noc-chart-item:hover .hlf-noc-chart-bar,
-.hlf-noc-chart-item:focus-visible .hlf-noc-chart-bar { background: var(--hlf-primary-strong); }
+.hlf-noc-chart-item:focus-visible .hlf-noc-chart-bar,
+.hlf-noc-chart-item.is-active .hlf-noc-chart-bar { background: var(--hlf-primary-strong); }
 .hlf-noc-chart-label { color: var(--hlf-muted); font-size: 10px; font-weight: 700; }
 .hlf-noc-chart-note { margin: 8px 0 0; color: var(--hlf-muted); font-size: 10px; }
+
+/* 위치 비교 지도 + 상세 개별 지도 — 카카오 지도 SDK가 로드되기 전까지는 안내 문구만 보인다
+   (assets/js/public-flyer.js initMapContainer, 키 미설정/SDK 로드 실패 시에도 같은 자리에 안내). */
+.hlf-comparison-map-panel, .hlf-detail-map-panel { margin: 22px 0; padding: 16px 18px 14px; background: var(--hlf-surface); border: 1px solid var(--hlf-line); border-radius: 10px; }
+.hlf-comparison-map-heading { display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px; }
+.hlf-comparison-map-heading h2 { margin: 0; color: var(--hlf-primary); font-size: 16px; letter-spacing: -.02em; }
+.hlf-comparison-map-unit { color: var(--hlf-muted); font-size: 10px; letter-spacing: .06em; }
+.hlf-comparison-map { min-height: 360px; background: var(--hlf-line); border-radius: 8px; overflow: hidden; }
+.hlf-detail-map { min-height: 260px; }
+.hlf-map-empty { display: grid; place-items: center; min-height: 260px; margin: 0; padding: 24px; color: var(--hlf-muted); font-size: 13px; text-align: center; }
+.hlf-map-marker {
+	display: grid;
+	place-items: center;
+	width: 26px;
+	height: 26px;
+	color: #fff;
+	background: var(--hlf-primary);
+	border: 2px solid #fff;
+	border-radius: 50%;
+	font-size: 11px;
+	font-weight: 800;
+	box-shadow: 0 1px 4px rgba(0, 0, 0, .25);
+	transition: transform .15s, background .15s;
+}
+.hlf-map-marker.is-active { transform: scale(1.25); z-index: 5; background: var(--hlf-primary-strong); }
+.hlf-map-unavailable { margin: 22px 0; padding: 16px; color: var(--hlf-muted); font-size: 13px; text-align: center; border: 1px dashed var(--hlf-line); border-radius: 8px; }
+.hlf-map-address-fallback { margin: 8px 0 0; color: var(--hlf-muted); font-size: 12px; }
+.hlf-map-address-fallback a { color: var(--hlf-primary); font-weight: 700; }
+/* 인쇄용 순번-주소 목록 — 화면에서는 숨기고 print.css에서만 보여준다(카카오 지도는 인쇄로 재현하기
+   어렵고, 인쇄물에 실제로 필요한 정보는 "어디에 있는지" 텍스트로 충분하다). */
+.hlf-map-print-fallback { display: none; }
+.hlf-map-print-fallback-item { display: flex; align-items: center; gap: 8px; padding: 4px 0; color: var(--hlf-ink); font-size: 12px; }
+.hlf-map-print-fallback-index { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 18px; color: #fff; background: var(--hlf-primary); border-radius: 4px; font-size: 10px; font-weight: 700; }
 
 @media (max-width: 700px) {
 	.hlf-noc-chart { gap: 10px; }

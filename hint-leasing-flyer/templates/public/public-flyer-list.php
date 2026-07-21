@@ -1,6 +1,6 @@
 <?php
 /**
- * 공개 Flyer 목록 (Phase 1 최소 골격 + Phase 4: NOC 비교차트). 지도/인쇄 밀도는 Phase 4+에서.
+ * 공개 Flyer 목록 (Phase 1 골격 + Phase 4: NOC 비교차트/위치 비교 지도). 인쇄 밀도는 Phase 4+ 후속.
  * $hlf_context: ['flyer'=>[], 'status'=>string, 'items'=>[[...]]] — HLF_Routes::render()가 주입.
  *
  * 서버 렌더링 이유(요청서 1-E): SEO/공유 안정성, 공개 데이터 노출 최소화.
@@ -17,19 +17,41 @@ $noindex = ( 'published' !== $status );
 // NOC(전용평당 환산임대료) 비교 차트 데이터 — 값은 전부 서버 계산(hlf_calculate_item_metrics) 결과를
 // 그대로 쓴다. JS(assets/js/public-flyer.js)는 막대 높이를 그리는 순수 표시 로직만 담당하고 계산을
 // 다시 하지 않는다. NOC가 0 이하(면적 미입력 등 계산 불가)인 항목은 차트에서 안전하게 제외한다.
+//
+// 리스트 순번(위 목록의 %02d)·차트 막대·지도 마커는 전부 같은 item_number를 key로 연결한다
+// (data-hlf-listing-key) — 하나에 마우스오버하면 나머지 둘도 함께 강조된다(assets/js/public-flyer.js
+// ListingSync). order는 화면 표시 순서(display_order 기준, 위 목록과 동일한 순회)를 그대로 쓴다.
 $chart_items = array();
+$map_items   = array();
 foreach ( $items as $i => $item ) {
+	$address = $item['road_address'] ?: $item['lot_address'];
+	$url     = HLF_Routes::item_url( $flyer['id'], $item['item_number'] );
+
 	$noc = $item['metrics']['noc'];
-	if ( $noc <= 0 ) {
-		continue;
+	if ( $noc > 0 ) {
+		$chart_items[] = array(
+			'key'     => $item['item_number'],
+			'order'   => $i,
+			'noc'     => round( $noc, 1 ),
+			'address' => $address,
+			'url'     => $url,
+		);
 	}
-	$chart_items[] = array(
-		'order'   => $i,
-		'noc'     => round( $noc, 1 ),
-		'address' => $item['road_address'] ?: $item['lot_address'],
-		'url'     => HLF_Routes::item_url( $flyer['id'], $item['item_number'] ),
-	);
+
+	// 좌표가 없는 매물 때문에 전체 지도가 실패하지 않도록 여기서 미리 걸러낸다(빈 문자열/0 모두 제외).
+	if ( $item['latitude'] && $item['longitude'] ) {
+		$map_items[] = array(
+			'key'     => $item['item_number'],
+			'order'   => $i,
+			'lat'     => (float) $item['latitude'],
+			'lng'     => (float) $item['longitude'],
+			'address' => $address,
+			'url'     => $url,
+		);
+	}
 }
+
+$kakao_js_key = defined( 'HLF_KAKAO_JS_KEY' ) ? HLF_KAKAO_JS_KEY : '';
 ?>
 <!doctype html>
 <html <?php language_attributes(); ?>>
@@ -76,7 +98,7 @@ foreach ( $items as $i => $item ) {
 					$address = $item['road_address'] ?: $item['lot_address'];
 					?>
 					<li class="hlf-listing-card">
-						<a class="hlf-listing-link" href="<?php echo esc_url( $detail_url ); ?>">
+						<a class="hlf-listing-link" href="<?php echo esc_url( $detail_url ); ?>" data-hlf-listing-key="<?php echo esc_attr( $item['item_number'] ); ?>">
 							<span class="hlf-listing-index"><?php echo esc_html( sprintf( '%02d', $i + 1 ) ); ?></span>
 							<span class="hlf-listing-thumb"><?php
 								if ( ! empty( $item['exterior_image_id'] ) ) {
@@ -122,6 +144,37 @@ foreach ( $items as $i => $item ) {
 					></div>
 					<p class="hlf-noc-chart-note">※ 비교 가독성을 위해 현재 매물 범위에 맞춰 막대 높이를 조정했습니다.</p>
 				</section>
+			<?php endif; ?>
+
+			<?php if ( ! empty( $map_items ) ) : ?>
+				<section class="hlf-comparison-map-panel" aria-labelledby="hlf-comparison-map-title">
+					<div class="hlf-comparison-map-heading">
+						<h2 id="hlf-comparison-map-title">매물 위치 비교</h2>
+						<span class="hlf-comparison-map-unit">LOCATION REVIEW</span>
+					</div>
+					<div
+						class="hlf-comparison-map"
+						id="hlf-comparison-map"
+						data-hlf-kakao-key="<?php echo esc_attr( $kakao_js_key ); ?>"
+						data-hlf-map-items="<?php echo esc_attr( wp_json_encode( $map_items ) ); ?>"
+					>
+						<p class="hlf-map-empty">지도를 불러오는 중입니다…</p>
+					</div>
+					<?php
+					// 인쇄물에는 지도 대신 순번-주소 목록을 출력한다(카카오 지도 SDK는 인쇄에서
+					// 재현하기 어렵고, 실제로 필요한 정보는 "어디에 있는지" 텍스트로도 충분하다).
+					?>
+					<div class="hlf-map-print-fallback">
+						<?php foreach ( $map_items as $map_item ) : ?>
+							<div class="hlf-map-print-fallback-item">
+								<span class="hlf-map-print-fallback-index"><?php echo esc_html( sprintf( '%02d', $map_item['order'] + 1 ) ); ?></span>
+								<span><?php echo esc_html( $map_item['address'] ); ?></span>
+							</div>
+						<?php endforeach; ?>
+					</div>
+				</section>
+			<?php elseif ( ! empty( $items ) ) : ?>
+				<p class="hlf-map-unavailable">등록된 매물 중 좌표가 있는 매물이 없어 위치 비교를 표시할 수 없습니다.</p>
 			<?php endif; ?>
 		<?php endif; ?>
 

@@ -134,6 +134,18 @@ final class HLF_REST_Controller {
 			'callback'            => array( __CLASS__, 'delete_item_image' ),
 			'permission_callback' => array( __CLASS__, 'can_edit_this_flyer' ),
 		) );
+
+		// 지번주소 → 도로명주소/좌표 조회(카카오 Local API). 서버가 대신 호출한다 — REST API 키를
+		// 브라우저에 노출하지 않기 위해서다(Authorization 헤더는 이 서버 사이드 호출에만 붙는다).
+		// 특정 Flyer/Item에 종속되지 않는 조회라 officeleasing 검색과 같은 패턴(can_edit_flyers)만 요구한다.
+		register_rest_route( self::NS, '/kakao/address-search', array(
+			'methods'             => WP_REST_Server::READABLE,
+			'callback'            => array( __CLASS__, 'search_kakao_address' ),
+			'permission_callback' => array( __CLASS__, 'can_edit_flyers' ),
+			'args'                => array(
+				'q' => array( 'type' => 'string', 'required' => true ),
+			),
+		) );
 	}
 
 	/* ---------------- permission callbacks ---------------- */
@@ -331,6 +343,54 @@ final class HLF_REST_Controller {
 			return $result;
 		}
 		return rest_ensure_response( HLF_Item_Repository::to_array( get_post( $item_id ) ) );
+	}
+
+	/* ---------------- 카카오 주소 검색 ---------------- */
+
+	/**
+	 * 지번주소로 도로명주소·좌표를 조회한다(카카오 Local API, https://dapi.kakao.com/v2/local/search/address.json).
+	 * REST API 키는 wp-config.php의 define('HLF_KAKAO_REST_API_KEY', ...)로만 받는다(Naver 자격증명과
+	 * 같은 패턴 — 옵션 테이블 방식 채택 안 함). 키가 없으면 501을 반환해 "주소 검색 버튼만 비활성화되고
+	 * 나머지 관리자 화면은 그대로 동작"하도록 한다(Item 위도/경도 수동 입력은 이 기능과 무관하게 항상 가능).
+	 */
+	public static function search_kakao_address( WP_REST_Request $request ) {
+		if ( ! defined( 'HLF_KAKAO_REST_API_KEY' ) || ! HLF_KAKAO_REST_API_KEY ) {
+			return new WP_Error( 'hlf_kakao_not_configured', '카카오 주소 검색 설정이 필요합니다. 관리자에게 문의해 주세요.', array( 'status' => 501 ) );
+		}
+
+		$query = trim( (string) ( $request['q'] ?? '' ) );
+		if ( '' === $query ) {
+			return new WP_Error( 'hlf_kakao_query_required', '검색할 주소를 입력해 주세요.', array( 'status' => 400 ) );
+		}
+
+		$response = wp_remote_get(
+			'https://dapi.kakao.com/v2/local/search/address.json?query=' . rawurlencode( $query ),
+			array(
+				'headers' => array( 'Authorization' => 'KakaoAK ' . HLF_KAKAO_REST_API_KEY ),
+				'timeout' => 5,
+			)
+		);
+		if ( is_wp_error( $response ) ) {
+			return new WP_Error( 'hlf_kakao_request_failed', '주소 조회 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.', array( 'status' => 502 ) );
+		}
+
+		$code = wp_remote_retrieve_response_code( $response );
+		if ( 200 !== $code ) {
+			return new WP_Error( 'hlf_kakao_request_failed', '주소 조회에 실패했습니다(카카오 응답 코드 ' . $code . ').', array( 'status' => 502 ) );
+		}
+
+		$body   = json_decode( wp_remote_retrieve_body( $response ), true );
+		$result = $body['documents'][0] ?? null;
+		if ( ! $result ) {
+			return new WP_Error( 'hlf_kakao_no_result', '일치하는 주소를 찾지 못했습니다. 지번을 더 정확하게 입력해 주세요.', array( 'status' => 404 ) );
+		}
+
+		return rest_ensure_response( array(
+			'road_address' => (string) ( $result['road_address']['address_name'] ?? '' ),
+			'lot_address'  => (string) ( $result['address']['address_name'] ?? $query ),
+			'latitude'     => (string) ( $result['y'] ?? '' ),
+			'longitude'    => (string) ( $result['x'] ?? '' ),
+		) );
 	}
 
 	/* ---------------- helpers ---------------- */

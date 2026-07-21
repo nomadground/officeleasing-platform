@@ -28,6 +28,17 @@ $photo_urls = array_map( static function ( $id ) {
 	return wp_get_attachment_image_url( $id, 'hlf-item-photo' );
 }, $photo_ids );
 
+$kakao_js_key = defined( 'HLF_KAKAO_JS_KEY' ) ? HLF_KAKAO_JS_KEY : '';
+$has_coords   = $item['latitude'] && $item['longitude'];
+$map_items    = $has_coords ? array( array(
+	'key'     => $item['item_number'],
+	'order'   => 0,
+	'lat'     => (float) $item['latitude'],
+	'lng'     => (float) $item['longitude'],
+	'address' => $address,
+	'url'     => '',
+) ) : array();
+
 $basic = array(
 	'해당층'       => trim( ( $item['floor_current'] ?: '-' ) . ' / ' . ( $item['floor_total'] ?: '-' ) . '층' ),
 	'공급면적'     => $item['lease_area_sqm'] ? number_format( (float) $item['lease_area_sqm'], 1 ) . '㎡ (' . number_format( $metrics['lease_pyeong'], 1 ) . '평)' : '-',
@@ -121,6 +132,34 @@ $basic = array(
 				</div>
 			<?php endforeach; ?>
 		</dl>
+
+		<?php if ( $has_coords ) : ?>
+			<section class="hlf-detail-map-panel" aria-labelledby="hlf-detail-map-title">
+				<div class="hlf-comparison-map-heading">
+					<h2 id="hlf-detail-map-title">위치</h2>
+				</div>
+				<div
+					class="hlf-comparison-map hlf-detail-map"
+					id="hlf-detail-map"
+					data-hlf-kakao-key="<?php echo esc_attr( $kakao_js_key ); ?>"
+					data-hlf-map-items="<?php echo esc_attr( wp_json_encode( $map_items ) ); ?>"
+				>
+					<p class="hlf-map-empty">지도를 불러오는 중입니다…</p>
+				</div>
+				<p class="hlf-map-address-fallback">
+					<?php echo esc_html( $address ); ?> ·
+					<a href="<?php echo esc_url( 'https://map.kakao.com/link/map/' . rawurlencode( $address ) . ',' . $item['latitude'] . ',' . $item['longitude'] ); ?>" target="_blank" rel="noreferrer">카카오맵에서 보기 ↗</a>
+				</p>
+				<div class="hlf-map-print-fallback">
+					<div class="hlf-map-print-fallback-item">
+						<span class="hlf-map-print-fallback-index">01</span>
+						<span><?php echo esc_html( $address ); ?></span>
+					</div>
+				</div>
+			</section>
+		<?php else : ?>
+			<p class="hlf-map-unavailable">이 매물은 아직 좌표가 등록되지 않아 위치 지도를 표시할 수 없습니다.</p>
+		<?php endif; ?>
 
 		<?php
 		// 문의처 우선순위: 이 매물의 개별 담당자(override, item_fields의 contact_name/contact_phone)
