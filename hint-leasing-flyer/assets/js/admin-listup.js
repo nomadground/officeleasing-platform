@@ -736,7 +736,6 @@
 						'<td>' + esc( won( s.maintenance_fee_manwon ) ) + '</td>' +
 						'<td class="hlf-row-actions">' +
 							'<button type="button" class="button button-small" data-hlf-fm-edit="' + s.id + '">수정</button>' +
-							'<button type="button" class="button button-small hlf-danger" data-hlf-fm-delete="' + s.id + '">삭제</button>' +
 						'</td></tr>';
 				} ).join( '' ) +
 				'</tbody></table></div>';
@@ -767,25 +766,11 @@
 			} );
 		} );
 
-		// "수정"/"삭제"는 왼쪽의 포함 체크박스와는 다른 동작이다 — 체크 해제는 이 안내문에서만
-		// 빼는 것이고, 삭제는 원본 매물(hlf_source_listing) 자체를 없애는 것이다(다른 안내문에 이미
-		// 담긴 매물 스냅샷에는 영향 없음 — HLF_Source_Listing_Repository::delete()가 원래부터 그렇게
-		// 동작한다). 헷갈리지 않도록 체크박스는 맨 왼쪽 열, 수정·삭제는 맨 오른쪽 "작업" 열에 둔다.
+		// "수정"은 왼쪽의 포함 체크박스와 다른 화면(원본 매물 편집 폼)으로 이동할 뿐이다. 원본 매물
+		// 자체를 삭제하는 기능은 "전체 매물" 탭에만 둔다 — 여기서는 체크박스(포함/제외)가 이미
+		// "리스트에서 빼기" 역할을 하므로 별도 삭제 버튼은 두지 않는다(체크 해제와 개념이 겹친다).
 		box.querySelectorAll( '[data-hlf-fm-edit]' ).forEach( function ( b ) {
 			b.addEventListener( 'click', function () { renderSourceForm( Number( b.getAttribute( 'data-hlf-fm-edit' ) ) ); } );
-		} );
-		box.querySelectorAll( '[data-hlf-fm-delete]' ).forEach( function ( b ) {
-			b.addEventListener( 'click', function () {
-				var id = Number( b.getAttribute( 'data-hlf-fm-delete' ) );
-				var s = sources.filter( function ( x ) { return x.id === id; } )[ 0 ];
-				var warn = s && s.included_flyer_count > 0
-					? '이 매물은 ' + s.included_flyer_count + '개 안내문에 포함돼 있습니다. 원본을 삭제해도 각 안내문에 이미 담긴 매물(스냅샷)은 그대로 유지됩니다. 원본 매물 자체를 삭제할까요?'
-					: '이 원본 매물을 삭제할까요?';
-				if ( ! window.confirm( warn ) ) { return; }
-				api( 'source-listings/' + id, { method: 'DELETE' } )
-					.then( function () { toast( '원본 매물을 삭제했습니다.' ); renderFlyerManage( flyer.id ); } )
-					.catch( function ( err ) { window.alert( '삭제하지 못했습니다: ' + err.message ); } );
-			} );
 		} );
 	}
 
