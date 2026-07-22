@@ -114,11 +114,15 @@ final class HLF_Routes {
 		$hlf_context = array(
 			'flyer'  => HLF_Flyer_Repository::to_array( $flyer ),
 			'status' => HLF_Flyer_Repository::status_label( $flyer->post_status ),
-			'items'  => array_map( array( 'HLF_Item_Repository', 'to_array' ), HLF_Item_Repository::get_items( $flyer->ID ) ),
+			// 공개 화면은 image_previews를 쓰지 않는다(관리자 편집 화면 전용 데이터) — false로 넘겨
+			// 매물마다 사진 개수만큼 반복되는 불필요한 attachment 조회를 건너뛴다.
+			'items'  => array_map( static function ( $post ) {
+				return HLF_Item_Repository::to_array( $post, false );
+			}, HLF_Item_Repository::get_items( $flyer->ID ) ),
 		);
 
 		if ( $item ) {
-			$hlf_context['item']  = HLF_Item_Repository::to_array( $item );
+			$hlf_context['item']  = HLF_Item_Repository::to_array( $item, false );
 			$template             = HLF_DIR . 'templates/public/public-flyer-detail.php';
 		} else {
 			$template = HLF_DIR . 'templates/public/public-flyer-list.php';

@@ -355,11 +355,24 @@ final class HLF_Item_Repository {
 		}
 	}
 
-	/** item 하나를 계산 지표까지 붙여 직렬화(공개 템플릿/REST 공용). */
-	public static function to_array( WP_Post $item ): array {
-		$data                   = HLF_Meta_Schema::read_item( $item->ID );
-		$data['metrics']        = hlf_calculate_item_metrics( $data );
-		$data['image_previews'] = self::image_previews( $data );
+	/**
+	 * item 하나를 계산 지표까지 붙여 직렬화(공개 템플릿/REST 공용).
+	 *
+	 * $include_image_previews는 기본 true(REST 응답 — 관리자 편집 화면의 wp.media 썸네일 표시에
+	 * 실제로 쓰인다, admin-flyer-edit.js의 item.image_previews 참고). 공개 목록/상세 페이지
+	 * (HLF_Routes::render())는 이 맵을 전혀 쓰지 않는데도(공개 템플릿은 exterior_image_id/
+	 * interior_image_ids로 wp_get_attachment_image()를 직접 호출) 항상 계산되고 있었다 —
+	 * image_previews()가 매물마다 사진 개수만큼 wp_get_attachment_image_url()(내부적으로
+	 * get_post()+postmeta 조회)을 호출해, 리스트↔상세 페이지를 오갈 때마다(둘 다 매번 매물
+	 * 전체를 다시 조회하는 완전한 서버 렌더링이라) 불필요한 DB 조회가 매물 수 × 사진 수만큼
+	 * 반복되고 있었다. 공개 라우트에서는 false로 호출해 이 계산을 아예 건너뛴다.
+	 */
+	public static function to_array( WP_Post $item, bool $include_image_previews = true ): array {
+		$data            = HLF_Meta_Schema::read_item( $item->ID );
+		$data['metrics'] = hlf_calculate_item_metrics( $data );
+		if ( $include_image_previews ) {
+			$data['image_previews'] = self::image_previews( $data );
+		}
 		return $data;
 	}
 
