@@ -263,6 +263,30 @@
 		return kakaoMapLoader;
 	}
 
+	// 인쇄 화면은 폭/높이가 화면과 전혀 다르다(A4 landscape, 2단 grid 폭 등) — 카카오 지도는 생성
+	// 시점의 컨테이너 크기로 내부 캔버스를 굳혀버리므로, 인쇄 시작/종료 시점에 이미 만들어둔 지도마다
+	// relayout()+중심 재설정을 다시 걸어줘야 인쇄 레이아웃 크기에 맞게 다시 그려진다.
+	var initializedMaps = [];
+
+	function fitMapToItems( map, items ) {
+		if ( items.length === 1 ) {
+			map.setCenter( new kakao.maps.LatLng( items[ 0 ].lat, items[ 0 ].lng ) );
+			map.setLevel( 4 );
+		} else {
+			var bounds = new kakao.maps.LatLngBounds();
+			items.forEach( function ( it ) { bounds.extend( new kakao.maps.LatLng( it.lat, it.lng ) ); } );
+			map.setBounds( bounds );
+		}
+	}
+
+	function relayoutMapsForPrint() {
+		if ( ! ( window.kakao && window.kakao.maps ) ) { return; }
+		initializedMaps.forEach( function ( entry ) {
+			entry.map.relayout();
+			fitMapToItems( entry.map, entry.items );
+		} );
+	}
+
 	// 비교 지도(여러 매물)와 상세 개별 지도(매물 1개)는 같은 렌더링 로직을 그대로 쓴다 — 좌표가 1개면
 	// bounds 계산 없이 그 지점으로 센터를 맞추고, 여러 개면 LatLngBounds로 전부 화면에 들어오게 맞춘다.
 	function initMapContainer( container ) {
@@ -311,6 +335,8 @@
 				}
 				if ( it.key ) { ListingSync.register( it.key, marker ); }
 			} );
+
+			initializedMaps.push( { map: map, items: items } );
 		} ).catch( function ( error ) {
 			container.innerHTML = '<p class="hlf-map-empty">카카오 지도를 불러오지 못했습니다. (' + escapeHtml( error.message ) + ')</p>';
 		} );
@@ -320,6 +346,20 @@
 		document.querySelectorAll( '[data-hlf-map-items]' ).forEach( initMapContainer );
 	}
 
+	function bindPrintMapRelayout() {
+		// beforeprint/afterprint는 대부분의 브라우저가 지원한다 — 인쇄 미리보기 진입/종료 양쪽에서
+		// 다시 그려야 화면으로 돌아왔을 때도 레이아웃이 깨지지 않는다. matchMedia는 이 두 이벤트를
+		// 지원하지 않는 구형 브라우저를 위한 보조 경로.
+		window.addEventListener( 'beforeprint', relayoutMapsForPrint );
+		window.addEventListener( 'afterprint', relayoutMapsForPrint );
+		if ( window.matchMedia ) {
+			var mql = window.matchMedia( 'print' );
+			var handler = function ( e ) { if ( e.matches ) { relayoutMapsForPrint(); } };
+			if ( mql.addEventListener ) { mql.addEventListener( 'change', handler ); }
+			else if ( mql.addListener ) { mql.addListener( handler ); }
+		}
+	}
+
 	document.addEventListener( 'DOMContentLoaded', function () {
 		registerListingRows();
 		renderNocChart();
@@ -327,5 +367,6 @@
 		bindPrintButton();
 		bindLightbox();
 		initMaps();
+		bindPrintMapRelayout();
 	} );
 } )();
