@@ -39,7 +39,8 @@
 	var state = {
 		tab: 'dashboard',
 		contacts: null,      // { contacts:[{index,name,phone,is_default}], default_index }
-		flyers: null         // 최근 조회한 Flyer 목록(전체 매물 일괄 추가 드롭다운/임대안내문 탭 공용)
+		flyers: null,        // 최근 조회한 Flyer 목록(전체 매물 일괄 추가 드롭다운/임대안내문 탭 공용)
+		sourceFilter: ''     // Dashboard 카드 클릭으로 "전체 매물" 탭에 들어갈 때 한 번만 적용할 연결 필터.
 	};
 
 	/* ==================== 공통 ==================== */
@@ -99,7 +100,13 @@
 
 	function renderTab() {
 		if ( 'dashboard' === state.tab ) { return renderDashboard(); }
-		if ( 'sources' === state.tab ) { return renderSourceList(); }
+		if ( 'sources' === state.tab ) {
+			// Dashboard 카드 클릭으로 넘어온 필터는 이번 진입 한 번만 적용하고 소비한다 — 이후
+			// "전체 매물" 탭을 직접 눌러 재진입하면 다시 필터 없는 전체 목록으로 돌아간다.
+			var pendingFilter = state.sourceFilter;
+			state.sourceFilter = '';
+			return renderSourceList( '', pendingFilter );
+		}
 		if ( 'flyers' === state.tab ) { return renderFlyerList(); }
 		if ( 'settings' === state.tab ) { return renderSettings(); }
 	}
@@ -112,21 +119,35 @@
 			el.innerHTML =
 				'<h2 class="hlf-listup-title">Dashboard</h2>' +
 				'<div class="hlf-stat-grid">' +
-					statCard( d.source_total, '전체 매물' ) +
-					statCard( d.flyer_total, '임대안내문' ) +
-					statCard( d.source_linked, '연결된 매물' ) +
-					statCard( d.source_unlinked, '미연결 매물' ) +
+					statCard( d.source_total, '전체 매물', 'sources', '' ) +
+					statCard( d.flyer_total, '임대안내문', 'flyers', '' ) +
+					statCard( d.source_linked, '연결된 매물', 'sources', 'linked' ) +
+					statCard( d.source_unlinked, '미연결 매물', 'sources', 'unlinked' ) +
 				'</div>' +
-				'<p class="hlf-admin-note">“연결된 매물”은 하나 이상의 임대안내문에 포함된 매물, “미연결”은 아직 어떤 안내문에도 들어가지 않은 매물입니다.</p>';
+				'<p class="hlf-admin-note">“연결된 매물”은 하나 이상의 임대안내문에 포함된 매물, “미연결”은 아직 어떤 안내문에도 들어가지 않은 매물입니다. 숫자를 클릭하면 해당 목록으로 이동합니다.</p>';
+			el.querySelectorAll( '[data-hlf-stat-tab]' ).forEach( function ( card ) {
+				card.addEventListener( 'click', function () {
+					state.sourceFilter = card.getAttribute( 'data-hlf-stat-filter' ) || '';
+					setTab( card.getAttribute( 'data-hlf-stat-tab' ) );
+				} );
+			} );
 		} ).catch( function ( err ) { errorText( el, '대시보드를 불러오지 못했습니다: ' + err.message ); } );
 	}
-	function statCard( value, label ) {
-		return '<div class="hlf-stat-card"><strong>' + esc( value ) + '</strong><span>' + esc( label ) + '</span></div>';
+	function statCard( value, label, tab, filter ) {
+		return '<button type="button" class="hlf-stat-card" data-hlf-stat-tab="' + tab + '" data-hlf-stat-filter="' + filter + '">' +
+			'<strong>' + esc( value ) + '</strong><span>' + esc( label ) + '</span></button>';
 	}
 
 	/* ==================== 전체 매물(원본) 목록 ==================== */
 
-	function renderSourceList( searchTerm ) {
+	var SOURCE_FILTERS = [
+		{ key: '', label: '전체' },
+		{ key: 'linked', label: '연결됨' },
+		{ key: 'unlinked', label: '미연결' }
+	];
+
+	function renderSourceList( searchTerm, filter ) {
+		filter = filter || '';
 		var el = main();
 		el.innerHTML =
 			'<div class="hlf-listup-head">' +
@@ -136,6 +157,11 @@
 			'<div class="hlf-toolbar">' +
 				'<input type="search" id="hlf-src-search" placeholder="주소·키워드 검색" value="' + escAttr( searchTerm || '' ) + '">' +
 				'<button type="button" class="button" id="hlf-src-search-btn">검색</button>' +
+				'<div class="hlf-filter-chips">' +
+					SOURCE_FILTERS.map( function ( f ) {
+						return '<button type="button" class="hlf-filter-chip' + ( filter === f.key ? ' is-active' : '' ) + '" data-hlf-src-filter="' + f.key + '">' + esc( f.label ) + '</button>';
+					} ).join( '' ) +
+				'</div>' +
 			'</div>' +
 			'<div class="hlf-bulk-bar" id="hlf-src-bulk" hidden>' +
 				'<span id="hlf-src-bulk-count">0개 선택됨</span> → ' +
@@ -146,8 +172,11 @@
 
 		document.getElementById( 'hlf-src-new' ).addEventListener( 'click', function () { renderSourceForm( null ); } );
 		var searchInput = document.getElementById( 'hlf-src-search' );
-		document.getElementById( 'hlf-src-search-btn' ).addEventListener( 'click', function () { renderSourceList( searchInput.value ); } );
-		searchInput.addEventListener( 'keydown', function ( e ) { if ( 'Enter' === e.key ) { renderSourceList( searchInput.value ); } } );
+		document.getElementById( 'hlf-src-search-btn' ).addEventListener( 'click', function () { renderSourceList( searchInput.value, filter ); } );
+		searchInput.addEventListener( 'keydown', function ( e ) { if ( 'Enter' === e.key ) { renderSourceList( searchInput.value, filter ); } } );
+		el.querySelectorAll( '[data-hlf-src-filter]' ).forEach( function ( btn ) {
+			btn.addEventListener( 'click', function () { renderSourceList( searchInput.value, btn.getAttribute( 'data-hlf-src-filter' ) ); } );
+		} );
 
 		// 일괄 추가용 Flyer 드롭다운 채우기.
 		loadFlyers( function ( flyers ) {
@@ -160,6 +189,7 @@
 		} );
 
 		var q = '' !== ( searchTerm || '' ) ? ( '&search=' + encodeURIComponent( searchTerm ) ) : '';
+		q += '' !== filter ? ( '&linked=' + encodeURIComponent( filter ) ) : '';
 		api( 'source-listings?per_page=100' + q ).then( function ( data ) {
 			renderSourceTable( data.items || [] );
 		} ).catch( function ( err ) { errorText( document.getElementById( 'hlf-src-results' ), '목록을 불러오지 못했습니다: ' + err.message ); } );
@@ -554,12 +584,12 @@
 			if ( ! flyers.length ) { box.innerHTML = '<p class="hlf-empty">등록된 임대안내문이 없습니다.</p>'; return; }
 			box.innerHTML =
 				'<div class="hlf-table-wrap"><table class="hlf-table">' +
-					'<thead><tr><th>번호</th><th>제목</th><th>상태</th><th>매물 수</th><th>작업</th></tr></thead><tbody>' +
+					'<thead><tr><th>번호</th><th>제목</th><th>매물 수</th><th>작업</th></tr></thead><tbody>' +
 					flyers.map( function ( f ) {
 						return '<tr>' +
 							'<td>' + esc( f.flyer_number ) + '</td>' +
-							'<td>' + esc( f.title || '(제목 없음)' ) + '</td>' +
-							'<td><span class="' + A.statusBadgeClass( f.status ) + '">' + esc( A.statusLabel( f.status ) ) + '</span></td>' +
+							'<td>' + esc( f.title || '(제목 없음)' ) +
+								( f.status === 'archived' ? ' <span class="' + A.statusBadgeClass( 'archived' ) + '">보관</span>' : '' ) + '</td>' +
 							'<td class="hlf-td-center">' + esc( f.item_count ) + '</td>' +
 							'<td class="hlf-row-actions">' +
 								'<button type="button" class="button button-small button-primary" data-hlf-fl-manage="' + f.id + '">포함 매물 관리</button>' +
@@ -692,15 +722,22 @@
 		if ( ! sources.length ) { box.innerHTML = '<p class="hlf-empty">등록된 원본 매물이 없습니다. “전체 매물” 탭에서 먼저 등록하세요.</p>'; return; }
 		box.innerHTML =
 			'<div class="hlf-table-wrap"><table class="hlf-table">' +
-				'<thead><tr><th>포함</th><th>지번주소</th><th>층</th><th>보증금</th><th>임대료</th><th>관리비</th></tr></thead><tbody>' +
+				'<thead><tr><th>포함</th><th>지번주소</th><th>층</th><th>임대면적</th><th>전용면적</th>' +
+					'<th>보증금</th><th>임대료</th><th>관리비</th><th>작업</th></tr></thead><tbody>' +
 				sources.map( function ( s ) {
 					var on = !! includedSet[ s.id ];
 					return '<tr><td><input type="checkbox" class="hlf-fm-pick" data-id="' + s.id + '"' + ( on ? ' checked' : '' ) + '></td>' +
 						'<td>' + esc( s.lot_address || '-' ) + '<small>' + esc( s.road_address || '' ) + '</small></td>' +
 						'<td>' + esc( num( s.floor_current ) ) + '/' + esc( num( s.floor_total ) ) + '</td>' +
+						'<td>' + esc( num( s.lease_area_sqm ) ) + '㎡</td>' +
+						'<td>' + esc( num( s.exclusive_area_sqm ) ) + '㎡</td>' +
 						'<td>' + esc( won( s.deposit_manwon ) ) + '</td>' +
 						'<td>' + esc( won( s.monthly_rent_manwon ) ) + '</td>' +
-						'<td>' + esc( won( s.maintenance_fee_manwon ) ) + '</td></tr>';
+						'<td>' + esc( won( s.maintenance_fee_manwon ) ) + '</td>' +
+						'<td class="hlf-row-actions">' +
+							'<button type="button" class="button button-small" data-hlf-fm-edit="' + s.id + '">수정</button>' +
+							'<button type="button" class="button button-small hlf-danger" data-hlf-fm-delete="' + s.id + '">삭제</button>' +
+						'</td></tr>';
 				} ).join( '' ) +
 				'</tbody></table></div>';
 
@@ -727,6 +764,27 @@
 						c.disabled = false; c.checked = ! c.checked; // 롤백.
 						window.alert( '변경하지 못했습니다: ' + err.message );
 					} );
+			} );
+		} );
+
+		// "수정"/"삭제"는 왼쪽의 포함 체크박스와는 다른 동작이다 — 체크 해제는 이 안내문에서만
+		// 빼는 것이고, 삭제는 원본 매물(hlf_source_listing) 자체를 없애는 것이다(다른 안내문에 이미
+		// 담긴 매물 스냅샷에는 영향 없음 — HLF_Source_Listing_Repository::delete()가 원래부터 그렇게
+		// 동작한다). 헷갈리지 않도록 체크박스는 맨 왼쪽 열, 수정·삭제는 맨 오른쪽 "작업" 열에 둔다.
+		box.querySelectorAll( '[data-hlf-fm-edit]' ).forEach( function ( b ) {
+			b.addEventListener( 'click', function () { renderSourceForm( Number( b.getAttribute( 'data-hlf-fm-edit' ) ) ); } );
+		} );
+		box.querySelectorAll( '[data-hlf-fm-delete]' ).forEach( function ( b ) {
+			b.addEventListener( 'click', function () {
+				var id = Number( b.getAttribute( 'data-hlf-fm-delete' ) );
+				var s = sources.filter( function ( x ) { return x.id === id; } )[ 0 ];
+				var warn = s && s.included_flyer_count > 0
+					? '이 매물은 ' + s.included_flyer_count + '개 안내문에 포함돼 있습니다. 원본을 삭제해도 각 안내문에 이미 담긴 매물(스냅샷)은 그대로 유지됩니다. 원본 매물 자체를 삭제할까요?'
+					: '이 원본 매물을 삭제할까요?';
+				if ( ! window.confirm( warn ) ) { return; }
+				api( 'source-listings/' + id, { method: 'DELETE' } )
+					.then( function () { toast( '원본 매물을 삭제했습니다.' ); renderFlyerManage( flyer.id ); } )
+					.catch( function ( err ) { window.alert( '삭제하지 못했습니다: ' + err.message ); } );
 			} );
 		} );
 	}

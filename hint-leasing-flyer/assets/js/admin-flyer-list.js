@@ -20,8 +20,8 @@
 			return (
 				'<tr data-flyer-row="' + flyer.id + '">' +
 					'<td><a href="' + editUrl + '">' + HLFAdmin.escapeHtml( flyer.flyer_number ) + '</a></td>' +
-					'<td>' + HLFAdmin.escapeHtml( flyer.title ) + '</td>' +
-					'<td><span class="' + HLFAdmin.statusBadgeClass( flyer.status ) + '">' + HLFAdmin.statusLabel( flyer.status ) + '</span></td>' +
+					'<td>' + HLFAdmin.escapeHtml( flyer.title ) +
+						( flyer.status === 'archived' ? ' <span class="' + HLFAdmin.statusBadgeClass( 'archived' ) + '">보관</span>' : '' ) + '</td>' +
 					'<td>' + flyer.item_count + '개</td>' +
 					'<td>' + HLFAdmin.escapeHtml( contact ) + '</td>' +
 					'<td class="hlf-admin-actions">' +
@@ -34,7 +34,7 @@
 
 		root.innerHTML =
 			'<table class="widefat striped hlf-admin-table">' +
-				'<thead><tr><th>번호</th><th>제목</th><th>상태</th><th>매물</th><th>담당자</th><th>작업</th></tr></thead>' +
+				'<thead><tr><th>번호</th><th>제목</th><th>매물</th><th>담당자</th><th>작업</th></tr></thead>' +
 				'<tbody>' + rows + '</tbody>' +
 			'</table>';
 	}

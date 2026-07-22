@@ -130,9 +130,10 @@
 
 	function renderFlyerCard() {
 		var flyer = state.flyer;
+		var archived = flyer.status === 'archived';
 		return (
 			'<section class="hlf-card">' +
-				'<h2>' + HLFAdmin.escapeHtml( flyer.flyer_number ) + ' <span class="' + HLFAdmin.statusBadgeClass( flyer.status ) + '">' + HLFAdmin.statusLabel( flyer.status ) + '</span></h2>' +
+				'<h2>' + HLFAdmin.escapeHtml( flyer.flyer_number ) + ( archived ? ' <span class="' + HLFAdmin.statusBadgeClass( 'archived' ) + '">' + HLFAdmin.statusLabel( 'archived' ) + '</span>' : '' ) + '</h2>' +
 				'<form id="hlf-flyer-form">' +
 					'<div class="hlf-field"><label for="hlf-flyer-title">제목(내부 관리용)</label><input id="hlf-flyer-title" type="text" name="title" value="' + HLFAdmin.escapeAttr( flyer.title ) + '" required></div>' +
 					'<div class="hlf-field"><label for="hlf-flyer-contact-name">담당자명</label><input id="hlf-flyer-contact-name" type="text" name="contact_name" value="' + HLFAdmin.escapeAttr( flyer.contact_name ) + '"></div>' +
@@ -143,17 +144,13 @@
 				'</form>' +
 				'<hr>' +
 				'<div class="hlf-field">' +
-					'<label for="hlf-status-select">상태</label>' +
-					// 보관(archived) 상태는 선택지에서 뺐다(운영상 불필요 — 미발행/발행 2개면 충분) — 서버
-					// 로직(읽기 전용 가드 등)은 그대로 남겨 이전에 이미 보관 처리된 Flyer가 있어도
-					// 그 동작은 안 깨진다(read-only 유지, 배지 표시 등). 이 화면에서만 새로 보관으로
-					// 바꾸는 선택지를 숨긴다.
-					'<select id="hlf-status-select">' +
-						'<option value="draft"' + ( flyer.status === 'draft' ? ' selected' : '' ) + '>미발행(draft)</option>' +
-						'<option value="published"' + ( flyer.status === 'published' ? ' selected' : '' ) + '>발행됨(published)</option>' +
-						( flyer.status === 'archived' ? '<option value="archived" selected>보관(archived)</option>' : '' ) +
-					'</select> ' +
-					'<button type="button" class="button" id="hlf-status-apply">상태 변경</button>' +
+					'<label>상태</label> ' +
+					// 새 안내문은 생성 즉시 발행 상태로 저장되므로 draft/published 이분법은 없앴다 — 이
+					// 화면에서는 "보관 처리" 토글 하나만 남긴다(완료된 안내문을 실수로 수정 못 하게 막는
+					// 별도 워크플로우이고, 발행 여부와는 무관하게 그대로 유지한다).
+					( archived
+						? '<span class="' + HLFAdmin.statusBadgeClass( 'archived' ) + '">보관됨</span> <button type="button" class="button" id="hlf-status-apply" data-hlf-next-status="published">보관 해제</button>'
+						: '<span class="' + HLFAdmin.statusBadgeClass( 'published' ) + '">발행됨</span> <button type="button" class="button" id="hlf-status-apply" data-hlf-next-status="archived">보관하기</button>' ) +
 					'<p class="hlf-admin-error" data-hlf-status-error hidden></p>' +
 				'</div>' +
 				'<p class="hlf-admin-note"><a href="' + HLFAdmin.escapeAttr( flyer.url ) + '" target="_blank" rel="noopener">공개 링크 열기 ↗</a></p>' +
@@ -189,17 +186,14 @@
 				} );
 		} );
 
-		var statusSelect = document.getElementById( 'hlf-status-select' );
 		var statusButton = document.getElementById( 'hlf-status-apply' );
 		var statusError = form.parentNode.querySelector( '[data-hlf-status-error]' );
 		statusButton.addEventListener( 'click', function () {
-			var next = statusSelect.value;
-			if ( next === state.flyer.status ) { return; }
-			if ( ( next === 'published' || next === 'archived' ) &&
-				! window.confirm( '상태를 "' + HLFAdmin.statusLabel( next ) + '"(으)로 바꿉니다. 공개 링크의 열람 가능 범위가 즉시 바뀝니다. 계속할까요?' ) ) {
-				statusSelect.value = state.flyer.status;
-				return;
-			}
+			var next = statusButton.getAttribute( 'data-hlf-next-status' );
+			var confirmMsg = 'archived' === next
+				? '이 안내문을 보관 처리할까요? 보관하면 읽기 전용으로 바뀌어 더 이상 수정할 수 없습니다.'
+				: '보관을 해제하고 다시 발행 상태로 되돌릴까요?';
+			if ( ! window.confirm( confirmMsg ) ) { return; }
 			statusButton.disabled = true;
 			statusError.hidden = true;
 			HLFAdmin.apiFetch( 'flyers/' + flyerId + '/status', {
@@ -214,7 +208,6 @@
 					statusError.textContent = err.message;
 					statusError.hidden = false;
 					statusButton.disabled = false;
-					statusSelect.value = state.flyer.status;
 				} );
 		} );
 	}

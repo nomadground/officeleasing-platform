@@ -49,11 +49,16 @@ final class HLF_Flyer_Repository {
 		return $post;
 	}
 
+	/**
+	 * 새 Flyer는 생성 즉시 발행(publish) 상태로 저장한다 — 별도 "발행하기" 클릭 없이 생성 직후
+	 * 공개 URL이 바로 유효해야 한다는 운영 방침(draft/publish 이분법 폐지)에 따른 것. archived로의
+	 * 전환(보관 처리)은 이 방침과 무관한 별도 워크플로우라 그대로 남아 있다.
+	 */
 	public static function create( array $data ): int|WP_Error {
 		$postarr = array(
 			'post_type'   => HLF_Post_Types::FLYER,
 			'post_title'  => isset( $data['title'] ) ? sanitize_text_field( $data['title'] ) : '제목 없는 Flyer',
-			'post_status' => 'draft',
+			'post_status' => 'publish',
 			'post_author' => get_current_user_id(),
 		);
 		$flyer_id = wp_insert_post( $postarr, true );

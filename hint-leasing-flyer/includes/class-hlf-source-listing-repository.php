@@ -64,13 +64,15 @@ final class HLF_Source_Listing_Repository {
 	}
 
 	/**
-	 * 목록/검색. $args: search(주소·키워드), page, per_page.
+	 * 목록/검색. $args: search(주소·키워드), linked('linked'|'unlinked'|'', Dashboard 카드 클릭용
+	 * 연결 여부 필터), page, per_page.
 	 * 반환: array( 'items' => [...to_array], 'total' => int, 'page' => int, 'per_page' => int ).
 	 */
 	public static function list( array $args = array() ): array {
 		$per_page = min( 100, max( 1, (int) ( $args['per_page'] ?? 20 ) ) );
 		$page     = max( 1, (int) ( $args['page'] ?? 1 ) );
 		$search   = trim( (string) ( $args['search'] ?? '' ) );
+		$linked   = (string) ( $args['linked'] ?? '' );
 
 		$query_args = array(
 			'post_type'      => HLF_Post_Types::SOURCE,
@@ -93,8 +95,20 @@ final class HLF_Source_Listing_Repository {
 			);
 		}
 
-		$query = new WP_Query( $query_args );
+		// "연결"은 Item 쪽 메타(source_link_map)로만 알 수 있어 source 자체의 meta_query로는 표현할 수
+		// 없다 — 먼저 맵을 구해 post__in/post__not_in으로 걸러낸다(빈 배열은 WP_Query에서 "필터 없음"과
+		// 동일하게 취급되므로, linked인데 아무것도 안 걸린 경우 존재하지 않는 ID(0)로 안전하게 0건 처리).
 		$link_map = self::source_link_map();
+		if ( 'linked' === $linked || 'unlinked' === $linked ) {
+			$linked_ids = array_map( 'intval', array_keys( $link_map ) );
+			if ( 'linked' === $linked ) {
+				$query_args['post__in'] = $linked_ids ?: array( 0 );
+			} else {
+				$query_args['post__not_in'] = $linked_ids;
+			}
+		}
+
+		$query = new WP_Query( $query_args );
 		$items = array_map(
 			static function ( $post ) use ( $link_map ) {
 				$count = isset( $link_map[ $post->ID ] ) ? count( $link_map[ $post->ID ] ) : 0;
@@ -185,10 +199,19 @@ final class HLF_Source_Listing_Repository {
 		$item_id = (int) $item_id;
 
 		// 이미지도 그대로 복사(같은 attachment ID를 참조 — 파일 복제 없음, Item 이미지 규칙과 동일).
+		// 반환값을 반드시 확인한다 — 예전에는 실패해도 무시하고 넘어가, 사진이 있는 원본을 포함했는데도
+		// 새 Item에 사진이 하나도 안 들어간 채 "포함 성공"으로 응답이 나가는 문제가 있었다(예: 새로
+		// 생성된 Item은 기존 이미지가 없어 set_images()가 모든 요청 ID를 "새로 추가되는" 것으로 보고
+		// read_post 권한을 검사하는데, 이게 실패해도 여기서 조용히 삼켜졌다). 실패하면 방금 만든 Item을
+		// 정리하고(아래 source_listing_id 기록 실패와 동일한 orphan cleanup) 에러를 그대로 올린다.
 		$exterior = (int) ( $source_data['exterior_image_id'] ?? 0 );
 		$interior = is_array( $source_data['interior_image_ids'] ?? null ) ? $source_data['interior_image_ids'] : array();
 		if ( $exterior > 0 || ! empty( $interior ) ) {
-			HLF_Item_Repository::set_images( $flyer_id, $item_id, $exterior, $interior );
+			$images_result = HLF_Item_Repository::set_images( $flyer_id, $item_id, $exterior, $interior );
+			if ( is_wp_error( $images_result ) ) {
+				HLF_Item_Repository::delete_item( $flyer_id, $item_id );
+				return $images_result;
+			}
 		}
 
 		// 출처 기록(역참조용). 실패하면 방금 만든 Item을 정리해 반쪽짜리 상태를 남기지 않는다

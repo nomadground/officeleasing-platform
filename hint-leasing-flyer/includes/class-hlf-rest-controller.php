@@ -157,6 +157,8 @@ final class HLF_REST_Controller {
 				'permission_callback' => array( __CLASS__, 'can_edit_flyers' ),
 				'args'                => array(
 					'search'   => array( 'type' => 'string' ),
+					// Dashboard의 "연결된 매물"/"미연결 매물" 카드 클릭 시 이 목록으로 넘어와 필터링하는 데 쓴다.
+					'linked'   => array( 'type' => 'string', 'enum' => array( '', 'linked', 'unlinked' ) ),
 					'page'     => array( 'type' => 'integer', 'minimum' => 1 ),
 					'per_page' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 100 ),
 				),
@@ -591,6 +593,7 @@ final class HLF_REST_Controller {
 		$params = self::request_params( $request );
 		return rest_ensure_response( HLF_Source_Listing_Repository::list( array(
 			'search'   => (string) ( $params['search'] ?? '' ),
+			'linked'   => (string) ( $params['linked'] ?? '' ),
 			'page'     => (int) ( $params['page'] ?? 1 ),
 			'per_page' => (int) ( $params['per_page'] ?? 20 ),
 		) ) );
