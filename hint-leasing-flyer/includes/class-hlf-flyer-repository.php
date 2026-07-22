@@ -153,8 +153,13 @@ final class HLF_Flyer_Repository {
 		}
 	}
 
-	/** REST/템플릿 공용 직렬화. */
-	public static function to_array( WP_Post $flyer ): array {
+	/**
+	 * REST/템플릿 공용 직렬화. $include_item_count은 관리자 Flyer 목록 화면 전용 데이터라 공개
+	 * list/detail 페이지(HLF_Routes::render)에서는 false로 넘겨, 그 화면에서는 어차피 쓰지 않는
+	 * item_count 계산(HLF_Item_Repository::count_items — 매물 개수만 세는 별도 쿼리)을
+	 * 건너뛴다 — 그 페이지는 어차피 items를 따로 조회해 가져오므로 중복 쿼리였다.
+	 */
+	public static function to_array( WP_Post $flyer, bool $include_item_count = true ): array {
 		$base = array(
 			'id'           => $flyer->ID,
 			'flyer_number' => self::format_number( $flyer->ID ),
@@ -164,8 +169,10 @@ final class HLF_Flyer_Repository {
 			'created'      => $flyer->post_date_gmt,
 			'modified'     => $flyer->post_modified_gmt,
 			'url'          => HLF_Routes::flyer_url( $flyer->ID ),
-			'item_count'   => HLF_Item_Repository::count_items( $flyer->ID ),
 		);
+		if ( $include_item_count ) {
+			$base['item_count'] = HLF_Item_Repository::count_items( $flyer->ID );
+		}
 		return array_merge( $base, HLF_Meta_Schema::read_flyer( $flyer->ID ) );
 	}
 

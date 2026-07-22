@@ -112,7 +112,10 @@ final class HLF_Routes {
 
 		// 템플릿에서 참조할 컨텍스트.
 		$hlf_context = array(
-			'flyer'  => HLF_Flyer_Repository::to_array( $flyer ),
+			// 공개 화면은 item_count를 쓰지 않는다(관리자 Flyer 목록 화면 전용 데이터) — false로 넘겨
+			// count_items()의 별도 쿼리를 건너뛴다. 바로 아래에서 items를 어차피 직접 조회하므로
+			// item_count는 이 페이지에서 완전히 중복 쿼리였다.
+			'flyer'  => HLF_Flyer_Repository::to_array( $flyer, false ),
 			'status' => HLF_Flyer_Repository::status_label( $flyer->post_status ),
 			// 공개 화면은 image_previews를 쓰지 않는다(관리자 편집 화면 전용 데이터) — false로 넘겨
 			// 매물마다 사진 개수만큼 반복되는 불필요한 attachment 조회를 건너뛴다.

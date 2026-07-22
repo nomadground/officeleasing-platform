@@ -57,6 +57,7 @@ final class HLF_Item_Repository {
 			'post_parent'    => $flyer_id,
 			'post_status'    => array( 'publish', 'inherit', 'draft' ),
 			'posts_per_page' => 1,
+			'no_found_rows'  => true,
 			'meta_key'       => 'item_number',
 			'meta_value'     => $item_number,
 		) );
