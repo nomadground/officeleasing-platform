@@ -1027,6 +1027,23 @@
 		};
 	}
 
+	// 한글 위주 값(주소/특징/용도)은 라벨과 값 사이에 낀 OCR 잡음(실제 캡처로 확인: "소재^ HEA
+	// 강남구 역삼동"의 "HEA")이 그대로 값 앞에 붙어 나온다 — 값의 첫 한글 글자 앞에 온 것은 전부
+	// 잡음으로 보고 잘라낸다(실제 한글 주소/특징 표기가 영문자로 시작하는 경우는 없다).
+	function ocrStripLeadingNoise( text ) {
+		var m = String( text || '' ).match( /[가-힣]/ );
+		return m ? text.slice( m.index ) : text;
+	}
+
+	// "방향"은 정해진 8방위 표기만 유효하다 — 라벨 바로 뒤 텍스트가 오인식된 다른 내용(실제 캡처로
+	// 확인: "방향 Jes 출입구 기")이면 그대로 채우지 않고 버린다(방향이 아닌 값을 방향 필드에 넣는
+	// 것이 아예 안 채우는 것보다 더 나쁘다).
+	var OCR_DIRECTION_PATTERN = /^정?(?:남동|남서|북동|북서|남|북|동|서)향?/;
+	function ocrExtractDirection( text ) {
+		var m = String( text || '' ).trim().match( OCR_DIRECTION_PATTERN );
+		return m ? m[ 0 ] : '';
+	}
+
 	// 난방/사무실 수/화장실 수/위반건축물 여부는 HLF Item 스키마에 없는 필드라 의도적으로 추출하지
 	// 않는다(요청서 확인 결과 불필요 — 실제로 표시할 곳이 없는 값을 폼에 채우면 혼란만 준다).
 	function ocrParsePropertyTable( text ) {
@@ -1036,14 +1053,14 @@
 		// 라벨을 먼저 시도하므로 정확한 라벨이 있으면 그게 우선이고, 이 fallback은 원래 라벨이
 		// 통째로 안 잡힐 때만 쓰인다).
 		return {
-			lot_address: ocrLabeledValue( text, [ '소재지', '소재' ] ),
-			features: ocrLabeledValue( text, [ '매물특징', '물특징', '특징' ] ),
+			lot_address: ocrStripLeadingNoise( ocrLabeledValue( text, [ '소재지', '소재' ] ) ),
+			features: ocrStripLeadingNoise( ocrLabeledValue( text, [ '매물특징', '물특징', '특징' ] ) ),
 			maintenance_fee_manwon: ocrNormalizeMoney( ocrLabeledValue( text, [ '월관리비', '관리비' ] ) ),
-			direction: ocrLabeledValue( text, [ '방향' ] ),
+			direction: ocrExtractDirection( ocrLabeledValue( text, [ '방향' ] ) ),
 			available_date_text: ocrLabeledValue( text, [ '입주가능일', '주가능일' ] ),
 			total_parking: ocrLabeledValue( text, [ '총주차대수', '주차대수' ] ),
 			approval_date: ocrLabeledValue( text, [ '사용승인일' ] ),
-			building_use: ocrLabeledValue( text, [ '건축물 용도', '건축물용도' ] ),
+			building_use: ocrStripLeadingNoise( ocrLabeledValue( text, [ '건축물 용도', '건축물용도' ] ) ),
 		};
 	}
 

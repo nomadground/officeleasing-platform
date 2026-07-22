@@ -64,6 +64,10 @@ $kakao_js_key = defined( 'HLF_KAKAO_JS_KEY' ) ? HLF_KAKAO_JS_KEY : '';
 		<meta name="robots" content="noindex,nofollow">
 	<?php endif; ?>
 	<link rel="canonical" href="<?php echo esc_url( $flyer['url'] ); ?>">
+	<?php if ( $kakao_js_key && ! empty( $map_items ) ) : ?>
+		<?php // 카카오 지도 SDK 도메인에 미리 연결(DNS/TLS handshake)해 지도 스크립트가 실제 필요할 때 더 빨리 붙게 한다. ?>
+		<link rel="preconnect" href="https://dapi.kakao.com">
+	<?php endif; ?>
 	<link rel="stylesheet" href="<?php echo esc_url( HLF_URL . 'assets/css/public.css?v=' . HLF_VERSION ); ?>">
 	<link rel="stylesheet" href="<?php echo esc_url( HLF_URL . 'assets/css/print.css?v=' . HLF_VERSION ); ?>" media="print">
 </head>
