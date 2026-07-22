@@ -19,14 +19,18 @@ if ( ! function_exists( 'hlf_format_address' ) ) {
 	 *         sub는 main과 다를 때만 채워짐(둘 다 값이 같거나 하나만 있으면 빈 문자열).
 	 */
 	function hlf_format_address( $road_address, $lot_address ): array {
+		// 시/도+구/군 접두어를 통째로 지운다(동/번지만 남김) — 예: "서울 강남구 역삼동 825" ->
+		// "역삼동 825". 이전에는 "서울특별시 강남구 "/"서울시 강남구 " 두 문자열만 하드코딩해
+		// 지웠는데, 실제 데이터(카카오 API 응답)는 "서울 강남구 "처럼 "시/특별시" 표기 없이 내려와
+		// 지워지지 않는 경우가 있었다(강남구 매물만 다루던 초기 데이터로는 안 드러났던 격차).
+		// "구/군"으로 끝나는 마지막 행정구역 단어까지를 통째로 지우는 방식으로 일반화해, 강남구가
+		// 아닌 다른 구/군(서초구·분당구 등)이나 "경기도 성남시 분당구"처럼 시/도 사이에 다른 시가
+		// 끼는 경우까지도 별도 하드코딩 없이 동일하게 처리한다. 구/군이 아예 없는 주소(드묾)는
+		// 매치되지 않아 원문 그대로 남는다(안전한 기본값).
 		$strip_prefix = static function ( $address ) {
 			$address = trim( (string) $address );
-			foreach ( array( '서울특별시 강남구 ', '서울시 강남구 ' ) as $prefix ) {
-				if ( 0 === strpos( $address, $prefix ) ) {
-					return substr( $address, strlen( $prefix ) );
-				}
-			}
-			return $address;
+			$stripped = preg_replace( '/^.*?[가-힣]+(?:구|군)\s+/u', '', $address, 1 );
+			return null !== $stripped ? $stripped : $address;
 		};
 
 		$lot  = $strip_prefix( $lot_address );
