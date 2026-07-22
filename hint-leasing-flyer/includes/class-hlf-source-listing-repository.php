@@ -333,7 +333,7 @@ final class HLF_Source_Listing_Repository {
 
 		foreach ( $requested as $id ) {
 			$attachment = get_post( $id );
-			if ( ! $attachment || 'attachment' !== $attachment->post_type ) {
+			if ( ! $attachment || 'attachment' !== $attachment->post_type || ! wp_attachment_is_image( $id ) ) {
 				return new WP_Error( 'hlf_image_invalid', '선택한 항목 중 유효하지 않은 이미지가 있습니다.', array( 'status' => 400 ) );
 			}
 			// attachment 존재/타입만 확인하고 넘어가면, 낮은 권한 사용자가 자신이 볼 수 없는(다른

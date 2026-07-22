@@ -298,7 +298,7 @@ final class HLF_Item_Repository {
 
 		foreach ( $requested as $id ) {
 			$attachment = get_post( $id );
-			if ( ! $attachment || 'attachment' !== $attachment->post_type ) {
+			if ( ! $attachment || 'attachment' !== $attachment->post_type || ! wp_attachment_is_image( $id ) ) {
 				return new WP_Error(
 					'hlf_image_invalid',
 					'선택한 항목 중 유효하지 않은 이미지가 있습니다.',

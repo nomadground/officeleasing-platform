@@ -45,7 +45,9 @@ officeleasing-core / ACF가 없어도 활성화·동작한다(데이터 접근�
   직접 선택한다 — 새로 업로드하거나, 사이트에 이미 있는 미디어를 그대로 골라도 된다.
 - 저장은 항상 `class-hlf-item-repository.php::set_images()`/`delete_image()`를 통해서만 한다(REST
   컨트롤러·템플릿에서 `update_post_meta()` 직접 호출 없음). `set_images()`는 선택한 attachment ID가
-  "실제로 존재하는 attachment 포스트인지"만 확인한다 — 소유권(post_parent가 이 item_id인지)은 검증하지
+  "실제로 존재하는 이미지 attachment인지"(`wp_attachment_is_image()`)를 확인하고, 이번 요청에서
+  새로 추가되는 ID에 한해 `current_user_can('read_post', $id)`로 읽기 권한도 확인한다(다른 사람의
+  비공개 첨부를 임의로 바인딩하는 것을 차단) — 단, 소유권(post_parent가 이 item_id인지)은 검증하지
   않는다(다른 글/다른 매물에 이미 쓰이고 있는 미디어도 선택할 수 있어야 하므로). post_parent를 이
   item_id로 재설정(reparent)하지도 않는다 — 공유 중인 첨부의 소속을 바꾸면 다른 곳에 영향을 줄 수 있다.
 - `delete_image()`는 Item의 `exterior_image_id`/`interior_image_ids`에서 뗄 뿐 Attachment 파일 자체는

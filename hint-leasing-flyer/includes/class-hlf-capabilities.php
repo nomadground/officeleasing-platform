@@ -15,7 +15,7 @@ defined( 'ABSPATH' ) || exit;
 final class HLF_Capabilities {
 
 	const VERSION_OPTION = 'hlf_caps_version';
-	const VERSION        = 1;
+	const VERSION        = 2; // 2: staff_caps()에 upload_files 추가(P0-1) — 기존 설치에도 admin_init 시 재적용되도록 버전 상향.
 
 	/** 관리자 전체 cap. */
 	public static function all_caps(): array {
