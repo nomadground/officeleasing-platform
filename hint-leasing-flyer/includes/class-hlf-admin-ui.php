@@ -128,7 +128,9 @@ final class HLF_Admin_UI {
 		// 지도 미리보기(요청서 3-7)는 공개 화면과 동일하게 JS Key만 쓴다 — 도메인 제한 방식의 공개
 		// 키라 브라우저에 노출돼도 안전하다(REST 키와 달리 서버 프록시를 거칠 필요가 없다).
 		$shared['kakaoJsKey'] = defined( 'HLF_KAKAO_JS_KEY' ) ? HLF_KAKAO_JS_KEY : '';
-		wp_enqueue_script( 'hlf-admin-flyer-edit', HLF_URL . 'assets/js/admin-flyer-edit.js', array( 'hlf-admin-common' ), HLF_VERSION, true );
+		// OCR 파싱/섹션은 공용 모듈(admin-ocr.js)로 분리돼 있어 편집 화면 스크립트가 이를 의존한다.
+		wp_enqueue_script( 'hlf-admin-ocr', HLF_URL . 'assets/js/admin-ocr.js', array(), HLF_VERSION, true );
+		wp_enqueue_script( 'hlf-admin-flyer-edit', HLF_URL . 'assets/js/admin-flyer-edit.js', array( 'hlf-admin-common', 'hlf-admin-ocr' ), HLF_VERSION, true );
 		wp_localize_script( 'hlf-admin-common', 'HLF_ADMIN', $shared );
 	}
 }
