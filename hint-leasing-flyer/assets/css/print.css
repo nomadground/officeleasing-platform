@@ -47,7 +47,7 @@
 	.hlf-detail-hero { display: grid !important; grid-template-columns: 1fr 1fr; gap: 10px; margin: 0 0 6px; }
 	/* Leasing Info/Property Details를 포함한 본문 전체를 세로로 압축해 매물 1개 상세를 한 페이지
 	   안에 우겨넣는다 — 카드 여백/줄간격/글자 크기를 화면보다 크게 줄인다. */
-	.hlf-gallery-main { max-height: 55mm; }
+	.hlf-gallery-main { max-height: 65mm; }
 	.hlf-panel { margin: 5px 0; padding: 6px 10px 5px; }
 	.hlf-panel-heading, .hlf-comparison-map-heading h2 { margin-bottom: 4px; font-size: 12px; }
 	.hlf-panel-heading-row { margin-bottom: 4px; }
