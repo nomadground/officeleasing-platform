@@ -48,7 +48,10 @@
 	padding: 6px 8px;
 }
 .hlf-admin .hlf-field textarea { min-height: 70px; resize: vertical; }
-.hlf-admin .hlf-field-checkbox { flex-direction: row; align-items: center; gap: 6px; font-weight: 600; font-size: 13px; }
+.hlf-admin .hlf-field-checkbox { display: inline-flex; flex-direction: row; align-items: center; gap: 6px; font-weight: 600; font-size: 13px; }
+/* 주차 가능/엘리베이터 있음 체크박스 2개를 한 줄에 나란히 담는 wrapper(renderItemForm 참고) —
+   .hlf-field-wide로 grid 전체 폭을 차지하되, 안에서는 flex row로 두 체크박스를 나란히 둔다. */
+.hlf-admin .hlf-field-checkbox-row { display: flex; align-items: center; gap: 24px; }
 .hlf-admin .hlf-field-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 16px; }
 .hlf-admin .hlf-field-wide { grid-column: 1 / -1; }
 @media (max-width: 700px) {
@@ -79,6 +82,8 @@
 /* 주소 확인(step 2) — OCR 다음, 나머지 조건 필드 앞. renderAddressBlock()가 렌더링. */
 .hlf-admin .hlf-address-block { margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid #dcdcde; }
 .hlf-admin .hlf-address-block h4 { margin: 0 0 8px; }
+.hlf-admin .hlf-address-search-row { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+.hlf-admin .hlf-address-search-row .hlf-admin-note { margin: 0; }
 .hlf-admin .hlf-ocr-section h4 { margin: 0 0 8px; }
 .hlf-admin .hlf-ocr-preview { display: block; max-width: 100%; max-height: 220px; margin: 8px 0; object-fit: contain; background: #f0f0f1; border-radius: 4px; }
 .hlf-admin .hlf-ocr-preview[hidden] { display: none; }

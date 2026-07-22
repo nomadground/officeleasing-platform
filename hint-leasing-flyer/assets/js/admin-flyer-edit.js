@@ -32,8 +32,8 @@
 		{ key: 'monthly_rent_manwon', label: '임대료 (만원)', type: 'number', step: 'any' },
 		{ key: 'maintenance_fee_manwon', label: '관리비 (만원)', type: 'number', step: 'any' },
 		{ key: 'parking_available', label: '주차 가능', type: 'checkbox' },
-		{ key: 'total_parking', label: '총주차대수', type: 'text', placeholder: '예: 자주식 10대' },
 		{ key: 'elevator_available', label: '엘리베이터 있음', type: 'checkbox' },
+		{ key: 'total_parking', label: '총주차대수', type: 'text', placeholder: '예: 자주식 10대' },
 		{ key: 'direction', label: '방향', type: 'text' },
 		{ key: 'available_date_text', label: '입주가능일', type: 'text', placeholder: '예: 즉시입주 협의가능' },
 		{ key: 'approval_date', label: '사용승인일', type: 'text', placeholder: '예: 2018.06.21' },
@@ -144,10 +144,14 @@
 				'<hr>' +
 				'<div class="hlf-field">' +
 					'<label for="hlf-status-select">상태</label>' +
+					// 보관(archived) 상태는 선택지에서 뺐다(운영상 불필요 — 미발행/발행 2개면 충분) — 서버
+					// 로직(읽기 전용 가드 등)은 그대로 남겨 이전에 이미 보관 처리된 Flyer가 있어도
+					// 그 동작은 안 깨진다(read-only 유지, 배지 표시 등). 이 화면에서만 새로 보관으로
+					// 바꾸는 선택지를 숨긴다.
 					'<select id="hlf-status-select">' +
 						'<option value="draft"' + ( flyer.status === 'draft' ? ' selected' : '' ) + '>미발행(draft)</option>' +
 						'<option value="published"' + ( flyer.status === 'published' ? ' selected' : '' ) + '>발행됨(published)</option>' +
-						'<option value="archived"' + ( flyer.status === 'archived' ? ' selected' : '' ) + '>보관(archived)</option>' +
+						( flyer.status === 'archived' ? '<option value="archived" selected>보관(archived)</option>' : '' ) +
 					'</select> ' +
 					'<button type="button" class="button" id="hlf-status-apply">상태 변경</button>' +
 					'<p class="hlf-admin-error" data-hlf-status-error hidden></p>' +
@@ -450,23 +454,24 @@
 	// 순서를 그대로 쓰지 않고 이 배열 순서대로 명시적으로 재배치한다.
 	var ADDRESS_FIELD_KEYS = [ 'lot_address', 'road_address', 'latitude', 'longitude' ];
 
+	// 체크박스 2개(주차 가능/엘리베이터 있음)는 한 줄에 나란히 둔다 — 2열 grid의 홀/짝 순서에 맞춰
+	// 배열 순서만 조정하는 방식은 앞쪽 필드 개수가 바뀌면 다시 어긋난다(실제로 확인됨: 그렇게
+	// 해봤지만 앞의 관리비 필드가 홀수 칸을 차지해 결국 한 줄에 못 붙었다). 그래서 이 두 필드는
+	// 아예 하나의 넓은(grid-column: 1/-1) 행 안에 함께 렌더링해 앞뒤 필드 개수와 무관하게 항상
+	// 같은 줄에 있게 한다.
+	var CHECKBOX_ROW_KEYS = [ 'parking_available', 'elevator_available' ];
+
 	function renderAddressBlock( item ) {
 		var fieldsByKey = {};
 		ITEM_FIELDS.forEach( function ( def ) { fieldsByKey[ def.key ] = def; } );
 		var fields = ADDRESS_FIELD_KEYS.map( function ( key ) { return fieldsByKey[ key ]; } ).filter( Boolean );
+		// 지번주소/도로명주소 박스는 라벨+입력칸만 담아 서로 높이가 맞도록 한다 — 주소 검색
+		// 버튼/상태문구/후보목록을 지번주소 칸 안에 같이 쌓으면 그 칸만 세로로 길어져 옆 도로명주소
+		// 칸과 높이가 어긋난다(실제로 확인됨). 그래서 이 부가 요소들은 grid 밖, 별도 줄로 뺀다.
 		var fieldsHtml = fields.map( function ( def ) {
 			var value = item ? item[ def.key ] : '';
 			var fieldId = 'hlf-item-field-' + def.key;
 			var stepAttr = def.step ? ' step="' + def.step + '"' : '';
-			// 지번주소 필드에만 "주소 검색" 버튼을 붙인다 — 카카오 Local API(서버 프록시, REST 키는
-			// 클라이언트에 노출하지 않음)로 도로명주소/좌표 후보를 조회한다. 결과는 1건이든 여러 건이든
-			// 바로 채우지 않고 목록으로 보여준 뒤 사용자가 클릭한 것만 폼에 반영한다("다음" 우편번호
-			// 검색과 같은 방식 — 자동확정 시 오탐으로 엉뚱한 좌표가 저장되는 걸 막는다). 키가 설정 안
-			// 됐으면 버튼 클릭 시 서버가 501을 돌려주고 아래 상태 문구로만 안내한다(폼 자체는 정상 동작).
-			var addressSearchHtml = ( def.key === 'lot_address' ) ?
-				' <button type="button" class="button button-small" id="hlf-address-search">주소 검색</button>' +
-				'<p class="hlf-admin-note" id="hlf-address-search-status"></p>' +
-				'<ul class="hlf-address-results" id="hlf-address-results" hidden></ul>' : '';
 			// 도로명주소는 지번주소 검색으로 확정된 값만 채운다 — 손으로 직접 입력하면 지번주소와
 			// 어긋난 값이 저장될 수 있으므로 읽기 전용(회색)으로 두고, "주소 검색" 후보 클릭으로만
 			// 채워지게 한다. readonly라 name은 그대로 유지되어 폼 제출/기존 값 표시는 문제 없다.
@@ -478,7 +483,6 @@
 			return (
 				'<div class="hlf-field"' + hiddenAttr + '><label for="' + fieldId + '">' + HLFAdmin.escapeHtml( def.label ) + '</label>' +
 				'<input id="' + fieldId + '" type="' + def.type + '" name="' + def.key + '" value="' + HLFAdmin.escapeAttr( value === null || value === undefined ? '' : value ) + '"' + stepAttr + readonlyAttr + '>' +
-				addressSearchHtml +
 				'</div>'
 			);
 		} ).join( '' );
@@ -486,6 +490,16 @@
 			'<div class="hlf-address-block">' +
 				'<h4>주소 확인</h4>' +
 				'<div class="hlf-field-grid">' + fieldsHtml + '</div>' +
+				// 카카오 Local API(서버 프록시, REST 키는 클라이언트에 노출하지 않음)로 도로명주소/좌표
+				// 후보를 조회한다. 결과는 1건이든 여러 건이든 바로 채우지 않고 목록으로 보여준 뒤
+				// 사용자가 클릭한 것만 폼에 반영한다("다음" 우편번호 검색과 같은 방식 — 자동확정 시
+				// 오탐으로 엉뚱한 좌표가 저장되는 걸 막는다). 키가 설정 안 됐으면 버튼 클릭 시 서버가
+				// 501을 돌려주고 아래 상태 문구로만 안내한다(폼 자체는 정상 동작).
+				'<div class="hlf-address-search-row">' +
+					'<button type="button" class="button button-small" id="hlf-address-search">주소 검색</button>' +
+					'<p class="hlf-admin-note" id="hlf-address-search-status"></p>' +
+				'</div>' +
+				'<ul class="hlf-address-results" id="hlf-address-results" hidden></ul>' +
 				// 좌표가 확정된 뒤에만 채워지는 작은 지도 미리보기 — 키 미설정/SDK 로드 실패 시에도
 				// 이 영역만 숨겨질 뿐 나머지 입력은 그대로 동작한다(요청서 3-7).
 				'<div class="hlf-address-map" id="hlf-address-map" hidden></div>' +
@@ -497,8 +511,26 @@
 		var editing = state.editingItemId !== null;
 		var item = editing ? state.items.find( function ( i ) { return i.id === state.editingItemId; } ) : null;
 
+		var fieldsByKeyForRender = {};
+		ITEM_FIELDS.forEach( function ( def ) { fieldsByKeyForRender[ def.key ] = def; } );
+
 		var fieldsHtml = ITEM_FIELDS.map( function ( def ) {
 			if ( ADDRESS_FIELD_KEYS.indexOf( def.key ) !== -1 ) { return ''; } // renderAddressBlock()가 별도 렌더링.
+			if ( CHECKBOX_ROW_KEYS.indexOf( def.key ) !== -1 ) {
+				// 그룹의 첫 키를 만났을 때만 그룹 전체를 한 번에 렌더링하고, 나머지 키는 건너뛴다
+				// (중복 렌더링 방지 — ADDRESS_FIELD_KEYS와 같은 패턴).
+				if ( def.key !== CHECKBOX_ROW_KEYS[ 0 ] ) { return ''; }
+				var checkboxesHtml = CHECKBOX_ROW_KEYS.map( function ( key ) {
+					var cbDef = fieldsByKeyForRender[ key ];
+					var cbValue = item ? item[ key ] : '';
+					return (
+						'<label class="hlf-field-checkbox">' +
+							'<input type="checkbox" name="' + key + '"' + ( cbValue ? ' checked' : '' ) + '> ' + HLFAdmin.escapeHtml( cbDef.label ) +
+						'</label>'
+					);
+				} ).join( '' );
+				return '<div class="hlf-field hlf-field-wide hlf-field-checkbox-row">' + checkboxesHtml + '</div>';
+			}
 			var value = item ? item[ def.key ] : '';
 			var wideClass = def.wide ? ' hlf-field-wide' : '';
 			if ( def.type === 'checkbox' ) {
@@ -1037,11 +1069,25 @@
 
 	// "방향"은 정해진 8방위 표기만 유효하다 — 라벨 바로 뒤 텍스트가 오인식된 다른 내용(실제 캡처로
 	// 확인: "방향 Jes 출입구 기")이면 그대로 채우지 않고 버린다(방향이 아닌 값을 방향 필드에 넣는
-	// 것이 아예 안 채우는 것보다 더 나쁘다).
-	var OCR_DIRECTION_PATTERN = /^정?(?:남동|남서|북동|북서|남|북|동|서)향?/;
+	// 것이 아예 안 채우는 것보다 더 나쁘다). 네이버부동산은 라벨 자체가 "방향(주된 출입구 기준)"
+	// 처럼 항상 괄호 설명이 붙어 있어(실제 캡처로 확인: "북서향(주된 출입구 기준)") 값 앞에 그
+	// 설명 잔여물이 남을 수 있다 — 그래서 문자열 맨 앞(^)에만 매치하지 않고 방향 패턴이 어디에
+	// 있든 첫 번째로 나오는 것을 찾는다.
+	var OCR_DIRECTION_PATTERN = /정?(?:남동|남서|북동|북서|남|북|동|서)향?/;
 	function ocrExtractDirection( text ) {
-		var m = String( text || '' ).trim().match( OCR_DIRECTION_PATTERN );
+		var m = String( text || '' ).match( OCR_DIRECTION_PATTERN );
 		return m ? m[ 0 ] : '';
+	}
+
+	// 건축물 용도는 실무상 몇 가지 정해진 값만 쓰인다 — 닫힌 목록과 대조해 검증/정규화한다("제2증
+	// 근린생활시설"처럼 숫자 뒤 "종"이 "증"으로 오인식되는 경우가 실제로 있었다). 목록에 없는
+	// 값은 오인식으로 보고 버린다(방향 필드와 같은 원칙).
+	var OCR_BUILDING_USE_LIST = [ '제1종 근린생활시설', '제2종 근린생활시설', '근린생활시설', '업무시설', '교육연구시설', '의료시설' ];
+	function ocrExtractBuildingUse( text ) {
+		var normalized = String( text || '' ).replace( /제(\d)\s*증/g, '제$1종' );
+		var sorted = OCR_BUILDING_USE_LIST.slice().sort( function ( a, b ) { return b.length - a.length; } );
+		var match = sorted.find( function ( candidate ) { return normalized.indexOf( candidate ) !== -1; } );
+		return match || '';
 	}
 
 	// 난방/사무실 수/화장실 수/위반건축물 여부는 HLF Item 스키마에 없는 필드라 의도적으로 추출하지
@@ -1060,7 +1106,7 @@
 			available_date_text: ocrLabeledValue( text, [ '입주가능일', '주가능일' ] ),
 			total_parking: ocrLabeledValue( text, [ '총주차대수', '주차대수' ] ),
 			approval_date: ocrLabeledValue( text, [ '사용승인일' ] ),
-			building_use: ocrStripLeadingNoise( ocrLabeledValue( text, [ '건축물 용도', '건축물용도' ] ) ),
+			building_use: ocrExtractBuildingUse( ocrLabeledValue( text, [ '건축물 용도', '건축물용도' ] ) ),
 		};
 	}
 
