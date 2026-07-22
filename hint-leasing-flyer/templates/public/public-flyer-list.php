@@ -93,7 +93,7 @@ $kakao_js_key = defined( 'HLF_KAKAO_JS_KEY' ) ? HLF_KAKAO_JS_KEY : '';
 		<?php if ( empty( $items ) ) : ?>
 			<p class="hlf-empty">등록된 매물이 없습니다.</p>
 		<?php else : ?>
-			<ul class="hlf-listing-grid">
+			<ul class="hlf-listing-grid" data-hlf-print-section="list">
 				<?php foreach ( $items as $i => $item ) :
 					$metrics = $item['metrics'];
 					$detail_url = HLF_Routes::item_url( $flyer['id'], $item['item_number'] );
@@ -158,6 +158,7 @@ $kakao_js_key = defined( 'HLF_KAKAO_JS_KEY' ) ? HLF_KAKAO_JS_KEY : '';
 				<?php endforeach; ?>
 			</ul>
 
+			<div data-hlf-print-section="chart-map">
 			<?php if ( ! empty( $chart_items ) ) : ?>
 				<section class="hlf-noc-chart-panel" aria-labelledby="hlf-noc-chart-title">
 					<div class="hlf-noc-chart-heading">
@@ -207,6 +208,16 @@ $kakao_js_key = defined( 'HLF_KAKAO_JS_KEY' ) ? HLF_KAKAO_JS_KEY : '';
 			<?php elseif ( ! empty( $items ) ) : ?>
 				<p class="hlf-map-unavailable">등록된 매물 중 좌표가 있는 매물이 없어 위치 비교를 표시할 수 없습니다.</p>
 			<?php endif; ?>
+			</div>
+
+			<?php
+			// 요청서 6: 인쇄 3페이지부터 매물마다 한 페이지씩 상세 내용을 끼워 넣는다 — 화면에서는
+			// 항상 숨어 있고(public.css .hlf-print-item-detail), 인쇄 버튼을 누르면 뜨는 선택 패널
+			// (아래 #hlf-print-panel)에서 체크한 매물만 실제 인쇄에 포함된다.
+			foreach ( $items as $i => $item ) :
+				include HLF_DIR . 'templates/public/partials/print-item-detail.php';
+			endforeach;
+			?>
 		<?php endif; ?>
 
 		<?php $contact = HLF_Flyer_Repository::public_contact( $flyer ); ?>
@@ -222,6 +233,38 @@ $kakao_js_key = defined( 'HLF_KAKAO_JS_KEY' ) ? HLF_KAKAO_JS_KEY : '';
 			</div>
 		</footer>
 	</div>
+
+	<?php if ( ! empty( $items ) ) : ?>
+		<?php
+		// 요청서 6: 인쇄 버튼을 누르면 바로 인쇄하지 않고 이 패널이 먼저 뜬다 — 1페이지(목록)/
+		// 2페이지(비교 차트·지도)/매물별 상세 페이지 중 어떤 걸 실제로 인쇄할지 직접 체크해
+		// 고른다. 전부 기본 체크(지금까지의 "전부 인쇄" 동작과 동일)이고, 취소하면 아무것도
+		// 바뀌지 않는다. JS(assets/js/public-flyer.js bindPrintButton)가 체크 상태를 읽어
+		// data-hlf-print-section 값이 일치하는 블록에 hlf-print-section-excluded를 토글한 뒤
+		// window.print()를 호출한다.
+		?>
+		<div class="hlf-print-panel" id="hlf-print-panel" hidden>
+			<div class="hlf-print-panel-content">
+				<h2>인쇄할 페이지 선택</h2>
+				<ul class="hlf-print-panel-list">
+					<li><label><input type="checkbox" checked data-hlf-print-toggle="list"> 1페이지 — 매물 목록</label></li>
+					<?php if ( ! empty( $chart_items ) || ! empty( $map_items ) ) : ?>
+						<li><label><input type="checkbox" checked data-hlf-print-toggle="chart-map"> 2페이지 — 환산임대료 비교 차트·위치 비교 지도</label></li>
+					<?php endif; ?>
+					<?php foreach ( $items as $i => $item ) :
+						$print_panel_address = hlf_format_address( $item['road_address'], $item['lot_address'] )['main'];
+						$print_panel_page_no = ( ! empty( $chart_items ) || ! empty( $map_items ) ) ? $i + 3 : $i + 2;
+						?>
+						<li><label><input type="checkbox" checked data-hlf-print-toggle="item-<?php echo esc_attr( $item['item_number'] ); ?>"> <?php echo esc_html( $print_panel_page_no . '페이지 — ' . sprintf( '%02d', $i + 1 ) . ' ' . $print_panel_address . ' 상세' ); ?></label></li>
+					<?php endforeach; ?>
+				</ul>
+				<div class="hlf-print-panel-actions">
+					<button type="button" class="button" data-hlf-print-cancel>취소</button>
+					<button type="button" class="button button-primary" data-hlf-print-confirm>인쇄</button>
+				</div>
+			</div>
+		</div>
+	<?php endif; ?>
 	<script src="<?php echo esc_url( HLF_URL . 'assets/js/public-flyer.js?v=' . HLF_VERSION ); ?>" defer></script>
 </body>
 </html>

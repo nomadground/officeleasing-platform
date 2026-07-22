@@ -197,6 +197,7 @@
 .hlf-admin .hlf-table th { background: #f6f7f7; color: #50575e; font-size: 12px; }
 .hlf-admin .hlf-table td small { display: block; color: #7c868d; font-size: 11px; }
 .hlf-admin .hlf-td-center { text-align: center; }
+.hlf-admin .hlf-td-contact { color: #646970; font-size: 11px; }
 .hlf-admin .hlf-row-actions { display: flex; gap: 4px; flex-wrap: wrap; }
 .hlf-admin .hlf-row-actions .button.button-small { min-height: 26px; line-height: 24px; padding: 0 8px; }
 .hlf-admin .hlf-empty { padding: 22px; text-align: center; color: #646970; }

@@ -173,7 +173,7 @@
 			if ( ! flyers.length ) { box.innerHTML = '<p class="hlf-empty">등록된 임대안내문이 없습니다.</p>'; return; }
 			box.innerHTML =
 				'<div class="hlf-table-wrap"><table class="hlf-table">' +
-					'<thead><tr><th>날짜</th><th>번호</th><th>제목</th><th>상태</th><th>매물수</th></tr></thead><tbody>' +
+					'<thead><tr><th>날짜</th><th>번호</th><th>제목</th><th>상태</th><th>매물수</th><th>담당자</th></tr></thead><tbody>' +
 					flyers.map( function ( f ) {
 						var dateStr = f.created ? f.created.substring( 0, 10 ) : '-';
 						return '<tr class="hlf-dash-flyer-row" data-hlf-dash-flyer="' + f.id + '">' +
@@ -182,6 +182,7 @@
 							'<td>' + esc( f.title || '(제목 없음)' ) + '</td>' +
 							'<td><span class="' + A.statusBadgeClass( f.status ) + '">' + esc( A.statusLabel( f.status ) ) + '</span></td>' +
 							'<td class="hlf-td-center">' + esc( f.item_count ) + '</td>' +
+							'<td class="hlf-td-contact">' + esc( f.contact_name || '-' ) + '</td>' +
 						'</tr>';
 					} ).join( '' ) +
 					'</tbody></table></div>';
@@ -264,7 +265,7 @@
 				'<thead><tr>' +
 					'<th><input type="checkbox" id="hlf-src-all"></th>' +
 					'<th>지번주소</th><th>층</th><th>임대면적</th><th>전용면적</th>' +
-					'<th>보증금</th><th>임대료</th><th>관리비</th><th>포함 안내문</th><th>작업</th>' +
+					'<th>보증금</th><th>임대료</th><th>관리비</th><th>포함 안내문</th><th>담당자</th><th>작업</th>' +
 				'</tr></thead><tbody>' +
 				items.map( function ( it ) {
 					return '<tr>' +
@@ -277,6 +278,7 @@
 						'<td>' + esc( won( it.monthly_rent_manwon ) ) + '</td>' +
 						'<td>' + esc( won( it.maintenance_fee_manwon ) ) + '</td>' +
 						'<td class="hlf-td-center">' + esc( it.included_flyer_count ) + '</td>' +
+						'<td class="hlf-td-contact">' + esc( it.contact_name || '-' ) + '</td>' +
 						'<td class="hlf-row-actions">' +
 							'<button type="button" class="button button-small" data-hlf-src-edit="' + it.id + '">수정</button>' +
 							'<button type="button" class="button button-small" data-hlf-src-preview="' + it.id + '">미리보기</button>' +
@@ -804,13 +806,14 @@
 			if ( ! flyers.length ) { box.innerHTML = '<p class="hlf-empty">등록된 임대안내문이 없습니다.</p>'; return; }
 			box.innerHTML =
 				'<div class="hlf-table-wrap"><table class="hlf-table">' +
-					'<thead><tr><th>번호</th><th>제목</th><th>매물 수</th><th>작업</th></tr></thead><tbody>' +
+					'<thead><tr><th>번호</th><th>제목</th><th>매물 수</th><th>담당자</th><th>작업</th></tr></thead><tbody>' +
 					flyers.map( function ( f ) {
 						return '<tr>' +
 							'<td>' + esc( f.flyer_number ) + '</td>' +
 							'<td>' + esc( f.title || '(제목 없음)' ) +
 								( f.status === 'archived' ? ' <span class="' + A.statusBadgeClass( 'archived' ) + '">보관</span>' : '' ) + '</td>' +
 							'<td class="hlf-td-center">' + esc( f.item_count ) + '</td>' +
+							'<td class="hlf-td-contact">' + esc( f.contact_name || '-' ) + '</td>' +
 							'<td class="hlf-row-actions">' +
 								'<button type="button" class="button button-small button-primary" data-hlf-fl-manage="' + f.id + '">포함 매물 관리</button>' +
 								'<button type="button" class="button button-small" data-hlf-fl-rename="' + f.id + '">이름 수정</button>' +

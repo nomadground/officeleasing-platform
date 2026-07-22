@@ -178,12 +178,103 @@
 		} );
 	}
 
+	/* ---------------- 썸네일 호버 → 대표 사진 확대 표시 ---------------- */
+
+	// 썸네일에 마우스오버하면 위 대표 사진(.hlf-gallery-main)이 그 사진으로 바뀐다(라이트박스에서
+	// 쓰는 것과 같은 원본 크기 URL, data-hlf-photos). 클릭 시 라이트박스가 여전히 "지금 보이는
+	// 사진" 기준으로 열리도록 대표 사진 버튼의 data-hlf-lightbox-index도 함께 맞춰준다. 마우스가
+	// 썸네일 스트립 전체를 벗어나면(각 썸네일이 아니라 스트립 기준 — 썸네일 사이를 이동할 때 매번
+	// 원본으로 깜빡였다가 바뀌는 걸 막기 위해) 원래 대표 사진으로 되돌린다.
+	function bindGalleryHoverSwap() {
+		var gallery = document.querySelector( '.hlf-gallery[data-hlf-photos]' );
+		if ( ! gallery ) { return; }
+		var mainImg = gallery.querySelector( '.hlf-gallery-main img' );
+		var mainButton = gallery.querySelector( '.hlf-gallery-main .hlf-photo-open' );
+		var thumbsWrap = gallery.querySelector( '.hlf-gallery-thumbs' );
+		if ( ! mainImg || ! mainButton || ! thumbsWrap ) { return; }
+
+		var photos;
+		try {
+			photos = JSON.parse( gallery.getAttribute( 'data-hlf-photos' ) || '[]' );
+		} catch ( e ) {
+			return;
+		}
+
+		var originalSrc = mainImg.getAttribute( 'src' );
+		var originalIndex = mainButton.getAttribute( 'data-hlf-lightbox-index' );
+		var thumbButtons = thumbsWrap.querySelectorAll( '.hlf-photo-open' );
+
+		function clearActiveThumb() {
+			thumbButtons.forEach( function ( b ) { b.classList.remove( 'hlf-gallery-thumb-active' ); } );
+		}
+
+		thumbButtons.forEach( function ( thumbButton ) {
+			var index = Number( thumbButton.getAttribute( 'data-hlf-lightbox-index' ) );
+			var url = photos[ index ];
+			if ( ! url ) { return; }
+			thumbButton.addEventListener( 'mouseenter', function () {
+				mainImg.setAttribute( 'src', url );
+				mainButton.setAttribute( 'data-hlf-lightbox-index', String( index ) );
+				clearActiveThumb();
+				thumbButton.classList.add( 'hlf-gallery-thumb-active' );
+			} );
+			thumbButton.addEventListener( 'focus', function () { thumbButton.dispatchEvent( new Event( 'mouseenter' ) ); } );
+		} );
+
+		thumbsWrap.addEventListener( 'mouseleave', function () {
+			mainImg.setAttribute( 'src', originalSrc );
+			mainButton.setAttribute( 'data-hlf-lightbox-index', originalIndex );
+			clearActiveThumb();
+		} );
+	}
+
 	/* ---------------- 인쇄 버튼 ---------------- */
 
+	// 요청서 6: 목록 페이지는 인쇄 버튼을 누르면 바로 인쇄하지 않고 "인쇄할 페이지 선택" 패널
+	// (#hlf-print-panel, public-flyer-list.php가 렌더링)이 먼저 뜬다 — 1페이지(목록)/2페이지(비교
+	// 차트·지도)/매물별 상세 페이지 중 체크한 것만 실제로 인쇄된다. 그 패널이 없는 페이지(상세
+	// 페이지는 원래부터 1페이지뿐이라 고를 게 없다)에서는 이전과 동일하게 바로 인쇄한다.
 	function bindPrintButton() {
+		var panel = document.getElementById( 'hlf-print-panel' );
 		document.querySelectorAll( '[data-hlf-print]' ).forEach( function ( button ) {
-			button.addEventListener( 'click', function () { window.print(); } );
+			button.addEventListener( 'click', function () {
+				if ( ! panel ) { window.print(); return; }
+				panel.hidden = false;
+			} );
 		} );
+		if ( ! panel ) { return; }
+
+		var cancelButton = panel.querySelector( '[data-hlf-print-cancel]' );
+		var confirmButton = panel.querySelector( '[data-hlf-print-confirm]' );
+		if ( cancelButton ) { cancelButton.addEventListener( 'click', function () { panel.hidden = true; } ); }
+		if ( confirmButton ) {
+			confirmButton.addEventListener( 'click', function () {
+				var selected = {};
+				panel.querySelectorAll( '[data-hlf-print-toggle]' ).forEach( function ( checkbox ) {
+					selected[ checkbox.getAttribute( 'data-hlf-print-toggle' ) ] = checkbox.checked;
+				} );
+				var sections = Array.prototype.slice.call( document.querySelectorAll( '[data-hlf-print-section]' ) );
+				sections.forEach( function ( section ) {
+					var key = section.getAttribute( 'data-hlf-print-section' );
+					section.classList.toggle( 'hlf-print-section-excluded', false === selected[ key ] );
+					section.classList.remove( 'hlf-print-section-last' );
+				} );
+				// break-after:page가 실제로 인쇄에 포함되는 마지막 섹션에도 걸려 있으면 그 뒤에
+				// 빈 페이지가 한 장 더 붙는다(A4 인쇄로 실측 확인) — 지금 선택된 것 중 문서상 마지막
+				// 섹션에서만 그 break를 꺼서 없앤다(print.css .hlf-print-section-last).
+				var included = sections.filter( function ( section ) { return ! section.classList.contains( 'hlf-print-section-excluded' ); } );
+				if ( included.length ) { included[ included.length - 1 ].classList.add( 'hlf-print-section-last' ); }
+				panel.hidden = true;
+				// 체크한(=인쇄에 포함될) 매물 상세 안의 지도만 이제 만든다 — 체크 해제된 매물은 계속
+				// 만들지 않는다. relayoutMapsForPrint()로 방금 만든 지도까지 인쇄 레이아웃 크기에
+				// 맞춘 뒤에야 인쇄를 시작한다(막 생성된 지도는 beforeprint 시점의 relayout 한 번만
+				// 걸리면 아직 크기가 안 잡힌 채일 수 있어, 여기서 한 번 더 미리 맞춰 둔다).
+				initLazyPrintMaps( document ).then( function () {
+					relayoutMapsForPrint();
+					window.print();
+				} );
+			} );
+		}
 	}
 
 	/* ---------------- 갤러리 라이트박스(이전/다음) ---------------- */
@@ -297,9 +388,9 @@
 		} catch ( e ) {
 			items = [];
 		}
-		if ( ! items.length ) { return; }
+		if ( ! items.length ) { return Promise.resolve(); }
 
-		loadKakaoMapSdk( key ).then( function ( maps ) {
+		return loadKakaoMapSdk( key ).then( function ( maps ) {
 			container.innerHTML = '';
 			var first = items[ 0 ];
 			var map = new maps.Map( container, { center: new maps.LatLng( first.lat, first.lng ), level: 5 } );
@@ -342,8 +433,24 @@
 		} );
 	}
 
+	// data-hlf-lazy-map이 붙은 지도(리스트 인쇄물에 끼워 넣는 매물별 상세 지도, 요청서 6)는 여기서
+	// 건너뛴다 — 목록 페이지를 열 때마다 매물 수만큼 카카오 지도를 미리 만들면 이번에 고친 성능
+	// 문제(REST 워터폴 등)와 같은 종류의 낭비가 된다. 인쇄 버튼을 눌러 실제로 그 항목을 선택했을
+	// 때만(initLazyPrintMaps) 만든다.
 	function initMaps() {
-		document.querySelectorAll( '[data-hlf-map-items]' ).forEach( initMapContainer );
+		document.querySelectorAll( '[data-hlf-map-items]:not([data-hlf-lazy-map])' ).forEach( initMapContainer );
+	}
+
+	// 인쇄 선택 패널에서 "인쇄" 확정 시 호출된다 — 지금 화면에 남아있는(=사용자가 체크한) 매물별
+	// 인쇄 전용 지도 중 아직 만들지 않은 것만 그때 가서 만든다. data-hlf-map-initialized로 한 번
+	// 만든 뒤 다시 만들지 않는다(같은 안내문을 여러 번 인쇄해도 매번 다시 로드하지 않음).
+	function initLazyPrintMaps( root ) {
+		var pending = [];
+		root.querySelectorAll( '[data-hlf-print-section]:not(.hlf-print-section-excluded) [data-hlf-map-items][data-hlf-lazy-map]:not([data-hlf-map-initialized])' ).forEach( function ( container ) {
+			container.setAttribute( 'data-hlf-map-initialized', '1' );
+			pending.push( initMapContainer( container ) );
+		} );
+		return Promise.all( pending );
 	}
 
 	function bindPrintMapRelayout() {
@@ -366,6 +473,7 @@
 		bindShareButtons();
 		bindPrintButton();
 		bindLightbox();
+		bindGalleryHoverSwap();
 		initMaps();
 		bindPrintMapRelayout();
 	} );

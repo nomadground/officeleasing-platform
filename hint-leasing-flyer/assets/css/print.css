@@ -8,7 +8,22 @@
 	body.hlf-public { background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 	/* 화면 전용 인터랙션 요소는 인쇄물에 의미가 없다 — 공유/인쇄 버튼(클립보드 복사·인쇄 다이얼로그는
 	   인쇄물에서 할 수 없음)과 라이트박스(열려 있더라도 인쇄 시점엔 닫혀 있어야 함)도 함께 숨긴다. */
-	.hlf-back, .hlf-badge, .hlf-share-button, .hlf-print-button, .hlf-lightbox { display: none !important; }
+	.hlf-back, .hlf-badge, .hlf-share-button, .hlf-print-button, .hlf-lightbox, .hlf-print-panel { display: none !important; }
+	/* 요청서 6: 화면에서는 항상 숨어 있던 매물별 인쇄 전용 상세 블록(public.css)이 인쇄에서는 보인다 —
+	   단, 인쇄 버튼을 눌렀을 때 뜨는 선택 패널에서 체크 해제한 블록은 data-hlf-print-section 값 기준
+	   JS가 걸어주는 hlf-print-section-excluded로 계속 숨긴다(assets/js/public-flyer.js
+	   bindPrintButton). 매물 상세 블록 안의 갤러리/지도/지표/기본정보 카드는 위에서 이미 정의한
+	   같은 클래스(.hlf-gallery-main, .hlf-panel 등) 규칙을 그대로 물려받으므로 상세 페이지 단독
+	   인쇄와 동일한 밀도로 나온다 — 따로 다시 정의하지 않는다. */
+	.hlf-print-item-detail { display: block !important; break-after: page; }
+	.hlf-print-section-excluded { display: none !important; }
+	/* 실제로 인쇄에 포함되는 마지막 섹션에서는 break-after를 끈다(JS가 매번 계산해서 붙여준다,
+	   assets/js/public-flyer.js bindPrintButton) — 안 그러면 매물 상세가 마지막 페이지 뒤에 빈
+	   페이지가 한 장 더 붙는다(A4 landscape 실측으로 확인: 6페이지 예상에서 7페이지가 나왔다). */
+	.hlf-print-section-last { break-after: auto !important; }
+	/* 목록 바로 다음 페이지에 비교 차트+지도가 오도록(2페이지) — 이 wrapper 안의 두 패널이 자체
+	   높이만으로는 페이지를 다 못 채워도 그다음 매물 상세(item-*)가 이어 붙지 않게 확실히 끊는다. */
+	[data-hlf-print-section="chart-map"] { break-after: page; }
 	/* 이 골격 안에서 안전하게 할 수 있는 최소한의 페이지 나눔 보호: 카드/지표 그룹뿐 아니라 라벨-값
 	   한 쌍(.hlf-basic-item)과 하단 문의처도 페이지 경계에서 반으로 잘리지 않게 한다. */
 	.hlf-listing-card,
@@ -36,6 +51,10 @@
 	/* 고객에게 건네는 소개서 느낌을 위한 최소한의 레터헤드 여백 — 브랜드/주소는 이미 인쇄에서 그대로
 	   보인다(위에서 숨기는 건 화면 전용 버튼/배지뿐). */
 	.hlf-header { margin-bottom: 3px; }
+	/* .hlf-shell의 화면용 padding(24px 0 48px)이 인쇄에서도 그대로 남아 있었다 — @page margin(8mm)이
+	   이미 여백을 잡아주므로 이 안쪽 padding까지 더할 필요가 없다. 그대로 두면 매물 상세 인쇄가
+	   1페이지 예산을 거의 다 써버려 갤러리/지도를 키울 여유가 없었다. */
+	.hlf-shell { padding: 2px 0 4px; }
 
 	/* 요청서: 리스트 페이지 인쇄 시 1페이지에는 매물 리스트만, 2페이지에 환산임대료 비교 차트+위치
 	   비교 지도가 들어가게 한다 — 리스트 바로 다음에 강제 페이지 나눔을 넣는다(차트/지도는 이미 각각
@@ -48,7 +67,13 @@
 	.hlf-detail-hero { display: grid !important; grid-template-columns: 1fr 1fr; gap: 10px; margin: 0 0 6px; }
 	/* Leasing Info/Property Details를 포함한 본문 전체를 세로로 압축해 매물 1개 상세를 한 페이지
 	   안에 우겨넣는다 — 카드 여백/줄간격/글자 크기를 화면보다 크게 줄인다. */
-	.hlf-gallery-main { max-height: 68mm; }
+	/* 요청서: 인쇄 시 갤러리/지도 세로폭을 조금 더 키운다(68mm -> 85mm). 위에서 되찾은 .hlf-shell
+	   여유 공간(화면용 padding 24px/48px가 인쇄에서도 그대로 남아있던 것)이 없었다면 68mm에서
+	   1페이지 예산이 이미 거의 꽉 찬 상태라 늘릴 여지가 없었다 — 실측(Playwright, A4 landscape
+	   @page margin 8mm 기준 usable ~733px)으로 85mm가 1페이지 예산 안에 들어가는 걸 확인했다(약
+	   28px/7.5mm 여유, 68mm 기준의 원래 여유폭과 비슷한 수준으로 유지). 지도 패널은 grid
+	   align-items:stretch로 이 값을 그대로 물려받는다. */
+	.hlf-gallery-main { max-height: 85mm; }
 	.hlf-panel { margin: 3px 0; padding: 5px 10px 4px; }
 	/* 지도 패널은 이전에는 인쇄에서 통째로 숨어 있어 밀도 조정 대상이 아니었다 — 이제 실제로 보이면서
 	   갤러리 카드와 grid align-items:stretch로 높이가 맞춰지므로, 이 패널(과 짝을 이루는 갤러리

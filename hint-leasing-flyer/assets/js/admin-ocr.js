@@ -39,6 +39,7 @@
 			'<div class="hlf-ocr-section">' +
 				'<h4>네이버부동산 캡처로 자동 입력 (선택)</h4>' +
 				'<p class="hlf-admin-note">필수 단계는 아닙니다 — 캡처만 붙이면 아래 입력 시간을 줄여줄 뿐, 건너뛰고 직접 입력해도 됩니다.</p>' +
+				'<p class="hlf-admin-note">캡처를 파일로 저장하지 않고, 캡처 직후 클립보드에 있는 상태 그대로 이 화면 아무 곳에서나 Ctrl+V(붙여넣기)로 바로 불러올 수 있습니다.</p>' +
 				'<div class="hlf-field"><label for="hlf-ocr-capture">캡처 이미지</label>' +
 					'<input type="file" id="hlf-ocr-capture" accept="image/*"></div>' +
 				'<img id="hlf-ocr-preview" class="hlf-ocr-preview" alt="캡처 미리보기" hidden>' +
@@ -419,6 +420,13 @@
 		} );
 	}
 
+	// 화면(Item 폼/원본 매물 폼)을 다시 그릴 때마다 bindOcrSection()이 새로 호출되는데, paste는
+	// 이 모듈이 아니라 document 전체에서 들어야 어느 필드에 포커스가 있어도(또는 아예 없어도) 받을 수
+	// 있다 — 그래서 이전 폼의 리스너를 남겨두면 폼을 여러 번 열고 닫을 때마다 계속 쌓인다. 직전
+	// 리스너를 기억해뒀다가 새로 걸기 전에 반드시 떼어낸다(한 번에 하나의 OCR 폼만 화면에 있다는
+	// 전제 — SPA 특성상 이전 폼은 이미 DOM에서 사라진 상태).
+	var activePasteHandler = null;
+
 	function bindOcrSection( form ) {
 		var captureInput = document.getElementById( 'hlf-ocr-capture' );
 		var preview = document.getElementById( 'hlf-ocr-preview' );
@@ -428,6 +436,34 @@
 		var applyButton = document.getElementById( 'hlf-ocr-apply' );
 		var confirmListEl = document.getElementById( 'hlf-ocr-confirm-list' );
 		if ( ! captureInput || ! runButton || ! textArea || ! applyButton ) { return; }
+
+		// 클립보드 이미지를 실제 <input type=file>의 FileList에 반영해, 그 뒤의 미리보기/추출 로직
+		// (change 리스너, runButton 클릭 시 captureInput.files[0] 참조)을 파일 선택과 완전히 동일하게
+		// 그대로 재사용한다 — 붙여넣기 전용 별도 경로를 새로 만들지 않는다.
+		function setCaptureFile( file ) {
+			try {
+				var dt = new DataTransfer();
+				dt.items.add( file );
+				captureInput.files = dt.files;
+				captureInput.dispatchEvent( new Event( 'change' ) );
+			} catch ( e ) {
+				statusEl.textContent = '붙여넣은 이미지를 캡처 입력란에 반영하지 못했습니다 — 파일로 저장한 뒤 선택해 주세요.';
+			}
+		}
+
+		if ( activePasteHandler ) { document.removeEventListener( 'paste', activePasteHandler ); }
+		activePasteHandler = function ( event ) {
+			if ( ! document.body.contains( captureInput ) ) { return; }
+			var clipboardItems = ( event.clipboardData && event.clipboardData.items ) || [];
+			var imageItem = Array.prototype.find.call( clipboardItems, function ( item ) { return item.type && 0 === item.type.indexOf( 'image/' ); } );
+			if ( ! imageItem ) { return; }
+			var file = imageItem.getAsFile();
+			if ( ! file ) { return; }
+			event.preventDefault();
+			setCaptureFile( file );
+			statusEl.textContent = '클립보드 이미지를 붙여넣었습니다. "텍스트 추출"을 눌러주세요.';
+		};
+		document.addEventListener( 'paste', activePasteHandler );
 
 		function applyAndReport( rawText ) {
 			var pending = applyOcrValuesToForm( form, parseOcrText( rawText ), currentOcrMode( form ) );
