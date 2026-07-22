@@ -36,6 +36,9 @@
 }
 
 .hlf-admin .hlf-field { display: grid; gap: 4px; margin-bottom: 12px; }
+/* .hlf-field가 display:grid를 지정하므로 hidden 속성의 기본 UA 스타일(display:none)이 그냥은
+   덮어써진다 — 위도/경도처럼 화면에서만 숨기는 필드가 실제로 안 보이려면 이 규칙이 필요하다. */
+.hlf-admin .hlf-field[hidden] { display: none; }
 .hlf-admin .hlf-field label { font-weight: 600; font-size: 13px; }
 .hlf-admin .hlf-field input[type="text"],
 .hlf-admin .hlf-field input[type="number"],

@@ -471,8 +471,12 @@
 			// 어긋난 값이 저장될 수 있으므로 읽기 전용(회색)으로 두고, "주소 검색" 후보 클릭으로만
 			// 채워지게 한다. readonly라 name은 그대로 유지되어 폼 제출/기존 값 표시는 문제 없다.
 			var readonlyAttr = ( def.key === 'road_address' ) ? ' readonly class="hlf-field-readonly"' : '';
+			// 위도/경도는 화면에 보일 필요가 없다 — 지도/NOC 등 내부 계산에만 쓰이는 값이라 입력칸
+			// 자체는 그대로 두되(주소 검색 확정 시 채워지고 폼 제출에도 그대로 포함) hidden으로 화면에서만
+			// 숨긴다. hidden은 렌더링만 감추고 form.elements/제출 값에는 영향을 주지 않는다.
+			var hiddenAttr = ( def.key === 'latitude' || def.key === 'longitude' ) ? ' hidden' : '';
 			return (
-				'<div class="hlf-field"><label for="' + fieldId + '">' + HLFAdmin.escapeHtml( def.label ) + '</label>' +
+				'<div class="hlf-field"' + hiddenAttr + '><label for="' + fieldId + '">' + HLFAdmin.escapeHtml( def.label ) + '</label>' +
 				'<input id="' + fieldId + '" type="' + def.type + '" name="' + def.key + '" value="' + HLFAdmin.escapeAttr( value === null || value === undefined ? '' : value ) + '"' + stepAttr + readonlyAttr + '>' +
 				addressSearchHtml +
 				'</div>'
@@ -550,8 +554,9 @@
 			'</form>' +
 			// 이미지 섹션은 별도 <form> submit(엔터키 등)에 휘말리지 않도록 hlf-item-form 밖의
 			// 형제 요소로 둔다. 이미지는 attachment의 post_parent가 item_id라 Item이 실제로 저장돼
-			// 있어야만(=수정 모드) 다룰 수 있다 — 추가(생성) 모드에서는 안내문만 보여준다.
-			( editing ? renderImageSection( item ) : '' )
+			// 있어야만(=수정 모드) 다룰 수 있다 — 추가(생성) 모드에서는 안내문만 보여준다(이전에는
+			// 여기서 아무것도 렌더링하지 않아 "사진 섹션 자체가 없다"고 오해하기 쉬웠다).
+			( editing ? renderImageSection( item ) : '<p class="hlf-admin-note hlf-image-section-pending">매물 사진은 저장한 뒤 추가할 수 있습니다 — 먼저 위 내용을 저장해 주세요.</p>' )
 		);
 	}
 
