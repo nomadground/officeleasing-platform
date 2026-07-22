@@ -34,7 +34,7 @@
 	.hlf-map-print-fallback { display: block !important; }
 	/* 고객에게 건네는 소개서 느낌을 위한 최소한의 레터헤드 여백 — 브랜드/주소는 이미 인쇄에서 그대로
 	   보인다(위에서 숨기는 건 화면 전용 버튼/배지뿐). */
-	.hlf-header { margin-bottom: 5px; }
+	.hlf-header { margin-bottom: 3px; }
 
 	/* 요청서: 리스트 페이지 인쇄 시 1페이지에는 매물 리스트만, 2페이지에 환산임대료 비교 차트+위치
 	   비교 지도가 들어가게 한다 — 리스트 바로 다음에 강제 페이지 나눔을 넣는다(차트/지도는 이미 각각
@@ -47,8 +47,8 @@
 	.hlf-detail-hero { display: grid !important; grid-template-columns: 1fr 1fr; gap: 10px; margin: 0 0 6px; }
 	/* Leasing Info/Property Details를 포함한 본문 전체를 세로로 압축해 매물 1개 상세를 한 페이지
 	   안에 우겨넣는다 — 카드 여백/줄간격/글자 크기를 화면보다 크게 줄인다. */
-	.hlf-gallery-main { max-height: 65mm; }
-	.hlf-panel { margin: 5px 0; padding: 6px 10px 5px; }
+	.hlf-gallery-main { max-height: 69mm; }
+	.hlf-panel { margin: 3px 0; padding: 5px 10px 4px; }
 	.hlf-panel-heading, .hlf-comparison-map-heading h2 { margin-bottom: 4px; font-size: 12px; }
 	.hlf-panel-heading-row { margin-bottom: 4px; }
 	.hlf-panel-note { font-size: 10px; }
@@ -62,5 +62,5 @@
 	.hlf-basic-item dt { font-size: 10px; }
 	.hlf-basic-item dd { font-size: 11px; }
 	.hlf-basic-value-sub { font-size: 9px; }
-	.hlf-footer { margin-top: 6px; padding-top: 6px; }
+	.hlf-footer { margin-top: 4px; padding-top: 4px; }
 }
