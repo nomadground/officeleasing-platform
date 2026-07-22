@@ -161,15 +161,20 @@ final class HLF_OfficeLeasing_Search {
 	private static function summarize_listing( WP_Post $listing ): array {
 		$building_id = (int) get_field( 'related_building', $listing->ID );
 		$building    = $building_id ? get_post( $building_id ) : null;
+		// listing 자체는 이미 post_status=>publish로만 조회됐지만, 연결된 building은 draft/private일
+		// 수 있다 — building_id만 있으면 바로 읽기 권한 확인 없이 주소를 노출했었다. 권한이 없으면
+		// building 관련 필드(제목/주소)는 비워서 내려준다(검색 결과 자체는 그대로 두되 민감한 위치
+		// 정보만 숨김). Mapper의 실제 Import 게이트(is_readable_source)와 같은 기준을 그대로 쓴다.
+		$can_read_building = $building_id && HLF_OfficeLeasing_Mapper::is_readable_source( $building_id );
 
 		return array(
 			'listing_id'             => $listing->ID,
 			'listing_title'          => get_the_title( $listing ),
 			'listing_status'         => (string) get_field( 'listing_status', $listing->ID ),
 			'building_id'            => $building_id,
-			'building_title'         => $building ? get_the_title( $building ) : '',
-			'road_address'           => $building_id ? (string) get_field( 'building_address_road', $building_id ) : '',
-			'lot_address'            => $building_id ? (string) get_field( 'building_address_jibun', $building_id ) : '',
+			'building_title'         => ( $building && $can_read_building ) ? get_the_title( $building ) : '',
+			'road_address'           => $can_read_building ? (string) get_field( 'building_address_road', $building_id ) : '',
+			'lot_address'            => $can_read_building ? (string) get_field( 'building_address_jibun', $building_id ) : '',
 			'floor'                  => (string) get_field( 'floor_display', $listing->ID ),
 			'lease_area_sqm'         => (float) get_field( 'lease_area_sqm', $listing->ID ),
 			'exclusive_area_sqm'     => (float) get_field( 'exclusive_area_sqm', $listing->ID ),

@@ -323,10 +323,24 @@ final class HLF_Source_Listing_Repository {
 		$interior_image_ids = array_values( array_unique( array_map( 'intval', $interior_image_ids ) ) );
 		$requested          = $exterior_image_id > 0 ? array_merge( array( $exterior_image_id ), $interior_image_ids ) : $interior_image_ids;
 
+		// delete_image()가 "이미 저장된 목록에서 하나 뺀 나머지"를 그대로 이 메서드에 다시 넘기므로,
+		// 이미 붙어 있던 나머지까지 매번 재확인하면 그중 하나를 다른 사람이 붙였다는 이유만으로
+		// "빼기" 자체가 막혀버린다 — 권한 확인은 이번 요청에서 새로 추가되는 ID에만 적용한다.
+		$existing = HLF_Meta_Schema::read_source( $source_id );
+		$current_ids = array();
+		if ( ! empty( $existing['exterior_image_id'] ) ) { $current_ids[] = (int) $existing['exterior_image_id']; }
+		foreach ( $existing['interior_image_ids'] as $existing_id ) { $current_ids[] = (int) $existing_id; }
+
 		foreach ( $requested as $id ) {
 			$attachment = get_post( $id );
 			if ( ! $attachment || 'attachment' !== $attachment->post_type ) {
 				return new WP_Error( 'hlf_image_invalid', '선택한 항목 중 유효하지 않은 이미지가 있습니다.', array( 'status' => 400 ) );
+			}
+			// attachment 존재/타입만 확인하고 넘어가면, 낮은 권한 사용자가 자신이 볼 수 없는(다른
+			// 사람의 비공개) attachment ID를 그대로 넣어 매물에 새로 바인딩할 수 있다 — 새로 추가되는
+			// ID에 한해 읽을 권한을 확인한다.
+			if ( ! in_array( $id, $current_ids, true ) && ! current_user_can( 'read_post', $id ) ) {
+				return new WP_Error( 'hlf_image_forbidden', '선택한 이미지 중 접근 권한이 없는 항목이 있습니다.', array( 'status' => 403 ) );
 			}
 		}
 

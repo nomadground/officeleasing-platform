@@ -726,13 +726,13 @@ final class HLF_REST_Controller {
 
 	public static function get_dashboard() {
 		$source_stats = HLF_Source_Listing_Repository::stats();
-		$flyer_count  = count( get_posts( array(
-			'post_type'      => HLF_Post_Types::FLYER,
-			'post_status'    => array( 'draft', 'publish', HLF_Post_Types::STATUS_ARCHIVED ),
-			'posts_per_page' => -1,
-			'no_found_rows'  => true,
-			'fields'         => 'ids',
-		) ) );
+		// count(get_posts(...)) 방식은 Flyer가 늘어날수록 ID 전체를 매번 전송받아 세는 방식이라
+		// Flyer 수에 비례해 느려진다 — wp_count_posts()는 상태별 개수를 단일 집계 쿼리(GROUP BY)로
+		// 가져오므로 Flyer가 수백 개여도 비용이 그대로다.
+		$counts      = wp_count_posts( HLF_Post_Types::FLYER );
+		$flyer_count = (int) ( $counts->draft ?? 0 )
+			+ (int) ( $counts->publish ?? 0 )
+			+ (int) ( $counts->{HLF_Post_Types::STATUS_ARCHIVED} ?? 0 );
 		return rest_ensure_response( array(
 			'source_total'    => $source_stats['total'],
 			'source_linked'   => $source_stats['linked'],

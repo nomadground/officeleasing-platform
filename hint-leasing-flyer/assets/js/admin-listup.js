@@ -482,6 +482,9 @@
 		box.innerHTML =
 			'<h4>매물 사진</h4>' +
 			'<p class="hlf-admin-note">첫 번째 사진이 대표 이미지입니다. 미디어 라이브러리에서 선택하거나 새로 업로드할 수 있습니다.</p>' +
+			// 주소/금액 등은 안내문에 포함되는 순간 완전한 스냅샷이 되지만, 사진은 미디어 라이브러리
+			// 원본을 그대로 참조한다 — 원본을 지우거나 바꾸면 이미 포함된 안내문의 사진도 함께 바뀐다.
+			'<p class="hlf-admin-note hlf-image-snapshot-warning">주의: 사진은 미디어 라이브러리 원본을 그대로 참조합니다. 이 원본을 다른 곳에서 삭제·교체하면, 이미 임대안내문에 포함된 매물의 사진도 함께 바뀌거나 사라질 수 있습니다.</p>' +
 			'<button type="button" class="button" id="hlf-src-img-pick">사진 선택/추가</button>' +
 			'<div class="hlf-img-strip">' +
 				( ordered.length ? ordered.map( function ( id, i ) {

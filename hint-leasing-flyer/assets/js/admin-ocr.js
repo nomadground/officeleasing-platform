@@ -17,7 +17,20 @@
 	 * 서버 계산(NOC 등)과는 무관하다 — 여기서 하는 일은 이미지 속 텍스트를 필드값 후보로
 	 * 정규화하는 것뿐이고, 그 값들로 파생 지표를 계산하는 로직은 두지 않는다(그건 서버 몫).
 	 */
-	var OCR_SCRIPT_URL = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+	// 버전을 "@5"(메이저만)로 띄워두면 jsdelivr가 그때그때 최신 5.x를 내려줘 배포 시점마다 실제로
+	// 뭐가 로드되는지 달라지고, 무결성도 확인할 수 없다 — 정확한 버전(현재 시점 "@5"가 가리키는
+	// 5.1.1, npm 레지스트리로 확인)으로 고정하고 SRI(integrity)+crossorigin을 붙인다. 이 플러그인은
+	// 관리자 전용 화면에서만 로드되므로(공개 페이지엔 없음, 이미 확인됨) 리스크는 제한적이지만,
+	// CDN이 변조되거나 다른 파일을 내려줘도 해시가 다르면 브라우저가 실행을 차단하게 한다.
+	// integrity 해시는 npm 레지스트리에서 내려받은 tesseract.js@5.1.1 배포본의 dist/tesseract.min.js를
+	// 직접 sha384로 계산한 값이다(이 샌드박스에서 cdn.jsdelivr.net 자체는 프록시 정책상 접근이
+	// 막혀 있어 jsdelivr가 서빙하는 파일과 완전히 동일한지 최종 교차 확인은 못했다 — jsdelivr의 /npm/
+	// 경로는 npm 배포본을 그대로 미러링하는 것으로 알려져 있으나, 실제 설치 후 브라우저에서 OCR이
+	// 정상 동작하는지 한 번은 확인해 달라). 해시가 어긋나면 브라우저가 스크립트 실행을 막고
+	// script.onerror가 그대로 발생해 "OCR 라이브러리를 불러오지 못했습니다" 안내로 우아하게
+	// 저하될 뿐 나머지 관리자 화면은 그대로 동작한다.
+	var OCR_SCRIPT_URL = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
+	var OCR_SCRIPT_INTEGRITY = 'sha384-GJqSu7vueQ9qN0E9yLPb3Wtpd7OrgK8KmYzC8T1IysG1bcvxvIO4qtYR/D3A991F';
 	var OCR_MAX_MONEY = 1000000;
 	var OCR_MAX_AREA_SQM = 1000000;
 
@@ -362,6 +375,8 @@
 		ocrEngineLoader = new Promise( function ( resolve, reject ) {
 			var script = document.createElement( 'script' );
 			script.src = OCR_SCRIPT_URL;
+			script.integrity = OCR_SCRIPT_INTEGRITY;
+			script.crossOrigin = 'anonymous';
 			script.onload = function () { window.Tesseract ? resolve( window.Tesseract ) : reject( new Error( 'OCR 엔진을 찾을 수 없습니다.' ) ); };
 			script.onerror = function () { reject( new Error( 'OCR 엔진을 불러오지 못했습니다.' ) ); };
 			document.head.appendChild( script );

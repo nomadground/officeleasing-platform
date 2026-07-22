@@ -15,9 +15,6 @@ defined( 'ABSPATH' ) || exit;
 
 final class HLF_Item_Repository {
 
-	/** Flyer 하나에 담을 수 있는 최대 항목 수. 관리자 UI도 같은 값을 안내로 쓰되, 기준은 서버다. */
-	const MAX_ITEMS_PER_FLYER = 10;
-
 	public static function format_item_number( int $seq ): string {
 		return 'I' . sprintf( '%04d', $seq );
 	}
@@ -100,32 +97,13 @@ final class HLF_Item_Repository {
 	}
 
 	public static function create_item( int $flyer_id, array $fields ): int|WP_Error {
-		$guard = HLF_Flyer_Repository::assert_not_archived( $flyer_id );
-		if ( is_wp_error( $guard ) ) {
-			return $guard;
+		// "이 Flyer가 새 Item을 받아도 되는가"(보관 가드 + 10개 상한)와 display_order 계산은
+		// HLF_Flyer_Item_Service가 조정한다 — Item_Repository는 실제 포스트 생성/필드 저장만 맡는다.
+		$prep = HLF_Flyer_Item_Service::prepare_item_creation( $flyer_id );
+		if ( is_wp_error( $prep ) ) {
+			return $prep;
 		}
-
-		// 10개 제한 체크와 display_order 최댓값 계산 둘 다 "이 Flyer의 현재 item 목록"이 필요하므로
-		// get_items()를 한 번만 불러 재사용한다(전에는 이 두 용도로 같은 쿼리를 두 번 날렸다).
-		$existing_items = self::get_items( $flyer_id );
-
-		// 클라이언트 우회(직접 REST 호출 등) 방지 — 서버가 최종 기준. UI는 안내만 표시한다.
-		if ( count( $existing_items ) >= self::MAX_ITEMS_PER_FLYER ) {
-			return new WP_Error(
-				'hlf_item_limit_reached',
-				sprintf( 'Flyer 하나에는 최대 %d개의 매물만 담을 수 있습니다.', self::MAX_ITEMS_PER_FLYER ),
-				array( 'status' => 400 )
-			);
-		}
-
-		// wp_insert_post() 이전에 기존 item들의 display_order 최댓값을 구한다 — 삭제로 중간 번호가
-		// 빈 상태에서 "전체 개수"로 새 순번을 매기면 남아있는 item과 값이 겹칠 수 있다(예: 0,1,2 중
-		// 1번 삭제 후 재추가 시 "개수-1"=1이 남아있는 2번과 충돌). 최댓값+1이면 항상 유일하다.
-		$max_existing_order = -1;
-		foreach ( $existing_items as $existing_item ) {
-			$max_existing_order = max( $max_existing_order, (int) get_post_meta( $existing_item->ID, 'display_order', true ) );
-		}
-		$next_display_order = $max_existing_order + 1; // 기존 item이 없으면 -1 + 1 = 0.
+		$next_display_order = $prep['next_display_order'];
 
 		$item_id = wp_insert_post( array(
 			'post_type'   => HLF_Post_Types::ITEM,
@@ -149,7 +127,7 @@ final class HLF_Item_Repository {
 	}
 
 	public static function update_item( int $flyer_id, int $item_id, array $fields ): int|WP_Error {
-		$guard = HLF_Flyer_Repository::assert_not_archived( $flyer_id );
+		$guard = HLF_Flyer_Item_Service::assert_not_archived( $flyer_id );
 		if ( is_wp_error( $guard ) ) {
 			return $guard;
 		}
@@ -162,7 +140,7 @@ final class HLF_Item_Repository {
 	}
 
 	public static function delete_item( int $flyer_id, int $item_id ): bool|WP_Error {
-		$guard = HLF_Flyer_Repository::assert_not_archived( $flyer_id );
+		$guard = HLF_Flyer_Item_Service::assert_not_archived( $flyer_id );
 		if ( is_wp_error( $guard ) ) {
 			return $guard;
 		}
@@ -182,7 +160,7 @@ final class HLF_Item_Repository {
 	 * 검증에 실패하면 아무 것도 저장하지 않고 즉시 400을 반환한다(부분 반영 금지).
 	 */
 	public static function reorder( int $flyer_id, array $ordered_item_ids ): bool|WP_Error {
-		$guard = HLF_Flyer_Repository::assert_not_archived( $flyer_id );
+		$guard = HLF_Flyer_Item_Service::assert_not_archived( $flyer_id );
 		if ( is_wp_error( $guard ) ) {
 			return $guard;
 		}
@@ -295,7 +273,7 @@ final class HLF_Item_Repository {
 	 * 영향을 줄 수 있으므로 ID만 그대로 저장한다.
 	 */
 	public static function set_images( int $flyer_id, int $item_id, int $exterior_image_id, array $interior_image_ids ): bool|WP_Error {
-		$guard = HLF_Flyer_Repository::assert_not_archived( $flyer_id );
+		$guard = HLF_Flyer_Item_Service::assert_not_archived( $flyer_id );
 		if ( is_wp_error( $guard ) ) {
 			return $guard;
 		}
@@ -308,6 +286,16 @@ final class HLF_Item_Repository {
 		$interior_image_ids = array_values( array_unique( array_map( 'intval', $interior_image_ids ) ) );
 		$requested          = $exterior_image_id > 0 ? array_merge( array( $exterior_image_id ), $interior_image_ids ) : $interior_image_ids;
 
+		// delete_image()는 "지금 이미 저장된 목록에서 하나 뺀 나머지"를 그대로 이 메서드에 다시
+		// 넘긴다 — 그 이미 저장돼 있던 나머지까지 매번 읽기 권한을 재확인하면, 다른 사람이 원래
+		// 정상적으로 붙여 둔 이미지가 하나 섞여 있다는 이유만으로 "빼기" 작업 자체가 막혀버린다.
+		// 그래서 권한 확인은 이번 요청에서 "새로 추가되는" ID에만 적용한다 — 이미 붙어 있던 ID를
+		// 그대로 유지/제거하는 것은 이전에 이미 검증을 통과했으므로 다시 물을 필요가 없다.
+		$existing = HLF_Meta_Schema::read_item( $item_id );
+		$current_ids = array();
+		if ( ! empty( $existing['exterior_image_id'] ) ) { $current_ids[] = (int) $existing['exterior_image_id']; }
+		foreach ( $existing['interior_image_ids'] as $existing_id ) { $current_ids[] = (int) $existing_id; }
+
 		foreach ( $requested as $id ) {
 			$attachment = get_post( $id );
 			if ( ! $attachment || 'attachment' !== $attachment->post_type ) {
@@ -315,6 +303,16 @@ final class HLF_Item_Repository {
 					'hlf_image_invalid',
 					'선택한 항목 중 유효하지 않은 이미지가 있습니다.',
 					array( 'status' => 400 )
+				);
+			}
+			// attachment 존재/타입만 확인하고 넘어가면, 낮은 권한 사용자가 자신이 볼 수 없는(다른
+			// 사람의 비공개) attachment ID를 그대로 넣어 공개 Flyer에 새로 바인딩할 수 있다 — 새로
+			// 추가되는 ID에 한해 읽기 권한을 확인한다.
+			if ( ! in_array( $id, $current_ids, true ) && ! current_user_can( 'read_post', $id ) ) {
+				return new WP_Error(
+					'hlf_image_forbidden',
+					'선택한 이미지 중 접근 권한이 없는 항목이 있습니다.',
+					array( 'status' => 403 )
 				);
 			}
 		}
@@ -342,7 +340,7 @@ final class HLF_Item_Repository {
 	 * 사라지는 사고가 난다.
 	 */
 	public static function delete_image( int $flyer_id, int $item_id, int $attachment_id ): bool|WP_Error {
-		$guard = HLF_Flyer_Repository::assert_not_archived( $flyer_id );
+		$guard = HLF_Flyer_Item_Service::assert_not_archived( $flyer_id );
 		if ( is_wp_error( $guard ) ) {
 			return $guard;
 		}

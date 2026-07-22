@@ -17,6 +17,13 @@
 	color: #646970;
 	font-size: 13px;
 }
+/* 사진은 attachment 참조 공유(파일 복제 없음)라는 정책 안내 — 일반 note보다 눈에 띄게. */
+.hlf-admin .hlf-image-snapshot-warning {
+	padding: 6px 10px;
+	color: #8a6100;
+	background: #fff8db;
+	border-left: 3px solid #dba617;
+}
 
 .hlf-admin .hlf-card {
 	padding: 16px 20px;

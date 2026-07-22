@@ -168,7 +168,7 @@ final class HLF_Admin_UI {
 			'listUrl'              => admin_url( 'admin.php?page=' . self::LIST_SLUG ),
 			'editUrlBase'          => admin_url( 'admin.php?page=' . self::EDIT_SLUG . '&flyer_id=' ),
 			'sourcePreviewUrlBase' => admin_url( 'admin-post.php?action=hlf_source_preview&source_id=' ),
-			'maxItems'             => HLF_Item_Repository::MAX_ITEMS_PER_FLYER,
+			'maxItems'             => HLF_Flyer_Item_Service::MAX_ITEMS_PER_FLYER,
 			'defaultPhone'         => HLF_Flyer_Repository::DEFAULT_PHONE,
 			'kakaoJsKey'           => defined( 'HLF_KAKAO_JS_KEY' ) ? HLF_KAKAO_JS_KEY : '',
 		);

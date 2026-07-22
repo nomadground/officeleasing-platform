@@ -748,6 +748,9 @@
 		return (
 			'<section class="hlf-image-section">' +
 				'<h3>매물 사진</h3>' +
+				// 주소/금액 등 텍스트 값은 저장 시점의 완전한 스냅샷이지만, 사진은 미디어 라이브러리의
+				// 원본 첨부파일을 그대로 참조한다(용량 절약, 파일 복제 없음) — 그래서 이 문구가 필요.
+				'<p class="hlf-admin-note hlf-image-snapshot-warning">주의: 사진은 미디어 라이브러리 원본을 그대로 참조합니다. 다른 곳에서 이 사진을 삭제하거나 교체하면 이미 발행된 안내문의 사진도 함께 바뀌거나 사라질 수 있습니다.</p>' +
 				'<div id="hlf-saved-images">' + renderSavedImages( item ) + '</div>' +
 				'<button type="button" class="button button-primary" id="hlf-image-picker">사진 선택</button>' +
 			'</section>'

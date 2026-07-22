@@ -152,7 +152,10 @@ final class HLF_OfficeLeasing_Mapper {
 	 * 가져오게 되어 정책과 어긋난다. 이 게이트는 오직 "검색을 우회해 draft/private listing_id를
 	 * 직접 넘기는" 경로를 막기 위한 것이다(검색 자체는 이미 publish만 노출해 안전하다).
 	 */
-	private static function is_readable_source( int $post_id ): bool {
+	// public: HLF_OfficeLeasing_Search::summarize_listing()도 검색 결과 미리보기에서 building
+	// 노출 여부를 판단할 때 이 정의를 그대로 재사용한다(같은 "읽을 수 있는 원본" 기준을 두 곳에서
+	// 따로 정의해 어긋나는 것을 막기 위함).
+	public static function is_readable_source( int $post_id ): bool {
 		return 'publish' === get_post_status( $post_id ) && current_user_can( 'read_post', $post_id );
 	}
 

@@ -32,7 +32,13 @@ final class HLF_Capabilities {
 		);
 	}
 
-	/** 생성/수정/발행 담당(설정 관리 cap 제외). */
+	/**
+	 * 생성/수정/발행 담당(설정 관리 cap 제외).
+	 *
+	 * upload_files는 워드프레스 코어 cap이다 — 이게 없으면 wp.media 업로더 자체가 열리지 않아
+	 * leasing_flyer_staff로 로그인한 직원은 매물 사진 업로드/선택이 불가능하다(administrator/
+	 * editor는 코어가 기본으로 이미 갖고 있어 지금까지는 드러나지 않았던 문제).
+	 */
 	public static function staff_caps(): array {
 		return array(
 			'edit_leasing_flyer',
@@ -43,6 +49,7 @@ final class HLF_Capabilities {
 			'publish_leasing_flyers',
 			'read_private_leasing_flyers',
 			'delete_leasing_flyers',
+			'upload_files',
 		);
 	}
 

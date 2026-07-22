@@ -69,7 +69,12 @@ final class HLF_Post_Types {
 			// 끄고, 편집은 HLF_Admin_UI가 등록하는 커스텀 REST 기반 화면 하나로만 진입하게 한다.
 			'show_ui'             => false,
 			'show_in_menu'        => false,
-			'show_in_rest'        => true,
+			// public=>false와 show_in_rest는 서로 무관하다 — show_in_rest=>true였던 이전 설정은
+			// 코어가 /wp-json/wp/v2/leasing_flyer를 자동 등록해 "링크를 받은 사람만 접근"이라는
+			// 설계 전제를 깨뜨렸다(publish 상태 Flyer가 이 코어 REST로 그대로 열람 가능해짐). 이
+			// 플러그인은 모든 CRUD를 자체 hlf/v1 네임스페이스(HLF_REST_Controller)로만 처리하므로
+			// 코어 REST 노출이 애초에 필요 없다 — Item/Source는 처음부터 false였다.
+			'show_in_rest'        => false,
 			'publicly_queryable'  => false,
 			'exclude_from_search' => true,
 			'has_archive'         => false,
