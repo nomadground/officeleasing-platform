@@ -942,6 +942,9 @@
 		return String( text || '' )
 			.replace( /\r/g, '' )
 			.replace( /m(?:²|2|\^2)/gi, '㎡' )
+			// Tesseract가 ㎡를 자주 "ㅠ"로 오인식한다(실제 캡처로 확인) — 숫자 바로 뒤에 오는 "ㅠ"만
+			// 좁혀서 교정한다(자유 텍스트의 "ㅠㅠ" 같은 표현을 건드리지 않기 위해 숫자+ㅠ 패턴에만 적용).
+			.replace( /(\d)ㅠ/g, '$1㎡' )
 			.replace( /월\s*세/g, '월세' )
 			.replace( /관\s*리\s*비/g, '관리비' )
 			.replace( /(\d)\s+(?=\d)/g, '$1' )
@@ -966,20 +969,51 @@
 	}
 
 	// 보증금/월세를 "보증금 3억 / 월세 350" 또는 "3억/350" 형태에서 뽑는다(라벨 없는 슬래시 표기 fallback 포함).
+	//
+	// 네이버부동산 캡처는 두 가지 형태가 섞여 나온다:
+	//  (a) "월세 8,000/710"처럼 거래유형 라벨 하나가 슬래시쌍 전체의 헤더 역할(보증금/월세 각각
+	//      앞/뒤) — 최상단 요약줄에 흔하다.
+	//  (b) "보증금 3,000만원 / 월세 350만원"처럼 각 값에 자기 라벨이 따로 붙는 형태 — 상세 표에 흔하다.
+	// "값 뒤에 슬래시가 오는지"로 (a)/(b)를 구분하려 했으나(음의 전방탐색), 정규식 역추적이 탐색
+	// 조건을 만족할 때까지 캡처 길이를 줄여버려 오히려 값이 잘리는 문제가 있었다(실제로 확인됨:
+	// "8,000/710"에서 "800"만 캡처). 대신 "보증금" 라벨의 유무로 두 형태를 구분한다 — 보증금 라벨이
+	// 있으면 (b)로 보고 각자 라벨링된 값을 그대로 쓰고, 없으면 (a)로 보고 헤더+슬래시쌍을 쓴다.
 	function ocrParseLeaseAmounts( text ) {
-		var slash = text.match( /([\d억,.\s]+(?:만원)?)\s*\/\s*([\d억,.\s]+(?:만원)?)/ );
 		var depositLabel = text.match( /보증금\s*([\d억,.\s]+(?:만원)?)/ );
-		var rentLabel = text.match( /(?:월세|임대료)\s*([\d억,.\s]+(?:만원)?)/ );
+		var rentLabelExplicit = text.match( /(?:월세|임대료)\s*([\d억,.\s]+(?:만원)?)/ );
 		var feeLabel = text.match( /관리비\s*([\d억,.\s]+(?:만원)?)/ );
+
+		var deposit = '';
+		var rent = '';
+		if ( depositLabel ) {
+			// (b) 각자 라벨링된 형태 — "보증금"이 있으니 뒤의 "월세/임대료" 라벨도 곧이곧대로 믿는다.
+			deposit = depositLabel[ 1 ];
+			rent = rentLabelExplicit ? rentLabelExplicit[ 1 ] : '';
+		} else {
+			// (a) 거래유형 헤더 + 슬래시쌍, 또는 라벨이 아예 없는 순수 슬래시 표기.
+			var dealTypePair = text.match( /(?:월세|전세)\s*([\d억,.\s]+)\s*\/\s*([\d억,.\s]+)/ );
+			if ( dealTypePair ) {
+				deposit = dealTypePair[ 1 ];
+				rent = dealTypePair[ 2 ];
+			} else {
+				var slash = text.match( /([\d억,.\s]+(?:만원)?)\s*\/\s*([\d억,.\s]+(?:만원)?)/ );
+				deposit = slash ? slash[ 1 ] : '';
+				rent = slash ? slash[ 2 ] : ( rentLabelExplicit ? rentLabelExplicit[ 1 ] : '' );
+			}
+		}
+
 		return {
-			deposit_manwon: ocrNormalizeMoney( ( depositLabel && depositLabel[ 1 ] ) || ( slash && slash[ 1 ] ) ),
-			monthly_rent_manwon: ocrNormalizeMoney( ( rentLabel && rentLabel[ 1 ] ) || ( slash && slash[ 2 ] ) ),
+			deposit_manwon: ocrNormalizeMoney( deposit ),
+			monthly_rent_manwon: ocrNormalizeMoney( rent ),
 			maintenance_fee_manwon: ocrNormalizeMoney( feeLabel && feeLabel[ 1 ] ),
 		};
 	}
 
 	function ocrParseFloor( text ) {
-		var pair = text.match( /(?:해당층\s*\/\s*총층\s*[:：]?\s*)?(B?\d+(?:~\d+)?)\s*층?\s*\/\s*(\d+)\s*층?/i );
+		// 끝의 "층"을 필수로 요구해야 한다(이전에는 선택이라 "8,000/710" 같은 보증금/월세 숫자쌍이
+		// 먼저 매치되어 층수 대신 그 값을 잘못 채우는 버그가 있었다 — 실제 캡처로 확인됨). 층수
+		// 표기는 항상 "4/6층"처럼 마지막 숫자 뒤에만 "층"이 붙으므로 이걸로 금액 쌍과 구분한다.
+		var pair = text.match( /(?:해당층\s*\/\s*총층\s*[:：]?\s*)?(B?\d+(?:~\d+)?)\s*층?\s*\/\s*(\d+)\s*층/i );
 		return { floor_current: ( pair && pair[ 1 ] ) || '', floor_total: ( pair && pair[ 2 ] ) || '' };
 	}
 
@@ -996,13 +1030,18 @@
 	// 난방/사무실 수/화장실 수/위반건축물 여부는 HLF Item 스키마에 없는 필드라 의도적으로 추출하지
 	// 않는다(요청서 확인 결과 불필요 — 실제로 표시할 곳이 없는 값을 폼에 채우면 혼란만 준다).
 	function ocrParsePropertyTable( text ) {
+		// 라벨 자체가 오인식되는 경우(실제 캡처로 확인: "소재지"→"소재^", "매물특징"→"매쿨특징",
+		// "입주가능일"→"임주가능일", "총주차대수"→"층주차대수")를 대비해, 원래 라벨이 안 잡히면
+		// 오인식 가능성이 낮은 더 짧은/뒷부분 문자열로도 찾아본다(ocrLabeledValue는 길이가 긴
+		// 라벨을 먼저 시도하므로 정확한 라벨이 있으면 그게 우선이고, 이 fallback은 원래 라벨이
+		// 통째로 안 잡힐 때만 쓰인다).
 		return {
-			lot_address: ocrLabeledValue( text, [ '소재지' ] ),
-			features: ocrLabeledValue( text, [ '매물특징' ] ),
+			lot_address: ocrLabeledValue( text, [ '소재지', '소재' ] ),
+			features: ocrLabeledValue( text, [ '매물특징', '물특징', '특징' ] ),
 			maintenance_fee_manwon: ocrNormalizeMoney( ocrLabeledValue( text, [ '월관리비', '관리비' ] ) ),
 			direction: ocrLabeledValue( text, [ '방향' ] ),
-			available_date_text: ocrLabeledValue( text, [ '입주가능일' ] ),
-			total_parking: ocrLabeledValue( text, [ '총주차대수' ] ),
+			available_date_text: ocrLabeledValue( text, [ '입주가능일', '주가능일' ] ),
+			total_parking: ocrLabeledValue( text, [ '총주차대수', '주차대수' ] ),
 			approval_date: ocrLabeledValue( text, [ '사용승인일' ] ),
 			building_use: ocrLabeledValue( text, [ '건축물 용도', '건축물용도' ] ),
 		};
