@@ -1,19 +1,29 @@
 /**
- * HINT List Up 통합 관리 화면(요청서 4). 좌측 4탭: Dashboard / 전체 매물 / 임대안내문 / 설정.
+ * 직원 포털(/listad/) 화면. HINT List Up 관리자 화면(admin-listup.js)과 거의 동일한 4탭
+ * 구조·REST 호출을 그대로 재사용한다(Repository/REST Controller/Snapshot 로직은 전혀 새로
+ * 만들지 않는다) — 차이는 두 가지뿐이다:
+ *   1) 이 화면은 wp-admin이 아니라 프론트엔드 템플릿(templates/portal/portal.php)에 얹히므로
+ *      좌측 nav는 이 파일이 매번 다시 그리지 않고 portal.php가 이미 그려 둔 정적 버튼을 그대로 쓴다.
+ *   2) "담당자"는 워드프레스 계정이 아니라 이 기기(브라우저)에 저장한 선택값이다 — 최초 Dashboard
+ *      진입 시 담당자를 고르게 하고, 신규 매물/안내문 생성 폼에만 그 담당자의 이름·연락처를
+ *      자동으로 채운다(이미 저장된 값은 절대 덮어쓰지 않는다 — admin-listup.js의 defaultContact()와
+ *      같은 자리에 currentStaffContact()를 대신 꽂아 넣었을 뿐, 그 외 자동채움 규칙은 동일하다).
  *
- * 데이터는 전부 hlf/v1 REST(HLF_REST_Controller)를 fetch로 호출한다 — 이 파일은 순수 화면/상호작용만
- * 담당한다(비즈니스 로직은 서버). OCR은 공용 모듈(window.HLFOcr)을, 공통 포맷/이스케이프는
- * window.HLFAdmin을 그대로 쓴다. Flyer/Item CRUD·계산(NOC)·스냅샷·공개 URL은 재설계하지 않는다.
+ * window.HLF_PORTAL(restUrl/nonce/portalUrl/sourcePreviewUrlBase/maxItems/defaultPhone/user/isAdmin)은
+ * HLF_Portal::maybe_enqueue_assets()가 로컬라이즈한다. OCR은 admin-ocr.js(window.HLFOcr)를,
+ * 이스케이프/포맷 헬퍼는 admin-common.js(window.HLFAdmin)를 그대로 재사용한다 — REST 호출만 이 파일
+ * 안에 독립된 api()로 새로 둔다(admin-common.js의 apiFetch는 window.HLF_ADMIN을 참조하므로 이 화면과
+ * 맞지 않는다, admin-common.js 자체는 수정하지 않는다).
  */
 ( function () {
 	'use strict';
 
-	var root = document.getElementById( 'hlf-listup-root' );
+	var root = document.getElementById( 'hlf-portal-root' );
 	if ( ! root ) { return; }
 	var A = window.HLFAdmin;
-	var CONF = window.HLF_ADMIN;
+	var CONF = window.HLF_PORTAL;
+	var STAFF_KEY = 'hlf_portal_staff_selection';
 
-	// 원본 매물 폼의 조건 필드(주소/좌표는 별도 주소 블록에서 처리, article_no는 폼에 노출하지 않음).
 	var SOURCE_FIELDS = [
 		{ key: 'floor_current', label: '해당층', type: 'text', placeholder: '예: 3 또는 B1' },
 		{ key: 'floor_total', label: '총층', type: 'text', placeholder: '예: 6' },
@@ -36,8 +46,6 @@
 	var CHECKBOX_ROW_KEYS = [ 'parking_available', 'elevator_available' ];
 	var ADDRESS_SEARCH_DEBOUNCE_MS = 700;
 
-	// officeleasing-core acf-json(group_ol_listing.json)의 listing_status 실제 choices 그대로
-	// (admin-flyer-edit.js의 원본 매물 가져오기 패널과 동일한 목록).
 	var OFFICELEASING_STATUS_CHOICES = [
 		{ value: '', label: '전체 상태' },
 		{ value: 'available', label: '임대가능' },
@@ -47,21 +55,42 @@
 		{ value: 'temporarily_hidden', label: '노출중지' },
 		{ value: 'expired', label: '만료' }
 	];
-	// "새 매물 등록" 화면에서만 쓰는 officeleasing 검색/가져오기 패널 상태. renderSourceForm(null)에
-	// 새로 들어갈 때마다 초기화한다(admin-flyer-edit.js의 state.search와 같은 역할, 다만 이 화면은
-	// 특정 Flyer에 종속되지 않으므로 훨씬 단순하다 — maxItems 제한도 없다).
 	var importState = { open: false, results: null, importingId: null, lastQuery: { search: '', status: '' } };
 
 	var state = {
 		tab: 'dashboard',
-		contacts: null,      // { contacts:[{index,name,phone,is_default}], default_index }
-		flyers: null,        // 최근 조회한 Flyer 목록(전체 매물 일괄 추가 드롭다운/임대안내문 탭 공용)
-		sourceFilter: ''     // Dashboard 카드 클릭으로 "전체 매물" 탭에 들어갈 때 한 번만 적용할 연결 필터.
+		contacts: null,
+		flyers: null,
+		sourceFilter: ''
 	};
 
 	/* ==================== 공통 ==================== */
 
-	function api( path, options ) { return A.apiFetch( path, options ); }
+	function api( path, options ) {
+		options = options || {};
+		var headers = Object.assign(
+			{ 'X-WP-Nonce': CONF.nonce },
+			options.body ? { 'Content-Type': 'application/json' } : {},
+			options.headers || {}
+		);
+		return fetch( CONF.restUrl + path, Object.assign( { credentials: 'same-origin' }, options, { headers: headers } ) )
+			.then( function ( response ) {
+				return response.json().catch( function () { return {}; } ).then( function ( body ) {
+					if ( ! response.ok ) {
+						var message = ( body && body.message )
+							? body.message
+							: ( response.status >= 500
+								? '서버에 문제가 발생했습니다(오류 코드 ' + response.status + '). 잠시 후 다시 시도해 주세요.'
+								: '요청을 처리하지 못했습니다(오류 코드 ' + response.status + ').' );
+						var err = new Error( message );
+						err.status = response.status;
+						err.body = body;
+						throw err;
+					}
+					return body;
+				} );
+			} );
+	}
 	function esc( v ) { return A.escapeHtml( v ); }
 	function escAttr( v ) { return A.escapeAttr( v ); }
 	function won( v ) { return A.formatManwon( v ); }
@@ -85,40 +114,82 @@
 		api( 'flyers?per_page=100' ).then( function ( list ) { state.flyers = list; cb( list ); } ).catch( function () { cb( [] ); } );
 	}
 
-	/* ==================== 셸(탭 내비) ==================== */
+	/* ==================== 담당자(이 기기의 선택값 — 워드프레스 계정과 무관) ==================== */
 
-	var TABS = [
-		{ key: 'dashboard', label: 'Dashboard' },
-		{ key: 'sources', label: '전체 매물' },
-		{ key: 'flyers', label: '임대안내문' },
-		{ key: 'settings', label: '설정' }
-	];
+	function loadStaffSelection() {
+		try {
+			var raw = window.localStorage.getItem( STAFF_KEY );
+			return raw ? JSON.parse( raw ) : null;
+		} catch ( e ) { return null; }
+	}
+	function saveStaffSelection( sel ) {
+		try { window.localStorage.setItem( STAFF_KEY, JSON.stringify( sel ) ); } catch ( e ) { /* localStorage 불가(프라이빗 모드 등) — 이번 세션만 미지정으로 동작 */ }
+	}
+	/** 신규 매물/안내문 생성 폼에 채울 담당자 이름·연락처. 미선택/"미지정(HINT)"이면 빈 값(서버의
+	 *  대표번호 fallback이 자연스럽게 적용된다 — HLF_Flyer_Repository::DEFAULT_PHONE). */
+	function currentStaffContact( dir ) {
+		var sel = loadStaffSelection();
+		if ( ! sel || null === sel.index || undefined === sel.index ) { return { name: '', phone: '' }; }
+		var c = dir.contacts[ sel.index ];
+		return c ? { name: c.name, phone: c.phone } : { name: '', phone: '' };
+	}
+	function staffLabel( dir ) {
+		var sel = loadStaffSelection();
+		if ( ! sel || null === sel.index || undefined === sel.index ) { return '미지정 (HINT)'; }
+		var c = dir.contacts[ sel.index ];
+		return c ? c.name : '미지정 (HINT)';
+	}
+	function updateStaffLabel( dir ) {
+		var label = document.getElementById( 'hlf-portal-staff-label' );
+		if ( label ) { label.textContent = '담당자: ' + staffLabel( dir ); }
+	}
+	function openStaffPicker( onDone ) {
+		loadContacts( function ( dir ) {
+			var overlay = document.createElement( 'div' );
+			overlay.className = 'hlf-portal-modal-overlay';
+			overlay.innerHTML =
+				'<div class="hlf-portal-modal">' +
+					'<h3>담당자를 선택하세요</h3>' +
+					'<p class="hlf-admin-note">이 기기에서 새 매물·안내문을 등록할 때 담당자 이름과 연락처가 자동으로 채워집니다. 언제든 우측 상단 "담당자 변경"으로 바꿀 수 있습니다.</p>' +
+					'<select id="hlf-portal-staff-select">' +
+						'<option value="">미지정 (HINT)</option>' +
+						dir.contacts.map( function ( c ) {
+							return '<option value="' + c.index + '">' + escAttr( c.name || '(이름 없음)' ) + '</option>';
+						} ).join( '' ) +
+					'</select>' +
+					'<div class="hlf-form-actions"><button type="button" class="button button-primary" id="hlf-portal-staff-confirm">확인</button></div>' +
+				'</div>';
+			document.body.appendChild( overlay );
 
-	function setTab( tab ) { state.tab = tab; render(); }
+			var current = loadStaffSelection();
+			var select = overlay.querySelector( '#hlf-portal-staff-select' );
+			if ( current && null !== current.index && undefined !== current.index ) { select.value = String( current.index ); }
 
-	function render() {
-		root.innerHTML =
-			'<div class="hlf-listup">' +
-				'<nav class="hlf-listup-nav">' +
-					TABS.map( function ( t ) {
-						return '<button type="button" class="hlf-listup-tab' + ( state.tab === t.key ? ' is-active' : '' ) + '" data-hlf-tab="' + t.key + '">' + esc( t.label ) + '</button>';
-					} ).join( '' ) +
-				'</nav>' +
-				'<main class="hlf-listup-main" id="hlf-listup-main"><p class="hlf-admin-loading">불러오는 중…</p></main>' +
-			'</div>';
-		root.querySelectorAll( '[data-hlf-tab]' ).forEach( function ( btn ) {
-			btn.addEventListener( 'click', function () { setTab( btn.getAttribute( 'data-hlf-tab' ) ); } );
+			overlay.querySelector( '#hlf-portal-staff-confirm' ).addEventListener( 'click', function () {
+				var v = select.value;
+				saveStaffSelection( { index: '' === v ? null : Number( v ) } );
+				overlay.remove();
+				updateStaffLabel( dir );
+				if ( onDone ) { onDone(); }
+			} );
+		} );
+	}
+
+	/* ==================== 셸(정적 nav는 portal.php가 이미 그려 둠) ==================== */
+
+	function setTab( tab ) {
+		state.tab = tab;
+		document.querySelectorAll( '.hlf-portal-navbtn' ).forEach( function ( btn ) {
+			btn.classList.toggle( 'is-active', btn.getAttribute( 'data-hlf-tab' ) === tab );
 		} );
 		renderTab();
 	}
 
-	function main() { return document.getElementById( 'hlf-listup-main' ); }
+	function main() { return root; }
 
 	function renderTab() {
 		if ( 'dashboard' === state.tab ) { return renderDashboard(); }
 		if ( 'sources' === state.tab ) {
-			// Dashboard 카드 클릭으로 넘어온 필터는 이번 진입 한 번만 적용하고 소비한다 — 이후
-			// "전체 매물" 탭을 직접 눌러 재진입하면 다시 필터 없는 전체 목록으로 돌아간다.
 			var pendingFilter = state.sourceFilter;
 			state.sourceFilter = '';
 			return renderSourceList( '', pendingFilter );
@@ -156,8 +227,6 @@
 			'<strong>' + esc( value ) + '</strong><span>' + esc( label ) + '</span></button>';
 	}
 
-	// Dashboard 아래에 임대안내문 전체를 날짜/번호/제목/상태/매물수만 간단히 훑어볼 수 있게 보여준다
-	// (자세한 관리는 "임대안내문" 탭에서). 행을 누르면 그 안내문의 "포함 매물 관리" 화면으로 바로 간다.
 	function renderDashboardFlyers() {
 		var box = document.getElementById( 'hlf-dash-flyers' );
 		if ( ! box ) { return; }
@@ -186,7 +255,7 @@
 
 	function goToFlyerManage( flyerId ) {
 		state.tab = 'flyers';
-		root.querySelectorAll( '[data-hlf-tab]' ).forEach( function ( btn ) {
+		document.querySelectorAll( '.hlf-portal-navbtn' ).forEach( function ( btn ) {
 			btn.classList.toggle( 'is-active', btn.getAttribute( 'data-hlf-tab' ) === 'flyers' );
 		} );
 		renderFlyerManage( flyerId );
@@ -232,7 +301,6 @@
 			btn.addEventListener( 'click', function () { renderSourceList( searchInput.value, btn.getAttribute( 'data-hlf-src-filter' ) ); } );
 		} );
 
-		// 일괄 추가용 Flyer 드롭다운 채우기.
 		loadFlyers( function ( flyers ) {
 			var sel = document.getElementById( 'hlf-src-bulk-flyer' );
 			if ( sel ) {
@@ -321,7 +389,6 @@
 		} );
 	}
 
-	// 여러 원본 매물을 한 Flyer에 순차 포함(각각 PUT). 하나라도 실패하면 멈추고 사유를 알린다.
 	function bulkAddToFlyer( flyerId, sourceIds ) {
 		var i = 0, added = 0;
 		function next() {
@@ -345,19 +412,10 @@
 		} else {
 			importState = { open: false, results: null, importingId: null, lastQuery: { search: '', status: '' } };
 			loadContacts( function ( dir ) {
-				var def = defaultContact( dir );
+				var def = currentStaffContact( dir );
 				drawSourceForm( { id: null, contact_name: def.name, contact_phone: def.phone } );
 			} );
 		}
-	}
-
-	function defaultContact( dir ) {
-		if ( dir && dir.contacts && dir.contacts.length ) {
-			var idx = ( dir.default_index !== null && dir.default_index !== undefined ) ? dir.default_index : 0;
-			var c = dir.contacts[ idx ] || dir.contacts[ 0 ];
-			return { name: c.name, phone: c.phone };
-		}
-		return { name: '', phone: '' };
 	}
 
 	function fieldInput( def, value ) {
@@ -380,7 +438,6 @@
 		var editing = !! src.id;
 		var el = main();
 
-		// 조건 필드(체크박스 2개는 한 줄로 묶는다 — 관리자 편집 화면과 동일 규칙).
 		var fieldsHtml = SOURCE_FIELDS.map( function ( def ) {
 			if ( CHECKBOX_ROW_KEYS.indexOf( def.key ) !== -1 ) {
 				if ( def.key !== CHECKBOX_ROW_KEYS[ 0 ] ) { return ''; }
@@ -411,8 +468,6 @@
 			'</div>' +
 			( editing ? '<section class="hlf-card" id="hlf-src-images"></section>'
 				: '<p class="hlf-admin-note hlf-image-pending">매물 사진은 저장한 뒤 추가할 수 있습니다 — 먼저 위 내용을 저장해 주세요.</p>' ) +
-			// 원본 매물(officeleasing) 가져오기는 "새 매물 등록"에서만 제공한다 — 수정 화면은 이미
-			// 특정 매물 하나를 편집 중이라 다른 원본으로 통째로 갈아끼우는 개념이 성립하지 않는다.
 			( editing ? '' : '<div id="hlf-src-import-wrap">' + renderImportToggle() + renderImportPanel() + '</div>' );
 
 		document.getElementById( 'hlf-src-back' ).addEventListener( 'click', function () { renderSourceList(); } );
@@ -512,8 +567,6 @@
 		} );
 	}
 
-	// 결과 wrap에 클릭 리스너를 한 번만 위임 방식으로 붙인다(admin-flyer-edit.js와 동일 이유 — 검색/
-	// 가져오기 진행 중 표시는 innerHTML만 바꾸고 리스너는 다시 붙이지 않는다).
 	function bindImportResults() {
 		var wrap = document.getElementById( 'hlf-src-import-results' );
 		if ( ! wrap ) { return; }
@@ -537,7 +590,7 @@
 				body: JSON.stringify( { listing_id: listingId } )
 			} ).then( function ( saved ) {
 				toast( '가져왔습니다.' );
-				renderSourceForm( saved.id ); // 저장 후 편집 모드(이미지 섹션 등)로 — 일반 저장과 동일한 규칙.
+				renderSourceForm( saved.id );
 			} ).catch( function ( err ) {
 				importState.importingId = null;
 				window.alert( '가져오기에 실패했습니다: ' + err.message );
@@ -590,7 +643,7 @@
 			api( path, { method: src.id ? 'PUT' : 'POST', body: JSON.stringify( payload ) } )
 				.then( function ( saved ) {
 					toast( '저장했습니다.' );
-					renderSourceForm( saved.id ); // 저장 후 편집 모드(이미지 섹션 노출)로.
+					renderSourceForm( saved.id );
 				} )
 				.catch( function ( err ) { errorEl.textContent = err.message; errorEl.hidden = false; btn.disabled = false; } );
 		} );
@@ -612,7 +665,7 @@
 		return out;
 	}
 
-	/* ---------- 주소 검색 블록(지번→도로명/좌표 후보) ---------- */
+	/* ---------- 주소 검색 블록 ---------- */
 
 	function addressBlock( src ) {
 		return '<div class="hlf-address-block"><h4>주소 확인</h4>' +
@@ -688,7 +741,7 @@
 		} );
 	}
 
-	/* ---------- 담당자 선택(디렉터리 → 폼 채우기) ---------- */
+	/* ---------- 담당자 디렉터리 선택(폼 안의 보조 드롭다운 — 담당자 "전환"과는 별개) ---------- */
 
 	function bindContactPicker( form ) {
 		var nameInput = form.elements.contact_name;
@@ -725,8 +778,6 @@
 		box.innerHTML =
 			'<h4>매물 사진</h4>' +
 			'<p class="hlf-admin-note">첫 번째 사진이 대표 이미지입니다. 미디어 라이브러리에서 선택하거나 새로 업로드할 수 있습니다.</p>' +
-			// 주소/금액 등은 안내문에 포함되는 순간 완전한 스냅샷이 되지만, 사진은 미디어 라이브러리
-			// 원본을 그대로 참조한다 — 원본을 지우거나 바꾸면 이미 포함된 안내문의 사진도 함께 바뀐다.
 			'<p class="hlf-admin-note hlf-image-snapshot-warning">주의: 사진은 미디어 라이브러리 원본을 그대로 참조합니다. 이 원본을 다른 곳에서 삭제·교체하면, 이미 임대안내문에 포함된 매물의 사진도 함께 바뀌거나 사라질 수 있습니다.</p>' +
 			'<button type="button" class="button" id="hlf-src-img-pick">사진 선택/추가</button>' +
 			'<div class="hlf-img-strip">' +
@@ -809,7 +860,6 @@
 								'<button type="button" class="button button-small" data-hlf-fl-rename="' + f.id + '">이름 수정</button>' +
 								'<button type="button" class="button button-small" data-hlf-fl-preview="' + f.id + '">미리보기</button>' +
 								'<button type="button" class="button button-small" data-hlf-fl-copy="' + f.id + '">링크 복사</button>' +
-								'<a class="button button-small" href="' + escAttr( CONF.editUrlBase + f.id ) + '">상세 편집</a>' +
 								'<button type="button" class="button button-small hlf-danger" data-hlf-fl-delete="' + f.id + '">삭제</button>' +
 							'</td>' +
 						'</tr>';
@@ -856,7 +906,7 @@
 	function renderFlyerCreate() {
 		var el = main();
 		loadContacts( function ( dir ) {
-			var def = defaultContact( dir );
+			var def = currentStaffContact( dir );
 			el.innerHTML =
 				'<div class="hlf-listup-head"><h2 class="hlf-listup-title">새 임대안내문</h2>' +
 					'<button type="button" class="button" id="hlf-fl-back">← 목록</button></div>' +
@@ -864,7 +914,7 @@
 					'<div class="hlf-field"><label for="hlf-fl-title">제목(내부 관리용)</label><input id="hlf-fl-title" type="text" name="title" required></div>' +
 					'<div class="hlf-field"><label for="hlf-fl-cname">담당자명</label><input id="hlf-fl-cname" type="text" name="contact_name" value="' + escAttr( def.name ) + '"></div>' +
 					'<div class="hlf-field"><label for="hlf-fl-cphone">담당자 연락처</label><input id="hlf-fl-cphone" type="text" name="contact_phone" value="' + escAttr( def.phone ) + '"></div>' +
-					'<p class="hlf-admin-note">담당자는 기본 담당자로 미리 채워집니다. 필요하면 수정하세요.</p>' +
+					'<p class="hlf-admin-note">담당자는 현재 선택된 담당자로 미리 채워집니다. 필요하면 수정하세요.</p>' +
 					'<div class="hlf-form-actions"><button type="submit" class="button button-primary">만들기</button>' +
 						'<p class="hlf-admin-error" data-hlf-fl-error hidden></p></div>' +
 				'</form>';
@@ -928,7 +978,6 @@
 
 	function renderManageResults( flyer, sources ) {
 		var box = document.getElementById( 'hlf-fm-results' );
-		// 이 Flyer에 이미 포함된 원본 id 집합(item.source_listing_id 기준).
 		var includedSet = {};
 		( flyer.items || [] ).forEach( function ( it ) { if ( it.source_listing_id ) { includedSet[ Number( it.source_listing_id ) ] = true; } } );
 
@@ -956,11 +1005,9 @@
 		box.querySelectorAll( '.hlf-fm-pick' ).forEach( function ( c ) {
 			c.addEventListener( 'change', function () {
 				var sourceId = Number( c.getAttribute( 'data-id' ) );
-				// 2-3: 이미 발행된(published) 안내문에서 매물을 빼는 것은 고객에게 공유된 링크에 즉시
-				// 반영되므로 확인을 한 번 받는다(실제 제거는 막지 않음 — 완전 차단은 보관 상태만).
 				if ( ! c.checked && 'published' === flyer.status &&
 					! window.confirm( '이 안내문은 이미 발행되었습니다. 이 매물을 제거하면 공유된 링크에서 즉시 사라집니다. 계속할까요?' ) ) {
-					c.checked = true; // 롤백.
+					c.checked = true;
 					return;
 				}
 				c.disabled = true;
@@ -969,19 +1016,17 @@
 					.then( function () {
 						c.disabled = false;
 						toast( c.checked ? '안내문에 추가했습니다.' : '안내문에서 제거했습니다.' );
-						// 포함 요약을 갱신하려면 flyer를 다시 읽어 요약만 새로 그린다.
 						api( 'flyers/' + flyer.id ).then( function ( fresh ) { flyer.items = fresh.items; renderIncludedSummary( fresh ); } );
 					} )
 					.catch( function ( err ) {
-						c.disabled = false; c.checked = ! c.checked; // 롤백.
+						c.disabled = false; c.checked = ! c.checked;
 						window.alert( '변경하지 못했습니다: ' + err.message );
 					} );
 			} );
 		} );
 
-		// "수정"은 왼쪽의 포함 체크박스와 다른 화면(원본 매물 편집 폼)으로 이동할 뿐이다. 원본 매물
-		// 자체를 삭제하는 기능은 "전체 매물" 탭에만 둔다 — 여기서는 체크박스(포함/제외)가 이미
-		// "리스트에서 빼기" 역할을 하므로 별도 삭제 버튼은 두지 않는다(체크 해제와 개념이 겹친다).
+		// 체크박스(포함/제외)가 이미 "리스트에서 빼기"이므로 별도 삭제 버튼은 두지 않는다 — 원본 매물
+		// 자체 삭제는 "전체 매물" 탭에서만 한다. "수정"은 원본 매물 편집 폼으로 이동할 뿐이다.
 		box.querySelectorAll( '[data-hlf-fm-edit]' ).forEach( function ( b ) {
 			b.addEventListener( 'click', function () { renderSourceForm( Number( b.getAttribute( 'data-hlf-fm-edit' ) ) ); } );
 		} );
@@ -991,7 +1036,7 @@
 
 	function renderSettings() {
 		var el = main();
-		state.contacts = null; // 설정 화면 진입 시 최신값으로.
+		state.contacts = null;
 		el.innerHTML = '<h2 class="hlf-listup-title">설정 — 담당자 디렉터리</h2><div id="hlf-set-body"><p class="hlf-admin-loading">불러오는 중…</p></div>';
 		api( 'contacts' ).then( function ( dir ) { state.contacts = dir; drawSettings( dir ); } )
 			.catch( function ( err ) { errorText( document.getElementById( 'hlf-set-body' ), err.message ); } );
@@ -1000,7 +1045,7 @@
 	function drawSettings( dir ) {
 		var body = document.getElementById( 'hlf-set-body' );
 		body.innerHTML =
-			'<section class="hlf-card"><p class="hlf-admin-note">여기 저장한 담당자는 새 매물/새 안내문 폼에서 빠르게 선택할 수 있고, “기본”으로 지정한 담당자는 새 안내문에 자동으로 채워집니다.</p>' +
+			'<section class="hlf-card"><p class="hlf-admin-note">여기 저장한 담당자는 새 매물/새 안내문 폼에서 빠르게 선택할 수 있습니다. 이 기기에서 "현재 담당자"로 쓸 사람은 상단 "담당자 변경" 버튼으로 고릅니다(여기 "기본" 지정과는 별개입니다).</p>' +
 				'<div class="hlf-table-wrap"><table class="hlf-table"><thead><tr><th>이름</th><th>연락처</th><th>기본</th><th>작업</th></tr></thead><tbody>' +
 				( dir.contacts.length ? dir.contacts.map( function ( c ) {
 					return '<tr>' +
@@ -1048,5 +1093,44 @@
 		} );
 	}
 
-	render();
+	/* ==================== 시작 ==================== */
+
+	// tab=dashboard|listings|flyers|settings|flyer-edit(&flyer_id=123) 쿼리스트링으로 진입 탭을
+	// 정할 수 있다(요청서 1항) — 없으면 항상 Dashboard. listings/flyer-edit은 이 앱의 실제 탭 키
+	// (sources/flyers)로 매핑한다. flyer-edit&flyer_id는 "그 Flyer의 포함 매물 관리 화면 열기"로
+	// 해석한다(이 앱에는 admin-flyer-edit.php 같은 별도 상세편집 화면이 없고, 포함 매물 관리 화면이
+	// 실질적으로 같은 역할을 한다).
+	function initialViewFromUrl() {
+		var params = new URLSearchParams( window.location.search );
+		var tab = params.get( 'tab' );
+		var flyerId = params.get( 'flyer_id' );
+		var map = { dashboard: 'dashboard', listings: 'sources', sources: 'sources', flyers: 'flyers', 'flyer-edit': 'flyers', settings: 'settings' };
+		return {
+			tab: map[ tab ] || 'dashboard',
+			flyerId: flyerId ? Number( flyerId ) : null,
+			wantManage: 'flyer-edit' === tab
+		};
+	}
+
+	document.querySelectorAll( '.hlf-portal-navbtn' ).forEach( function ( btn ) {
+		btn.addEventListener( 'click', function () { setTab( btn.getAttribute( 'data-hlf-tab' ) ); } );
+	} );
+
+	var staffChangeBtn = document.getElementById( 'hlf-portal-staff-change' );
+	if ( staffChangeBtn ) { staffChangeBtn.addEventListener( 'click', function () { openStaffPicker(); } ); }
+
+	loadContacts( function ( dir ) {
+		updateStaffLabel( dir );
+		ensureStaffSelected( dir );
+	} );
+
+	function ensureStaffSelected( dir ) {
+		var view = initialViewFromUrl();
+		function start() {
+			setTab( view.tab );
+			if ( view.wantManage && view.flyerId ) { renderFlyerManage( view.flyerId ); }
+		}
+		if ( loadStaffSelection() ) { start(); return; }
+		openStaffPicker( start );
+	}
 } )();

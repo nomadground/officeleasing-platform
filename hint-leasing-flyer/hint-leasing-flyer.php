@@ -2,7 +2,7 @@
 /**
  * Plugin Name: HINT Leasing Flyer
  * Description: 임대매물 전달용 Leasing Flyer. 발행 시점 조건을 스냅샷으로 저장하고 /listup/ 공개 URL로 공유한다. officeleasing-core에 의존하지 않고 단독 동작한다.
- * Version: 0.3.2-beta.1
+ * Version: 0.3.3-beta.1
  * Requires at least: 6.0
  * Requires PHP: 8.0
  * Author: HINT
@@ -24,13 +24,14 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'HLF_VERSION', '0.3.2-beta.1' );
+define( 'HLF_VERSION', '0.3.3-beta.1' );
 define( 'HLF_FILE', __FILE__ );
 define( 'HLF_DIR', plugin_dir_path( __FILE__ ) );
 define( 'HLF_URL', plugin_dir_url( __FILE__ ) );
 
 // rewrite 규칙을 바꿀 때마다 올린다 → 다음 요청에서 1회만 자동 flush (permalinks.php의 버전비교 패턴과 동일).
-define( 'HLF_REWRITE_VERSION', 1 );
+// 2: /listad/ 직원 포털 rewrite 규칙 추가(HLF_Portal).
+define( 'HLF_REWRITE_VERSION', 2 );
 
 require_once HLF_DIR . 'includes/class-hlf-calculations.php';
 require_once HLF_DIR . 'includes/class-hlf-display-helpers.php';
@@ -48,6 +49,7 @@ require_once HLF_DIR . 'includes/class-hlf-officeleasing-import-service.php';
 require_once HLF_DIR . 'includes/class-hlf-routes.php';
 require_once HLF_DIR . 'includes/class-hlf-rest-controller.php';
 require_once HLF_DIR . 'includes/class-hlf-admin-ui.php';
+require_once HLF_DIR . 'includes/class-hlf-portal.php';
 require_once HLF_DIR . 'includes/class-hlf-plugin.php';
 
 add_action( 'plugins_loaded', array( 'HLF_Plugin', 'boot' ) );
@@ -60,6 +62,7 @@ register_activation_hook( __FILE__, function () {
 	HLF_Post_Types::register();
 	HLF_Meta_Schema::register();
 	HLF_Routes::add_rewrite_rules();
+	HLF_Portal::add_rewrite_rules();
 	HLF_Capabilities::add_caps();
 	update_option( 'hlf_rewrite_version', HLF_REWRITE_VERSION );
 	flush_rewrite_rules();

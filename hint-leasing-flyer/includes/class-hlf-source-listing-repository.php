@@ -152,6 +152,7 @@ final class HLF_Source_Listing_Repository {
 		return $source_id;
 	}
 
+
 	/**
 	 * 원본 매물 삭제. 이미 각 Flyer에 포함되어 만들어진 Item(스냅샷)에는 영향을 주지 않는다 —
 	 * 스냅샷 구조상 Item은 독립 복사본이라 원본이 사라져도 그대로 남는다(요청서 2-1, 3-1).

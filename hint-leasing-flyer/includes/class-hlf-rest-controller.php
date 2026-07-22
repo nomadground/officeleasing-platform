@@ -170,6 +170,17 @@ final class HLF_REST_Controller {
 			),
 		) );
 
+		// officeleasing listing → "전체 매물" 카탈로그로 가져오기(Flyer Item import와 같은 패턴,
+		// 대상만 다르다). 특정 Flyer에 종속되지 않으므로 can_edit_flyers만 요구한다.
+		register_rest_route( self::NS, '/source-listings/import-officeleasing', array(
+			'methods'             => WP_REST_Server::CREATABLE,
+			'callback'            => array( __CLASS__, 'import_officeleasing_source' ),
+			'permission_callback' => array( __CLASS__, 'can_edit_flyers' ),
+			'args'                => array(
+				'listing_id' => array( 'type' => 'integer', 'required' => true, 'minimum' => 1 ),
+			),
+		) );
+
 		register_rest_route( self::NS, '/source-listings/(?P<source_id>\d+)', array(
 			array(
 				'methods'             => WP_REST_Server::READABLE,
@@ -423,6 +434,29 @@ final class HLF_REST_Controller {
 		}
 
 		$response = rest_ensure_response( HLF_Item_Repository::to_array( get_post( $item_id ) ) );
+		$response->set_status( 201 );
+		return $response;
+	}
+
+	/**
+	 * officeleasing listing → "전체 매물" 카탈로그(hlf_source_listing)로 가져오기. 특정 Flyer에
+	 * 종속되지 않는다는 점만 import_officeleasing_item()과 다르고, 나머지 규칙(building_id는 클라이언트가
+	 * 못 정함, 실제 저장은 서비스 클래스 몫)은 동일하다.
+	 */
+	public static function import_officeleasing_source( WP_REST_Request $request ) {
+		$params     = self::request_params( $request );
+		$listing_id = (int) ( $params['listing_id'] ?? 0 );
+
+		if ( ! $listing_id ) {
+			return new WP_Error( 'hlf_missing_listing_id', '가져올 매물을 선택해 주세요.', array( 'status' => 400 ) );
+		}
+
+		$source_id = HLF_OfficeLeasing_Import_Service::import_to_catalog( $listing_id );
+		if ( is_wp_error( $source_id ) ) {
+			return $source_id;
+		}
+
+		$response = rest_ensure_response( HLF_Source_Listing_Repository::to_array( get_post( $source_id ) ) );
 		$response->set_status( 201 );
 		return $response;
 	}

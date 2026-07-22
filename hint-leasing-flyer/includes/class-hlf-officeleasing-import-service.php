@@ -54,4 +54,22 @@ final class HLF_OfficeLeasing_Import_Service {
 
 		return $item_id;
 	}
+
+	/**
+	 * officeleasing listing → "전체 매물"(hlf_source_listing) 카탈로그 항목으로 가져오기. Mapper로
+	 * 필드 배열을 받아 그대로 create()하는 2단계뿐이다 — import()와 달리 provenance(source_listing_id/
+	 * snapshot_*)는 기록하지 않는다. HLF_Meta_Schema::source_fields()가 그 필드들을 애초에 제외하고
+	 * 있다(독립 카탈로그 항목은 "어느 officeleasing listing에서 왔는지"를 추적할 필요가 없고, 그
+	 * 추적은 실제로 발행되는 Item 스냅샷 쪽 몫이라는 기존 스키마 설계 그대로 — 그 문서 주석 참고).
+	 *
+	 * @return int|WP_Error 생성된 원본 매물(source_listing)의 post ID.
+	 */
+	public static function import_to_catalog( int $listing_id ) {
+		$snapshot = HLF_OfficeLeasing_Mapper::to_snapshot( $listing_id );
+		if ( is_wp_error( $snapshot ) ) {
+			return $snapshot;
+		}
+
+		return HLF_Source_Listing_Repository::create( $snapshot );
+	}
 }
