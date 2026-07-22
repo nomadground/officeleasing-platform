@@ -267,6 +267,26 @@ final class HLF_Item_Repository {
 	}
 
 	/**
+	 * "원본 매물(hlf_source_listing) → Flyer 포함"으로 만들어진 Item에 출처(source_listing_id)를
+	 * 기록하는 서버 전용 경로. officeleasing import의 set_snapshot_metadata()와 같은 부류지만(둘 다
+	 * apply_fields()/writable_fields()를 우회하는 서버 전용 setter), 이쪽은 building/version 같은
+	 * officeleasing 전용 provenance 없이 source_listing_id 하나만 기록한다 — 나중에 "이 원본 매물이
+	 * 어느 Flyer들에 포함돼 있나"를 역참조(HLF_Source_Listing_Repository)하는 데 이 값만 쓰인다.
+	 * set_snapshot_metadata()와 동일하게 쓴 값을 다시 읽어 저장을 검증한다.
+	 */
+	public static function set_source_listing_id( int $item_id, int $source_listing_id ): bool|WP_Error {
+		$item = get_post( $item_id );
+		if ( ! $item || HLF_Post_Types::ITEM !== $item->post_type ) {
+			return new WP_Error( 'hlf_item_not_found', '매물을 찾을 수 없습니다.', array( 'status' => 404 ) );
+		}
+		update_post_meta( $item_id, 'source_listing_id', $source_listing_id );
+		if ( (int) get_post_meta( $item_id, 'source_listing_id', true ) !== $source_listing_id ) {
+			return new WP_Error( 'hlf_source_link_write_failed', '매물 포함 중 데이터 저장을 확인하지 못했습니다. 다시 시도해 주세요.', array( 'status' => 500 ) );
+		}
+		return true;
+	}
+
+	/**
 	 * 이미지 목록 저장. $exterior_image_id/$interior_image_ids는 관리자가 WordPress Media
 	 * Library(wp.media)에서 고른 attachment ID다 — 새로 업로드했거나, 사이트에 이미 있던(post_parent가
 	 * 이 item_id가 아닐 수 있는) 미디어를 그대로 선택할 수도 있다. 그래서 소유권(post_parent) 검증은

@@ -75,6 +75,48 @@ final class HLF_Meta_Schema {
 		);
 	}
 
+	/**
+	 * 원본 매물(hlf_source_listing) 필드 정의. Item 스키마에서 "특정 Flyer 소속"이라는 뜻을 갖는
+	 * 필드만 뺀 것이다 — item_number/display_order(Flyer 내 식별·순서)와 snapshot_*·source_*
+	 * (Item이 어느 원본/발행 시점에서 왔는지 추적하는 provenance)는 독립 카탈로그인 원본 매물에는
+	 * 의미가 없다. 나머지(주소/층/면적/금액/담당자/이미지 등)는 Item과 동일한 key/type을 그대로
+	 * 쓴다 — 그래야 "포함" 시 값을 그대로 복사해 Item을 만들 수 있다.
+	 */
+	public static function source_fields(): array {
+		$exclude = array(
+			'item_number', 'display_order',
+			'source_listing_id', 'source_building_id',
+			'snapshot_created_at', 'snapshot_refreshed_at', 'snapshot_version',
+		);
+		return array_diff_key( self::item_fields(), array_flip( $exclude ) );
+	}
+
+	/** 원본 매물에서 클라이언트가 직접 쓸 수 있는 필드(이미지는 Item과 마찬가지로 별도 엔드포인트). */
+	public static function source_writable_fields(): array {
+		$exclude = array( 'exterior_image_id', 'interior_image_ids' );
+		return array_values( array_diff( array_keys( self::source_fields() ), $exclude ) );
+	}
+
+	/** 원본 매물 전체 필드를 정규화된 배열로 읽는다(read_item과 같은 규칙). */
+	public static function read_source( int $source_id ): array {
+		$out = array( 'id' => $source_id );
+		foreach ( self::source_fields() as $key => $def ) {
+			$raw = get_post_meta( $source_id, $key, true );
+			if ( 'int_array' === $def['type'] ) {
+				$out[ $key ] = is_array( $raw ) ? array_map( 'absint', $raw ) : array();
+			} elseif ( 'bool' === $def['type'] ) {
+				$out[ $key ] = self::to_bool( $raw );
+			} elseif ( 'int' === $def['type'] ) {
+				$out[ $key ] = (int) $raw;
+			} elseif ( 'float' === $def['type'] ) {
+				$out[ $key ] = $raw === '' ? null : (float) $raw;
+			} else {
+				$out[ $key ] = (string) $raw;
+			}
+		}
+		return $out;
+	}
+
 	/** 클라이언트가 REST로 직접 쓸 수 있는 필드(서버관리/순서/스냅샷 provenance 필드 제외). */
 	public static function writable_fields(): array {
 		$exclude = array(
@@ -129,6 +171,19 @@ final class HLF_Meta_Schema {
 		foreach ( self::flyer_fields() as $key => $def ) {
 			$rest_type = self::rest_type( $def['type'] );
 			register_post_meta( HLF_Post_Types::FLYER, $key, array(
+				'single'            => true,
+				'type'              => $rest_type,
+				'show_in_rest'      => false,
+				'sanitize_callback' => static function ( $value ) use ( $def ) {
+					return HLF_Meta_Schema::sanitize( $def['type'], $value );
+				},
+				'auth_callback'     => $auth,
+			) );
+		}
+
+		foreach ( self::source_fields() as $key => $def ) {
+			$rest_type = self::rest_type( $def['type'] );
+			register_post_meta( HLF_Post_Types::SOURCE, $key, array(
 				'single'            => true,
 				'type'              => $rest_type,
 				'show_in_rest'      => false,

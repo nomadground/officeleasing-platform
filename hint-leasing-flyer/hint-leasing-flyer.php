@@ -39,6 +39,8 @@ require_once HLF_DIR . 'includes/class-hlf-capabilities.php';
 require_once HLF_DIR . 'includes/class-hlf-meta-schema.php';
 require_once HLF_DIR . 'includes/class-hlf-flyer-repository.php';
 require_once HLF_DIR . 'includes/class-hlf-item-repository.php';
+require_once HLF_DIR . 'includes/class-hlf-source-listing-repository.php';
+require_once HLF_DIR . 'includes/class-hlf-contact-directory.php';
 require_once HLF_DIR . 'includes/class-hlf-officeleasing-mapper.php';
 require_once HLF_DIR . 'includes/class-hlf-officeleasing-search.php';
 require_once HLF_DIR . 'includes/class-hlf-officeleasing-import-service.php';

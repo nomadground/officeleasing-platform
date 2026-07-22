@@ -18,6 +18,9 @@ final class HLF_Post_Types {
 
 	const FLYER = 'leasing_flyer';
 	const ITEM  = 'leasing_flyer_item';
+	/** 원본 매물(전체 매물) — 어떤 Flyer에도 속하지 않는 독립 매물 카탈로그. Flyer에 "포함"하면
+	 *  이 값을 복사해 leasing_flyer_item 스냅샷을 새로 만든다(HLF_Source_Listing_Repository 참고). */
+	const SOURCE = 'hlf_source_listing';
 
 	/** 커스텀 포스트 상태: 보관(읽기전용). */
 	const STATUS_ARCHIVED = 'hlf_archived';
@@ -25,6 +28,7 @@ final class HLF_Post_Types {
 	public static function register(): void {
 		self::register_flyer();
 		self::register_item();
+		self::register_source();
 		self::register_statuses();
 	}
 
@@ -92,6 +96,38 @@ final class HLF_Post_Types {
 			'hierarchical'        => false,
 			'supports'            => array( 'title' ),
 			// item은 부모 flyer 권한(edit_post on flyer)으로만 다룬다. 같은 cap 집합을 공유.
+			'capability_type'     => array( 'leasing_flyer', 'leasing_flyers' ),
+			'map_meta_cap'        => true,
+			'capabilities'        => self::flyer_capabilities(),
+		) );
+	}
+
+	/**
+	 * 원본 매물(전체 매물) CPT. Flyer/Item과 달리 부모-자식 관계가 없는 독립 게시물이며, 공개 URL로
+	 * 노출되지 않는다(관리자 카탈로그 전용). Item과 동일한 cap 집합을 공유해 같은 담당자가 다룬다 —
+	 * REST permission_callback(can_edit_flyers 등)이 그대로 재사용된다. status는 'publish' 하나만
+	 * 쓴다(발행/보관 개념이 없는 단순 카탈로그이므로 별도 커스텀 상태를 만들지 않는다). */
+	private static function register_source(): void {
+		register_post_type( self::SOURCE, array(
+			'label'               => '전체 매물',
+			'labels'              => array(
+				'name'          => '전체 매물',
+				'singular_name' => '매물',
+				'add_new_item'  => '매물 등록',
+				'edit_item'     => '매물 수정',
+				'all_items'     => '전체 매물',
+				'not_found'     => '등록된 매물이 없습니다',
+			),
+			'public'              => false,
+			'show_ui'             => false,
+			'show_in_menu'        => false,
+			'show_in_rest'        => false,
+			'publicly_queryable'  => false,
+			'exclude_from_search' => true,
+			'has_archive'         => false,
+			'rewrite'             => false,
+			'hierarchical'        => false,
+			'supports'            => array( 'title', 'author' ),
 			'capability_type'     => array( 'leasing_flyer', 'leasing_flyers' ),
 			'map_meta_cap'        => true,
 			'capabilities'        => self::flyer_capabilities(),
