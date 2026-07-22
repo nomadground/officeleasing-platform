@@ -445,10 +445,15 @@
 	// 주소(도로명/지번/위도/경도)는 실제 업무 흐름상 "OCR로 채운 뒤 가장 먼저 확인·확정하는 값"이라
 	// renderItemForm()의 일반 필드 그리드에서 빼내 OCR 다음 순서(step 2)로 별도 배치한다
 	// (renderAddressBlock 참고). 나머지 조건 필드는 여기서 제외해 중복 렌더링을 막는다.
-	var ADDRESS_FIELD_KEYS = [ 'road_address', 'lot_address', 'latitude', 'longitude' ];
+	// 순서는 요청서 5번 관리자 UX 배치를 그대로 따른다: 지번주소(+주소 검색) → 도로명주소 → 위도/경도.
+	// ITEM_FIELDS 배열 자체는 road_address가 lot_address보다 앞이라(다른 화면 순서용) 여기서는 그
+	// 순서를 그대로 쓰지 않고 이 배열 순서대로 명시적으로 재배치한다.
+	var ADDRESS_FIELD_KEYS = [ 'lot_address', 'road_address', 'latitude', 'longitude' ];
 
 	function renderAddressBlock( item ) {
-		var fields = ITEM_FIELDS.filter( function ( def ) { return ADDRESS_FIELD_KEYS.indexOf( def.key ) !== -1; } );
+		var fieldsByKey = {};
+		ITEM_FIELDS.forEach( function ( def ) { fieldsByKey[ def.key ] = def; } );
+		var fields = ADDRESS_FIELD_KEYS.map( function ( key ) { return fieldsByKey[ key ]; } ).filter( Boolean );
 		var fieldsHtml = fields.map( function ( def ) {
 			var value = item ? item[ def.key ] : '';
 			var fieldId = 'hlf-item-field-' + def.key;
@@ -462,9 +467,13 @@
 				' <button type="button" class="button button-small" id="hlf-address-search">주소 검색</button>' +
 				'<p class="hlf-admin-note" id="hlf-address-search-status"></p>' +
 				'<ul class="hlf-address-results" id="hlf-address-results" hidden></ul>' : '';
+			// 도로명주소는 지번주소 검색으로 확정된 값만 채운다 — 손으로 직접 입력하면 지번주소와
+			// 어긋난 값이 저장될 수 있으므로 읽기 전용(회색)으로 두고, "주소 검색" 후보 클릭으로만
+			// 채워지게 한다. readonly라 name은 그대로 유지되어 폼 제출/기존 값 표시는 문제 없다.
+			var readonlyAttr = ( def.key === 'road_address' ) ? ' readonly class="hlf-field-readonly"' : '';
 			return (
 				'<div class="hlf-field"><label for="' + fieldId + '">' + HLFAdmin.escapeHtml( def.label ) + '</label>' +
-				'<input id="' + fieldId + '" type="' + def.type + '" name="' + def.key + '" value="' + HLFAdmin.escapeAttr( value === null || value === undefined ? '' : value ) + '"' + stepAttr + '>' +
+				'<input id="' + fieldId + '" type="' + def.type + '" name="' + def.key + '" value="' + HLFAdmin.escapeAttr( value === null || value === undefined ? '' : value ) + '"' + stepAttr + readonlyAttr + '>' +
 				addressSearchHtml +
 				'</div>'
 			);

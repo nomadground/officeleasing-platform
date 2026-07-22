@@ -90,6 +90,9 @@
 .hlf-admin .hlf-ocr-confirm-new { font-weight: 600; }
 /* 자동입력된 필드 강조 — 방금 OCR/주소검색으로 채워졌음을 표시(사용자 수정 또는 일정 시간 후 자동 해제). */
 .hlf-admin .hlf-field--autofilled { background: #fff8db; border-color: #dba617; }
+/* 도로명주소는 지번주소 검색 결과로만 채워진다 — 손으로 직접 입력하면 지번주소와 어긋난 값이
+   저장될 수 있어 회색 읽기 전용으로 둔다. */
+.hlf-admin .hlf-field-readonly { background: #f0f0f1; color: #646970; cursor: not-allowed; }
 
 /* 주소 검색 후보 목록 — "다음" 우편번호 검색처럼 클릭으로 확정(자동확정 없음). */
 .hlf-admin .hlf-address-results { margin: 6px 0 0; padding: 0; list-style: none; border: 1px solid #dcdcde; border-radius: 4px; max-height: 220px; overflow-y: auto; }
