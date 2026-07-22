@@ -270,6 +270,26 @@ final class HLF_Source_Listing_Repository {
 		return $map;
 	}
 
+	/**
+	 * 대시보드용 원본 매물 통계: 전체 / 연결(1개 이상 Flyer에 포함) / 미연결.
+	 * "연결"은 source_link_map의 키 중 실제 hlf_source_listing인 것만 센다(officeleasing import로
+	 * 생긴 Item의 source_listing_id는 officeleasing 글을 가리키므로 여기 카탈로그 카운트에서 제외된다).
+	 * @return array{total:int,linked:int,unlinked:int}
+	 */
+	public static function stats(): array {
+		$source_ids = get_posts( array(
+			'post_type'      => HLF_Post_Types::SOURCE,
+			'post_status'    => 'publish',
+			'posts_per_page' => -1,
+			'no_found_rows'  => true,
+			'fields'         => 'ids',
+		) );
+		$total    = count( $source_ids );
+		$link_map = self::source_link_map();
+		$linked   = count( array_intersect( array_map( 'intval', $source_ids ), array_keys( $link_map ) ) );
+		return array( 'total' => $total, 'linked' => $linked, 'unlinked' => max( 0, $total - $linked ) );
+	}
+
 	/* ---------------- 이미지(원본 매물) ---------------- */
 
 	/**

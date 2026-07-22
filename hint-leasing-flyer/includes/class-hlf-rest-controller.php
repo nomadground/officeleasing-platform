@@ -146,12 +146,124 @@ final class HLF_REST_Controller {
 				'q' => array( 'type' => 'string', 'required' => true, 'maxLength' => 200 ),
 			),
 		) );
+
+		/* ---------------- 원본 매물(전체 매물) ---------------- */
+		// 원본 매물은 특정 Flyer에 종속되지 않는 독립 카탈로그라 flyer-scoped 권한이 아니라
+		// can_edit_flyers(카탈로그 관리 권한)만 요구한다(officeleasing 검색/카카오 조회와 같은 패턴).
+		register_rest_route( self::NS, '/source-listings', array(
+			array(
+				'methods'             => WP_REST_Server::READABLE,
+				'callback'            => array( __CLASS__, 'list_source_listings' ),
+				'permission_callback' => array( __CLASS__, 'can_edit_flyers' ),
+				'args'                => array(
+					'search'   => array( 'type' => 'string' ),
+					'page'     => array( 'type' => 'integer', 'minimum' => 1 ),
+					'per_page' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 100 ),
+				),
+			),
+			array(
+				'methods'             => WP_REST_Server::CREATABLE,
+				'callback'            => array( __CLASS__, 'create_source_listing' ),
+				'permission_callback' => array( __CLASS__, 'can_edit_flyers' ),
+			),
+		) );
+
+		register_rest_route( self::NS, '/source-listings/(?P<source_id>\d+)', array(
+			array(
+				'methods'             => WP_REST_Server::READABLE,
+				'callback'            => array( __CLASS__, 'get_source_listing' ),
+				'permission_callback' => array( __CLASS__, 'can_edit_flyers' ),
+			),
+			array(
+				'methods'             => WP_REST_Server::EDITABLE,
+				'callback'            => array( __CLASS__, 'update_source_listing' ),
+				'permission_callback' => array( __CLASS__, 'can_edit_flyers' ),
+			),
+			array(
+				'methods'             => WP_REST_Server::DELETABLE,
+				'callback'            => array( __CLASS__, 'delete_source_listing' ),
+				'permission_callback' => array( __CLASS__, 'can_edit_flyers' ),
+			),
+		) );
+
+		register_rest_route( self::NS, '/source-listings/(?P<source_id>\d+)/images', array(
+			'methods'             => WP_REST_Server::EDITABLE,
+			'callback'            => array( __CLASS__, 'update_source_images' ),
+			'permission_callback' => array( __CLASS__, 'can_edit_flyers' ),
+		) );
+
+		register_rest_route( self::NS, '/source-listings/(?P<source_id>\d+)/images/(?P<attachment_id>\d+)', array(
+			'methods'             => WP_REST_Server::DELETABLE,
+			'callback'            => array( __CLASS__, 'delete_source_image' ),
+			'permission_callback' => array( __CLASS__, 'can_edit_flyers' ),
+		) );
+
+		// Flyer ↔ 원본 매물 포함/해제. PUT=포함(멱등), DELETE=해제. Flyer-scoped 권한을 요구한다.
+		register_rest_route( self::NS, '/flyers/(?P<id>\d+)/source-listings/(?P<source_id>\d+)', array(
+			array(
+				'methods'             => WP_REST_Server::EDITABLE,
+				'callback'            => array( __CLASS__, 'include_source_in_flyer' ),
+				'permission_callback' => array( __CLASS__, 'can_edit_this_flyer' ),
+			),
+			array(
+				'methods'             => WP_REST_Server::DELETABLE,
+				'callback'            => array( __CLASS__, 'exclude_source_from_flyer' ),
+				'permission_callback' => array( __CLASS__, 'can_edit_this_flyer' ),
+			),
+		) );
+
+		/* ---------------- 담당자 디렉터리(설정) ---------------- */
+		// 읽기는 폼 채우기용이라 staff(can_edit_flyers)에게 허용하고, 쓰기(추가/수정/삭제/기본지정)는
+		// 설정 관리 권한(manage_leasing_flyer_settings)을 요구한다.
+		register_rest_route( self::NS, '/contacts', array(
+			array(
+				'methods'             => WP_REST_Server::READABLE,
+				'callback'            => array( __CLASS__, 'get_contacts' ),
+				'permission_callback' => array( __CLASS__, 'can_edit_flyers' ),
+			),
+			array(
+				'methods'             => WP_REST_Server::CREATABLE,
+				'callback'            => array( __CLASS__, 'add_contact' ),
+				'permission_callback' => array( __CLASS__, 'can_manage_settings' ),
+			),
+		) );
+
+		register_rest_route( self::NS, '/contacts/(?P<index>\d+)', array(
+			array(
+				'methods'             => WP_REST_Server::EDITABLE,
+				'callback'            => array( __CLASS__, 'update_contact' ),
+				'permission_callback' => array( __CLASS__, 'can_manage_settings' ),
+			),
+			array(
+				'methods'             => WP_REST_Server::DELETABLE,
+				'callback'            => array( __CLASS__, 'remove_contact' ),
+				'permission_callback' => array( __CLASS__, 'can_manage_settings' ),
+			),
+		) );
+
+		register_rest_route( self::NS, '/contacts/(?P<index>\d+)/default', array(
+			'methods'             => WP_REST_Server::CREATABLE,
+			'callback'            => array( __CLASS__, 'set_default_contact' ),
+			'permission_callback' => array( __CLASS__, 'can_manage_settings' ),
+		) );
+
+		/* ---------------- 대시보드 ---------------- */
+		register_rest_route( self::NS, '/dashboard', array(
+			'methods'             => WP_REST_Server::READABLE,
+			'callback'            => array( __CLASS__, 'get_dashboard' ),
+			'permission_callback' => array( __CLASS__, 'can_edit_flyers' ),
+		) );
 	}
 
 	/* ---------------- permission callbacks ---------------- */
 
 	public static function can_edit_flyers(): bool {
 		return current_user_can( 'edit_leasing_flyers' );
+	}
+
+	/** 담당자 디렉터리 등 사이트 전역 설정 변경 — 담당자 role이 아니라 관리자급만(설정 cap). */
+	public static function can_manage_settings(): bool {
+		return current_user_can( 'manage_leasing_flyer_settings' );
 	}
 
 	public static function can_edit_this_flyer( WP_REST_Request $request ): bool {
@@ -473,11 +585,172 @@ final class HLF_REST_Controller {
 		return array( '', '' );
 	}
 
+	/* ---------------- 원본 매물(전체 매물) handlers ---------------- */
+
+	public static function list_source_listings( WP_REST_Request $request ) {
+		$params = self::request_params( $request );
+		return rest_ensure_response( HLF_Source_Listing_Repository::list( array(
+			'search'   => (string) ( $params['search'] ?? '' ),
+			'page'     => (int) ( $params['page'] ?? 1 ),
+			'per_page' => (int) ( $params['per_page'] ?? 20 ),
+		) ) );
+	}
+
+	public static function create_source_listing( WP_REST_Request $request ) {
+		$source_id = HLF_Source_Listing_Repository::create( self::source_input( $request ) );
+		if ( is_wp_error( $source_id ) ) {
+			return $source_id;
+		}
+		$response = rest_ensure_response( HLF_Source_Listing_Repository::to_array( get_post( $source_id ) ) );
+		$response->set_status( 201 );
+		return $response;
+	}
+
+	public static function get_source_listing( WP_REST_Request $request ) {
+		$source = HLF_Source_Listing_Repository::get( (int) $request['source_id'] );
+		if ( ! $source ) {
+			return new WP_Error( 'hlf_source_not_found', '매물을 찾을 수 없습니다.', array( 'status' => 404 ) );
+		}
+		return rest_ensure_response( HLF_Source_Listing_Repository::to_array( $source ) );
+	}
+
+	public static function update_source_listing( WP_REST_Request $request ) {
+		$result = HLF_Source_Listing_Repository::update( (int) $request['source_id'], self::source_input( $request ) );
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+		return rest_ensure_response( HLF_Source_Listing_Repository::to_array( get_post( (int) $request['source_id'] ) ) );
+	}
+
+	public static function delete_source_listing( WP_REST_Request $request ) {
+		$result = HLF_Source_Listing_Repository::delete( (int) $request['source_id'] );
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+		return rest_ensure_response( array( 'deleted' => (bool) $result ) );
+	}
+
+	public static function update_source_images( WP_REST_Request $request ) {
+		$source_id = (int) $request['source_id'];
+		$params    = self::request_params( $request );
+		$exterior  = (int) ( $params['exterior_image_id'] ?? 0 );
+		$interior  = is_array( $params['interior_image_ids'] ?? null ) ? array_map( 'intval', $params['interior_image_ids'] ) : array();
+
+		$result = HLF_Source_Listing_Repository::set_images( $source_id, $exterior, $interior );
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+		return rest_ensure_response( HLF_Source_Listing_Repository::to_array( get_post( $source_id ) ) );
+	}
+
+	public static function delete_source_image( WP_REST_Request $request ) {
+		$source_id = (int) $request['source_id'];
+		$result    = HLF_Source_Listing_Repository::delete_image( $source_id, (int) $request['attachment_id'] );
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+		return rest_ensure_response( HLF_Source_Listing_Repository::to_array( get_post( $source_id ) ) );
+	}
+
+	/* ---------------- Flyer ↔ 원본 매물 포함/해제 ---------------- */
+
+	public static function include_source_in_flyer( WP_REST_Request $request ) {
+		$flyer_id  = (int) $request['id'];
+		$source_id = (int) $request['source_id'];
+		$result    = HLF_Source_Listing_Repository::include_in_flyer( $flyer_id, $source_id );
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+		return rest_ensure_response( array(
+			'included' => true,
+			'item'     => HLF_Item_Repository::to_array( get_post( (int) $result ) ),
+			'source'   => HLF_Source_Listing_Repository::to_array( get_post( $source_id ) ),
+		) );
+	}
+
+	public static function exclude_source_from_flyer( WP_REST_Request $request ) {
+		$flyer_id  = (int) $request['id'];
+		$source_id = (int) $request['source_id'];
+		$result    = HLF_Source_Listing_Repository::exclude_from_flyer( $flyer_id, $source_id );
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+		return rest_ensure_response( array(
+			'included' => false,
+			'removed'  => (int) $result,
+			'source'   => HLF_Source_Listing_Repository::to_array( get_post( $source_id ) ),
+		) );
+	}
+
+	/* ---------------- 담당자 디렉터리 handlers ---------------- */
+
+	public static function get_contacts() {
+		return rest_ensure_response( HLF_Contact_Directory::to_array() );
+	}
+
+	public static function add_contact( WP_REST_Request $request ) {
+		$params = self::request_params( $request );
+		$result = HLF_Contact_Directory::add( (string) ( $params['name'] ?? '' ), (string) ( $params['phone'] ?? '' ) );
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+		return rest_ensure_response( HLF_Contact_Directory::to_array() );
+	}
+
+	public static function update_contact( WP_REST_Request $request ) {
+		$params = self::request_params( $request );
+		$result = HLF_Contact_Directory::update( (int) $request['index'], (string) ( $params['name'] ?? '' ), (string) ( $params['phone'] ?? '' ) );
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+		return rest_ensure_response( HLF_Contact_Directory::to_array() );
+	}
+
+	public static function remove_contact( WP_REST_Request $request ) {
+		$result = HLF_Contact_Directory::remove( (int) $request['index'] );
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+		return rest_ensure_response( HLF_Contact_Directory::to_array() );
+	}
+
+	public static function set_default_contact( WP_REST_Request $request ) {
+		$result = HLF_Contact_Directory::set_default( (int) $request['index'] );
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+		return rest_ensure_response( HLF_Contact_Directory::to_array() );
+	}
+
+	/* ---------------- 대시보드 ---------------- */
+
+	public static function get_dashboard() {
+		$source_stats = HLF_Source_Listing_Repository::stats();
+		$flyer_count  = count( get_posts( array(
+			'post_type'      => HLF_Post_Types::FLYER,
+			'post_status'    => array( 'draft', 'publish', HLF_Post_Types::STATUS_ARCHIVED ),
+			'posts_per_page' => -1,
+			'no_found_rows'  => true,
+			'fields'         => 'ids',
+		) ) );
+		return rest_ensure_response( array(
+			'source_total'    => $source_stats['total'],
+			'source_linked'   => $source_stats['linked'],
+			'source_unlinked' => $source_stats['unlinked'],
+			'flyer_total'     => $flyer_count,
+		) );
+	}
+
 	/* ---------------- helpers ---------------- */
 
 	/** 요청 본문에서 화이트리스트 필드만 뽑아 넘긴다(정규화는 repository/apply_fields가 재확인). */
 	private static function item_input( WP_REST_Request $request ): array {
 		return self::pluck_params( $request, HLF_Meta_Schema::writable_fields() );
+	}
+
+	/** 원본 매물 입력. source_writable_fields 화이트리스트만 뽑는다. */
+	private static function source_input( WP_REST_Request $request ): array {
+		return self::pluck_params( $request, HLF_Meta_Schema::source_writable_fields() );
 	}
 
 	/** Flyer 생성/수정 입력. title은 메타가 아니라 post_title이므로 별도로 항상 포함한다. */
