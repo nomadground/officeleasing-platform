@@ -377,4 +377,11 @@ body.hlf-public {
 	.hlf-basic-item { padding: 8px 4px; }
 	.hlf-gallery-main { aspect-ratio: 4 / 3; border-radius: 8px; }
 	.hlf-gallery-thumbs img { width: 68px; height: 50px; }
+	/* 데스크톱에서는 .hlf-detail-hero가 2열 grid라 지도 패널이 갤러리 카드와 같은 행에서
+	   align-items:stretch로 높이를 물려받는다(그래서 .hlf-detail-map은 min-height:0으로 둬도
+	   된다). 모바일은 hero가 1열로 쌓여 지도 패널이 그 stretch 대상을 잃는다 — 카카오 지도 JS가
+	   플레이스홀더를 지우고(container.innerHTML = '') 실제 지도를 그리는 순간 컨테이너 높이가
+	   콘텐츠 없이 0으로 무너져 지도가 보이지 않게 된다(실측: 390px 뷰포트에서 260px -> 0px로
+	   붕괴 확인). 모바일에서는 콘텐츠에 의존하지 않는 자체 min-height를 되살려 이 붕괴를 막는다. */
+	.hlf-detail-hero .hlf-detail-map { min-height: 260px; }
 }
