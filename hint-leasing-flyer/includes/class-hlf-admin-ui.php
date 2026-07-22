@@ -32,19 +32,35 @@ defined( 'ABSPATH' ) || exit;
 
 final class HLF_Admin_UI {
 
-	const LIST_SLUG = 'hlf-flyers';
-	const EDIT_SLUG = 'hlf-flyer-edit';
+	const LIST_SLUG   = 'hlf-flyers';
+	const EDIT_SLUG   = 'hlf-flyer-edit';
+	const LISTUP_SLUG = 'hlf-listup';
 
-	private static string $list_hook = '';
-	private static string $edit_hook = '';
+	private static string $list_hook   = '';
+	private static string $edit_hook   = '';
+	private static string $listup_hook = '';
 
 	public static function init(): void {
 		add_action( 'admin_menu', array( __CLASS__, 'register_menu' ) );
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_assets' ) );
 		add_action( 'admin_head', array( __CLASS__, 'hide_edit_submenu' ) );
+		// 원본 매물 고객용 미리보기 — 공개 상세 템플릿을 그대로 재사용해 관리자 화면 밖(admin-post)에서
+		// 전체 문서로 출력한다(관리자 크롬 안에 <!doctype> 문서를 중첩하지 않기 위함).
+		add_action( 'admin_post_hlf_source_preview', array( __CLASS__, 'render_source_preview' ) );
 	}
 
 	public static function register_menu(): void {
+		// HINT List Up — 통합 4탭 관리 화면(신규 기본 진입점).
+		self::$listup_hook = (string) add_menu_page(
+			'HINT List Up',
+			'HINT List Up',
+			'edit_leasing_flyers',
+			self::LISTUP_SLUG,
+			array( __CLASS__, 'render_listup_page' ),
+			'dashicons-screenoptions',
+			21
+		);
+
 		self::$list_hook = (string) add_menu_page(
 			'Leasing Flyer',
 			'Leasing Flyer',
@@ -95,23 +111,78 @@ final class HLF_Admin_UI {
 		include HLF_DIR . 'templates/admin/admin-flyer-edit.php';
 	}
 
+	public static function render_listup_page(): void {
+		include HLF_DIR . 'templates/admin/admin-listup.php';
+	}
+
+	/**
+	 * 원본 매물(hlf_source_listing) 하나를 공개 상세 템플릿으로 미리보기한다. 별도 미리보기 화면을
+	 * 새로 만들지 않고 templates/public/public-flyer-detail.php를 그대로 include한다 — 미리보기용으로
+	 * flyer/item 컨텍스트를 합성해 넘긴다(실제 발행 URL이 아니라 임시 렌더). 편집 권한이 있어야 열 수
+	 * 있다(비공개 데이터).
+	 */
+	public static function render_source_preview(): void {
+		if ( ! current_user_can( 'edit_leasing_flyers' ) ) {
+			wp_die( '이 매물을 미리볼 권한이 없습니다.', '', array( 'response' => 403 ) );
+		}
+		$source_id = isset( $_GET['source_id'] ) ? absint( wp_unslash( $_GET['source_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- 읽기 전용 미리보기.
+		$source    = HLF_Source_Listing_Repository::get( $source_id );
+		if ( ! $source ) {
+			wp_die( '매물을 찾을 수 없습니다.', '', array( 'response' => 404 ) );
+		}
+
+		$item                 = HLF_Source_Listing_Repository::to_array( $source );
+		$item['item_number']  = 'PREVIEW';
+		$item['display_order'] = 0;
+
+		// 공개 템플릿이 기대하는 컨텍스트를 합성한다(미리보기 전용 값 — 실제 발행 데이터 아님).
+		$hlf_context = array(
+			'flyer'  => array(
+				'id'            => 0,
+				'flyer_number'  => 'PREVIEW',
+				'title'         => '매물 미리보기',
+				'url'           => '#',
+				'status'        => 'draft',
+				'contact_name'  => (string) $item['contact_name'],
+				'contact_phone' => (string) $item['contact_phone'],
+			),
+			'status' => 'draft',
+			'item'   => $item,
+			'items'  => array( $item ),
+		);
+
+		include HLF_DIR . 'templates/public/public-flyer-detail.php';
+		exit;
+	}
+
 	public static function enqueue_assets( string $hook ): void {
-		if ( ! in_array( $hook, array( self::$list_hook, self::$edit_hook ), true ) ) {
+		if ( ! in_array( $hook, array( self::$list_hook, self::$edit_hook, self::$listup_hook ), true ) ) {
 			return;
 		}
 
 		wp_enqueue_style( 'hlf-admin', HLF_URL . 'assets/css/admin.css', array(), HLF_VERSION );
 
 		$shared = array(
-			'restUrl'      => esc_url_raw( rest_url( HLF_REST_Controller::NS . '/' ) ),
-			'nonce'        => wp_create_nonce( 'wp_rest' ),
-			'listUrl'      => admin_url( 'admin.php?page=' . self::LIST_SLUG ),
-			'editUrlBase'  => admin_url( 'admin.php?page=' . self::EDIT_SLUG . '&flyer_id=' ),
-			'maxItems'     => HLF_Item_Repository::MAX_ITEMS_PER_FLYER,
-			'defaultPhone' => HLF_Flyer_Repository::DEFAULT_PHONE,
+			'restUrl'              => esc_url_raw( rest_url( HLF_REST_Controller::NS . '/' ) ),
+			'nonce'                => wp_create_nonce( 'wp_rest' ),
+			'listUrl'              => admin_url( 'admin.php?page=' . self::LIST_SLUG ),
+			'editUrlBase'          => admin_url( 'admin.php?page=' . self::EDIT_SLUG . '&flyer_id=' ),
+			'sourcePreviewUrlBase' => admin_url( 'admin-post.php?action=hlf_source_preview&source_id=' ),
+			'maxItems'             => HLF_Item_Repository::MAX_ITEMS_PER_FLYER,
+			'defaultPhone'         => HLF_Flyer_Repository::DEFAULT_PHONE,
+			'kakaoJsKey'           => defined( 'HLF_KAKAO_JS_KEY' ) ? HLF_KAKAO_JS_KEY : '',
 		);
 
 		wp_enqueue_script( 'hlf-admin-common', HLF_URL . 'assets/js/admin-common.js', array(), HLF_VERSION, true );
+
+		// List Up 통합 화면: 전체 매물 폼이 OCR·wp.media·카카오 주소검색을 모두 쓴다.
+		if ( self::$listup_hook === $hook ) {
+			wp_enqueue_media();
+			wp_enqueue_script( 'hlf-admin-ocr', HLF_URL . 'assets/js/admin-ocr.js', array(), HLF_VERSION, true );
+			wp_enqueue_script( 'hlf-admin-listup', HLF_URL . 'assets/js/admin-listup.js', array( 'hlf-admin-common', 'hlf-admin-ocr' ), HLF_VERSION, true );
+			wp_localize_script( 'hlf-admin-common', 'HLF_ADMIN', $shared );
+			return;
+		}
 
 		if ( self::$list_hook === $hook ) {
 			wp_enqueue_script( 'hlf-admin-flyer-list', HLF_URL . 'assets/js/admin-flyer-list.js', array( 'hlf-admin-common' ), HLF_VERSION, true );
