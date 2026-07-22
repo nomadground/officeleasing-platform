@@ -188,7 +188,6 @@
 .hlf-admin .hlf-td-center { text-align: center; }
 .hlf-admin .hlf-row-actions { display: flex; gap: 4px; flex-wrap: wrap; }
 .hlf-admin .hlf-row-actions .button.button-small { min-height: 26px; line-height: 24px; padding: 0 8px; }
-.hlf-admin .hlf-danger { color: #b32d2e; border-color: #e6b6b6; }
 .hlf-admin .hlf-empty { padding: 22px; text-align: center; color: #646970; }
 
 .hlf-admin .hlf-src-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }

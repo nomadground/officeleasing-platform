@@ -20,12 +20,18 @@ final class HLF_Source_Listing_Repository {
 	 * 원본 매물 하나를 필드 배열로 만든다(계산 지표 + 관리자 썸네일 미리보기 포함).
 	 * $included_count는 목록에서 소스별로 한 번씩 셀 때 N+1을 피하려고 외부(source_link_map)에서
 	 * 미리 계산해 넘겨주는 값 — 넘기지 않으면 이 원본 하나에 대해서만 즉석에서 센다.
+	 *
+	 * $include_previews는 기본 true(단건 조회·폼 편집 화면은 썸네일 미리보기를 실제로 쓴다). 목록
+	 * 테이블은 썸네일을 표시하지 않으므로 list()에서 false로 넘겨, 원본마다 사진 개수만큼 반복되는
+	 * wp_get_attachment_image_url() 조회를 통째로 건너뛴다(Item to_array의 image_previews 최적화와 동일).
 	 */
-	public static function to_array( WP_Post $source, ?int $included_count = null ): array {
+	public static function to_array( WP_Post $source, ?int $included_count = null, bool $include_previews = true ): array {
 		$data                        = HLF_Meta_Schema::read_source( $source->ID );
 		$data['title']               = get_the_title( $source );
 		$data['metrics']             = hlf_calculate_item_metrics( $data );
-		$data['image_previews']      = self::image_previews( $data );
+		if ( $include_previews ) {
+			$data['image_previews'] = self::image_previews( $data );
+		}
 		$data['included_flyer_count'] = null === $included_count ? self::included_flyer_count( $source->ID ) : $included_count;
 		return $data;
 	}
@@ -92,7 +98,8 @@ final class HLF_Source_Listing_Repository {
 		$items = array_map(
 			static function ( $post ) use ( $link_map ) {
 				$count = isset( $link_map[ $post->ID ] ) ? count( $link_map[ $post->ID ] ) : 0;
-				return self::to_array( $post, $count );
+				// 목록 테이블은 썸네일을 그리지 않으므로 image_previews 계산은 건너뛴다(false).
+				return self::to_array( $post, $count, false );
 			},
 			$query->posts
 		);
@@ -231,10 +238,22 @@ final class HLF_Source_Listing_Repository {
 		) );
 	}
 
-	/** 이 원본 매물이 포함된 서로 다른 Flyer 개수. */
+	/**
+	 * 이 원본 매물이 포함된 서로 다른 Flyer 개수(단건). 목록에서는 source_link_map() 배치 계산을
+	 * 쓰지만, 단건 조회에서는 전체 Item을 훑을 필요 없이 이 원본을 출처로 갖는 Item만 뽑아
+	 * 부모(Flyer)의 distinct 개수를 센다(fields=id=>parent — 포스트 객체 hydration도 생략).
+	 */
 	public static function included_flyer_count( int $source_id ): int {
-		$map = self::source_link_map();
-		return isset( $map[ $source_id ] ) ? count( $map[ $source_id ] ) : 0;
+		$pairs = get_posts( array(
+			'post_type'      => HLF_Post_Types::ITEM,
+			'post_status'    => array( 'publish', 'inherit', 'draft' ),
+			'posts_per_page' => -1,
+			'no_found_rows'  => true,
+			'fields'         => 'id=>parent',
+			'meta_key'       => 'source_listing_id',
+			'meta_value'     => $source_id,
+		) );
+		return count( array_unique( array_map( 'intval', array_values( (array) $pairs ) ) ) );
 	}
 
 	/**
