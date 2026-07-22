@@ -704,6 +704,13 @@
 		box.querySelectorAll( '.hlf-fm-pick' ).forEach( function ( c ) {
 			c.addEventListener( 'change', function () {
 				var sourceId = Number( c.getAttribute( 'data-id' ) );
+				// 2-3: 이미 발행된(published) 안내문에서 매물을 빼는 것은 고객에게 공유된 링크에 즉시
+				// 반영되므로 확인을 한 번 받는다(실제 제거는 막지 않음 — 완전 차단은 보관 상태만).
+				if ( ! c.checked && 'published' === flyer.status &&
+					! window.confirm( '이 안내문은 이미 발행되었습니다. 이 매물을 제거하면 공유된 링크에서 즉시 사라집니다. 계속할까요?' ) ) {
+					c.checked = true; // 롤백.
+					return;
+				}
 				c.disabled = true;
 				var method = c.checked ? 'PUT' : 'DELETE';
 				api( 'flyers/' + flyer.id + '/source-listings/' + sourceId, { method: method } )
