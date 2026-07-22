@@ -33,11 +33,11 @@ final class HLF_Item_Repository {
 	}
 
 	/**
-	 * item 개수만 필요할 때(Flyer 목록의 item_count 표시 등) get_items()보다 가볍게 센다 —
-	 * get_items()는 display_order 정렬을 위해 postmeta JOIN + 전체 포스트 객체 hydration이
-	 * 필요하지만, 개수만 셀 때는 정렬도 postmeta도 필요 없다(fields=>ids로 ID만 가져옴).
-	 * Flyer 목록 REST(HLF_Flyer_Repository::to_array)가 Flyer마다 이 메서드를 한 번씩 호출하므로
-	 * (N+1), 이 한 번의 비용을 최소화하는 것이 목록 페이지네이션 응답 속도에 직접 영향을 준다.
+	 * item 개수만 필요할 때(단건 Flyer 조회 등) get_items()보다 가볍게 센다 — get_items()는
+	 * display_order 정렬을 위해 postmeta JOIN + 전체 포스트 객체 hydration이 필요하지만, 개수만 셀
+	 * 때는 정렬도 postmeta도 필요 없다(fields=>ids로 ID만 가져옴). Flyer 여러 개를 한 번에 나열할
+	 * 때(목록 페이지네이션)는 이 메서드를 Flyer 수만큼 반복 호출하지 말고 count_items_batch()를
+	 * 쓴다 — 그게 N+1을 피하는 지점이다.
 	 */
 	public static function count_items( int $flyer_id ): int {
 		return count( get_posts( array(
@@ -48,6 +48,37 @@ final class HLF_Item_Repository {
 			'no_found_rows'  => true,
 			'fields'         => 'ids',
 		) ) );
+	}
+
+	/**
+	 * 여러 Flyer의 item 개수를 단 한 번의 쿼리로 계산한다(HLF_Flyer_Repository::list()가 페이지당
+	 * Flyer 수만큼 count_items()를 따로 부르던 N+1을 없앤다). post_parent__in + fields=>id=>parent로
+	 * 포스트 객체 hydration 없이 부모 ID만 받아와 PHP에서 집계한다 — HLF_Source_Listing_Repository::
+	 * source_link_map()의 배치 계산과 같은 패턴이다.
+	 *
+	 * @param int[] $flyer_ids
+	 * @return array<int,int> flyer_id => item 개수(해당 flyer에 item이 없으면 0).
+	 */
+	public static function count_items_batch( array $flyer_ids ): array {
+		$counts = array_fill_keys( $flyer_ids, 0 );
+		if ( empty( $flyer_ids ) ) {
+			return $counts;
+		}
+		$pairs = get_posts( array(
+			'post_type'       => HLF_Post_Types::ITEM,
+			'post_parent__in' => $flyer_ids,
+			'post_status'     => array( 'publish', 'inherit', 'draft' ),
+			'posts_per_page'  => -1,
+			'no_found_rows'   => true,
+			'fields'          => 'id=>parent',
+		) );
+		foreach ( $pairs as $parent_id ) {
+			$parent_id = (int) $parent_id;
+			if ( isset( $counts[ $parent_id ] ) ) {
+				$counts[ $parent_id ]++;
+			}
+		}
+		return $counts;
 	}
 
 	public static function get_item_by_number( int $flyer_id, string $item_number ): ?WP_Post {

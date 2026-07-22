@@ -139,10 +139,13 @@ final class HLF_Flyer_Repository {
 	/**
 	 * REST/템플릿 공용 직렬화. $include_item_count은 관리자 Flyer 목록 화면 전용 데이터라 공개
 	 * list/detail 페이지(HLF_Routes::render)에서는 false로 넘겨, 그 화면에서는 어차피 쓰지 않는
-	 * item_count 계산(HLF_Item_Repository::count_items — 매물 개수만 세는 별도 쿼리)을
-	 * 건너뛴다 — 그 페이지는 어차피 items를 따로 조회해 가져오므로 중복 쿼리였다.
+	 * item_count 계산을 건너뛴다 — 그 페이지는 어차피 items를 따로 조회해 가져오므로 중복 쿼리였다.
+	 *
+	 * $item_count_override를 넘기면 그 값을 그대로 쓰고 쿼리하지 않는다 — list()가 여러 Flyer의
+	 * 개수를 미리 한 번에 배치 계산(count_items_batch())해 넘겨주는 경로다(N+1 방지). 넘기지 않으면
+	 * (단건 조회 등) 이 Flyer 하나만을 위해 count_items()를 호출한다.
 	 */
-	public static function to_array( WP_Post $flyer, bool $include_item_count = true ): array {
+	public static function to_array( WP_Post $flyer, bool $include_item_count = true, ?int $item_count_override = null ): array {
 		$base = array(
 			'id'           => $flyer->ID,
 			'flyer_number' => self::format_number( $flyer->ID ),
@@ -154,7 +157,7 @@ final class HLF_Flyer_Repository {
 			'url'          => HLF_Routes::flyer_url( $flyer->ID ),
 		);
 		if ( $include_item_count ) {
-			$base['item_count'] = HLF_Item_Repository::count_items( $flyer->ID );
+			$base['item_count'] = null !== $item_count_override ? $item_count_override : HLF_Item_Repository::count_items( $flyer->ID );
 		}
 		return array_merge( $base, HLF_Meta_Schema::read_flyer( $flyer->ID ) );
 	}
@@ -169,6 +172,10 @@ final class HLF_Flyer_Repository {
 			'order'          => 'DESC',
 		);
 		$posts = get_posts( $query );
-		return array_map( array( __CLASS__, 'to_array' ), $posts );
+		// 페이지당 Flyer 수만큼 count_items()를 따로 부르는 대신(N+1) 한 번에 배치 계산한다.
+		$counts = HLF_Item_Repository::count_items_batch( wp_list_pluck( $posts, 'ID' ) );
+		return array_map( function ( $post ) use ( $counts ) {
+			return self::to_array( $post, true, $counts[ $post->ID ] ?? 0 );
+		}, $posts );
 	}
 }

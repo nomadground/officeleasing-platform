@@ -200,27 +200,33 @@
 
 	/* ==================== Dashboard ==================== */
 
+	// 성능 리뷰(2026-07-22): 통계(dashboard)와 임대안내문 표(flyers)는 서로 다른, 값을 주고받을
+	// 필요 없는 REST 호출이다 — 예전에는 dashboard 응답을 기다린 "다음에" flyers를 불렀는데(순차
+	// waterfall), 그럴 이유가 없어 shell을 먼저 그리고 두 요청을 동시에 시작한다.
 	function renderDashboard() {
 		var el = main();
+		el.innerHTML =
+			'<h2 class="hlf-listup-title">Dashboard</h2>' +
+			'<div class="hlf-stat-grid" id="hlf-dash-stats"><p class="hlf-admin-loading">불러오는 중…</p></div>' +
+			'<p class="hlf-admin-note">“연결된 매물”은 하나 이상의 임대안내문에 포함된 매물, “미연결”은 아직 어떤 안내문에도 들어가지 않은 매물입니다. 숫자를 클릭하면 해당 목록으로 이동합니다.</p>' +
+			'<section class="hlf-card"><h3>임대안내문</h3><div id="hlf-dash-flyers"><p class="hlf-admin-loading">불러오는 중…</p></div></section>';
+
+		var statsBox = document.getElementById( 'hlf-dash-stats' );
 		api( 'dashboard' ).then( function ( d ) {
-			el.innerHTML =
-				'<h2 class="hlf-listup-title">Dashboard</h2>' +
-				'<div class="hlf-stat-grid">' +
-					statCard( d.source_total, '전체 매물', 'sources', '' ) +
-					statCard( d.flyer_total, '임대안내문', 'flyers', '' ) +
-					statCard( d.source_linked, '연결된 매물', 'sources', 'linked' ) +
-					statCard( d.source_unlinked, '미연결 매물', 'sources', 'unlinked' ) +
-				'</div>' +
-				'<p class="hlf-admin-note">“연결된 매물”은 하나 이상의 임대안내문에 포함된 매물, “미연결”은 아직 어떤 안내문에도 들어가지 않은 매물입니다. 숫자를 클릭하면 해당 목록으로 이동합니다.</p>' +
-				'<section class="hlf-card"><h3>임대안내문</h3><div id="hlf-dash-flyers"><p class="hlf-admin-loading">불러오는 중…</p></div></section>';
-			el.querySelectorAll( '[data-hlf-stat-tab]' ).forEach( function ( card ) {
+			statsBox.innerHTML =
+				statCard( d.source_total, '전체 매물', 'sources', '' ) +
+				statCard( d.flyer_total, '임대안내문', 'flyers', '' ) +
+				statCard( d.source_linked, '연결된 매물', 'sources', 'linked' ) +
+				statCard( d.source_unlinked, '미연결 매물', 'sources', 'unlinked' );
+			statsBox.querySelectorAll( '[data-hlf-stat-tab]' ).forEach( function ( card ) {
 				card.addEventListener( 'click', function () {
 					state.sourceFilter = card.getAttribute( 'data-hlf-stat-filter' ) || '';
 					setTab( card.getAttribute( 'data-hlf-stat-tab' ) );
 				} );
 			} );
-			renderDashboardFlyers();
-		} ).catch( function ( err ) { errorText( el, '대시보드를 불러오지 못했습니다: ' + err.message ); } );
+		} ).catch( function ( err ) { errorText( statsBox, '통계를 불러오지 못했습니다: ' + err.message ); } );
+
+		renderDashboardFlyers();
 	}
 	function statCard( value, label, tab, filter ) {
 		return '<button type="button" class="hlf-stat-card" data-hlf-stat-tab="' + tab + '" data-hlf-stat-filter="' + filter + '">' +
