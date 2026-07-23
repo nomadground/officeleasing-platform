@@ -13,6 +13,10 @@ final class HLF_Plugin {
 		add_action( 'init', array( 'HLF_Meta_Schema', 'register' ), 6 );
 		add_action( 'init', array( __CLASS__, 'register_image_sizes' ) );
 
+		// 업로드 이미지 최적화("Smart Image Pipeline" 검토 반영) — 코어 hook만 조합, init 시점과
+		// 무관하게 언제든 등록해도 되지만 다른 부트스트랩과 같은 자리에서 관리한다.
+		HLF_Image_Pipeline::init();
+
 		// URL(rewrite) + 공개 템플릿 라우팅.
 		HLF_Routes::init();
 
