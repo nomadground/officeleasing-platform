@@ -74,6 +74,8 @@ final class HLF_Meta_Schema {
 			// Flyer 신규 필드 (officeleasing-core에 없음)
 			'approval_date'          => array( 'type' => 'string' ), // 사용승인일(≠ building_completion_date=준공일)
 			'building_use'           => array( 'type' => 'string' ),
+			// 위반건축물 여부(요청서) — 건축물용도 옆 칸을 채우는 용도. 기본값은 "해당없음"(false).
+			'illegal_building'       => array( 'type' => 'bool' ),
 			'article_no'             => array( 'type' => 'string' ),
 			'contact_name'           => array( 'type' => 'string' ),
 			'contact_phone'          => array( 'type' => 'string' ),

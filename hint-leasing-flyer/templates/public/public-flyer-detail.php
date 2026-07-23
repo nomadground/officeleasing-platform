@@ -80,6 +80,9 @@ if ( $item['exclusive_area_sqm'] ) {
 if ( $item['building_use'] ) {
 	$basic['건축물용도'] = array( 'value' => $item['building_use'] );
 }
+// 위반건축물 여부는 건축물용도와 짝을 이뤄 한 행(2칸)을 채운다(요청서) — 항상 표시(엘리베이터/주차와
+// 같은 원칙: "해당없음"도 그 자체로 유효한 답이라 값이 없다고 행을 생략하지 않는다).
+$basic['위반건축물 여부'] = array( 'value' => $item['illegal_building'] ? '해당' : '해당없음' );
 if ( $item['approval_date'] ) {
 	$basic['사용승인일'] = array( 'value' => $item['approval_date'] );
 }
@@ -138,6 +141,7 @@ $basic['주차']       = array( 'value' => $item['parking_available'] ? ( $item[
 						<button type="button" class="hlf-photo-open" data-hlf-lightbox-open data-hlf-lightbox-index="0" aria-label="사진 크게 보기">
 							<?php echo wp_get_attachment_image( $photo_ids[0], 'hlf-item-photo', false, array( 'alt' => esc_attr( $address ), 'loading' => 'eager' ) ); ?>
 						</button>
+						<span class="hlf-gallery-watermark" aria-hidden="true">HINT</span>
 					</div>
 					<?php if ( count( $photo_ids ) > 1 ) : ?>
 						<div class="hlf-gallery-thumbs">
@@ -210,10 +214,10 @@ $basic['주차']       = array( 'value' => $item['parking_available'] ? ( $item[
 		<section class="hlf-panel">
 			<h2 class="hlf-panel-heading">Property Details</h2>
 			<?php
-			// 글자 수 기준으로 넓힐지 정하면 한글 조합면적 표기까지 오탐되어 2열 짝이 깨진다. 그래서
-			// 실제로 자유 텍스트라 길어질 수 있는 필드(건축물용도 — 복합 용도가 나열될 수 있음)만
-			// 이름으로 지정한다.
-			$basic_wide_labels = array( '건축물용도' );
+			// 건축물용도는 요청서 이후 위반건축물 여부와 짝을 이뤄 2칸을 나눠 쓴다(더 이상 단독으로
+			// 한 행 전체를 쓰지 않는다) — 그래서 wide 목록은 비워둔다. 짝을 짓는 다른 필드가 생기면
+			// 여기에 라벨을 추가한다.
+			$basic_wide_labels = array();
 			?>
 			<dl class="hlf-property-details">
 				<?php foreach ( $basic as $label => $entry ) :

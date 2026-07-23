@@ -60,6 +60,7 @@ if ( $item['exclusive_area_sqm'] ) {
 if ( $item['building_use'] ) {
 	$print_basic['건축물용도'] = array( 'value' => $item['building_use'] );
 }
+$print_basic['위반건축물 여부'] = array( 'value' => $item['illegal_building'] ? '해당' : '해당없음' );
 if ( $item['approval_date'] ) {
 	$print_basic['사용승인일'] = array( 'value' => $item['approval_date'] );
 }
@@ -69,7 +70,7 @@ if ( $item['direction'] ) {
 $print_basic['엘리베이터'] = array( 'value' => $item['elevator_available'] ? '있음' : '없음' );
 $print_basic['주차']       = array( 'value' => $item['parking_available'] ? ( $item['total_parking'] ?: '가능' ) : '불가' );
 
-$print_basic_wide_labels = array( '건축물용도' );
+$print_basic_wide_labels = array();
 $print_contact = HLF_Flyer_Repository::public_contact( $flyer, $item );
 ?>
 <div class="hlf-print-item-detail" data-hlf-print-section="item-<?php echo esc_attr( $item['item_number'] ); ?>">

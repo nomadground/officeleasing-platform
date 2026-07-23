@@ -119,7 +119,10 @@ $kakao_js_key = defined( 'HLF_KAKAO_JS_KEY' ) ? HLF_KAKAO_JS_KEY : '';
 								</span>
 								<span class="hlf-listing-meta">
 									<span class="hlf-listing-floor">
-										<span class="hlf-lease-metric-label">층</span>
+										<span class="hlf-lease-metric-label<?php echo $item['building_name'] ? ' hlf-lease-metric-label--has-building' : ''; ?>">층</span>
+										<?php if ( $item['building_name'] ) : ?>
+											<span class="hlf-lease-metric-label hlf-listing-floor-building"><?php echo esc_html( $item['building_name'] ); ?></span>
+										<?php endif; ?>
 										<span class="hlf-listing-floor-value"><?php echo esc_html( $floor ); ?></span>
 									</span>
 									<span class="hlf-listing-lease-area">
@@ -165,11 +168,11 @@ $kakao_js_key = defined( 'HLF_KAKAO_JS_KEY' ) ? HLF_KAKAO_JS_KEY : '';
 			<?php if ( ! empty( $chart_items ) ) : ?>
 				<section class="hlf-noc-chart-panel" aria-labelledby="hlf-noc-chart-title">
 					<div class="hlf-noc-chart-heading">
-						<h2 id="hlf-noc-chart-title">매물별 환산임대료 비교</h2>
-						<div class="hlf-noc-chart-heading-side">
+						<div class="hlf-noc-chart-title-row">
+							<h2 id="hlf-noc-chart-title">매물별 환산임대료 비교</h2>
 							<span class="hlf-noc-chart-eyebrow">NOC COMPARISON</span>
-							<p class="hlf-noc-chart-unit">단위:만원/전용면적(평)</p>
 						</div>
+						<p class="hlf-noc-chart-unit">단위:만원/전용면적(평)</p>
 					</div>
 					<div
 						class="hlf-noc-chart"

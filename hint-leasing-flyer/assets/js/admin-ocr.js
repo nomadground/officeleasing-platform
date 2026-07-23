@@ -225,8 +225,27 @@
 		return match || '';
 	}
 
-	// 난방/사무실 수/화장실 수/위반건축물 여부는 HLF Item 스키마에 없는 필드라 의도적으로 추출하지
-	// 않는다(요청서 확인 결과 불필요 — 실제로 표시할 곳이 없는 값을 폼에 채우면 혼란만 준다).
+	// 입주가능일은 네이버부동산 원문에 "즉시입주 협의가능"처럼 여러 후보 문구가 한 줄에 같이 잡히는
+	// 경우가 있다 — 라벨 뒤 원문을 그대로 채우면 그 문구가 전부 필드에 들어가 버린다(실제로 확인됨).
+	// 정해진 문구는 우선순위 하나만 골라 정규화된 표기로 채우고, 목록에 없는 값(구체적인 날짜 등,
+	// 예 "2024년 3월 1일")은 원문 그대로 둔다 — 방향/건축물용도처럼 아예 버리면 오히려 정보 손실이다.
+	var OCR_AVAILABLE_DATE_PRIORITY = [
+		{ pattern: /즉시\s*입주/, label: '즉시입주' },
+		{ pattern: /협의\s*가능/, label: '협의 가능' },
+		{ pattern: /빠른\s*협의/, label: '빠른협의' },
+	];
+	function ocrExtractAvailableDate( text ) {
+		var raw = String( text || '' ).trim();
+		for ( var i = 0; i < OCR_AVAILABLE_DATE_PRIORITY.length; i++ ) {
+			if ( OCR_AVAILABLE_DATE_PRIORITY[ i ].pattern.test( raw ) ) {
+				return OCR_AVAILABLE_DATE_PRIORITY[ i ].label;
+			}
+		}
+		return raw;
+	}
+
+	// 난방/사무실 수/화장실 수는 HLF Item 스키마에 없는 필드라 의도적으로 추출하지 않는다(요청서
+	// 확인 결과 불필요 — 실제로 표시할 곳이 없는 값을 폼에 채우면 혼란만 준다).
 	function ocrParsePropertyTable( text ) {
 		// 라벨 자체가 오인식되는 경우(실제 캡처로 확인: "소재지"→"소재^", "매물특징"→"매쿨특징",
 		// "입주가능일"→"임주가능일", "총주차대수"→"층주차대수")를 대비해, 원래 라벨이 안 잡히면
@@ -238,7 +257,7 @@
 			features: ocrStripLeadingNoise( ocrLabeledValue( text, [ '매물특징', '물특징', '특징' ] ) ),
 			maintenance_fee_manwon: ocrNormalizeMoney( ocrLabeledValue( text, [ '월관리비', '관리비' ] ) ),
 			direction: ocrExtractDirection( ocrLabeledValue( text, [ '방향' ] ) ),
-			available_date_text: ocrLabeledValue( text, [ '입주가능일', '주가능일' ] ),
+			available_date_text: ocrExtractAvailableDate( ocrLabeledValue( text, [ '입주가능일', '주가능일' ] ) ),
 			total_parking: ocrLabeledValue( text, [ '총주차대수', '주차대수' ] ),
 			approval_date: ocrLabeledValue( text, [ '사용승인일' ] ),
 			building_use: ocrExtractBuildingUse( ocrLabeledValue( text, [ '건축물 용도', '건축물용도' ] ) ),
@@ -554,5 +573,6 @@
 		parseOcrText: parseOcrText,
 		ocrExtractDirection: ocrExtractDirection,
 		ocrExtractBuildingUse: ocrExtractBuildingUse,
+		ocrExtractAvailableDate: ocrExtractAvailableDate,
 	};
 } )();

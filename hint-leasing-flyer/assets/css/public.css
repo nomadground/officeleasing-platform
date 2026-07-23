@@ -144,6 +144,11 @@ body.hlf-public {
 .hlf-listing-floor, .hlf-listing-lease-area, .hlf-listing-area { padding: 2px 8px; text-align: center; border-left: 1px solid var(--hlf-line); }
 .hlf-listing-floor { border-left: 0; }
 .hlf-listing-floor-value, .hlf-listing-area-value { display: block; margin-top: 1px; color: var(--hlf-ink); font-weight: 800; font-size: 12px; line-height: 1.2; white-space: nowrap; }
+/* 건물명은 데스크톱에서 주소 아래 줄로 이미 보이므로(hlf-listing-address-block .hlf-building-name),
+   층 칸의 이 대체 라벨은 데스크톱에서 숨긴다 — 모바일(700px 이하)에서만 "층"이라는 라벨 대신
+   건물명을 보여준다(요청서: 자리가 좁은 모바일에서 지번 아래 줄을 또 쓰지 않고 이미 있는 "층"
+   라벨 자리를 재활용). */
+.hlf-listing-floor .hlf-listing-floor-building { display: none; }
 /* 임대/전용면적: 제곱미터를 먼저(크게), 평수는 평당가처럼 그 아래 작게. */
 .hlf-listing-area-sub { display: block; margin-top: 0; color: var(--hlf-muted); font-size: 10px; font-weight: 500; line-height: 1.2; white-space: nowrap; }
 /* 환산임대료(NOC) 개별 리스트 행 값은 블랙으로, 크기는 임대면적·전용면적 데이터값(12px)과 맞춘다
@@ -181,7 +186,25 @@ body.hlf-public {
    높이가 flex-grow로 정해지면(이전 방식) 세로형(인물) 사진이 올라올 때 카드 전체가 함께 길어지는
    문제가 있었다(실제로 확인됨). aspect-ratio로 폭 기준 높이를 고정해 어떤 원본 비율의 사진이
    올라와도 항상 같은 가로형 박스 크기를 유지한다. */
-.hlf-gallery-main { aspect-ratio: 3 / 2; overflow: hidden; border-radius: 12px; background: var(--hlf-line); }
+.hlf-gallery-main { position: relative; aspect-ratio: 3 / 2; overflow: hidden; border-radius: 12px; background: var(--hlf-line); }
+/* 대표 사진 중앙에 워터마크(요청서) — 블러 처리한 알약 배경 위에 브랜드 색(반투명) 글자를 얹는다.
+   클릭/포커스를 가로채면 안 되므로(사진 확대 버튼이 바로 아래 겹쳐 있음) pointer-events:none. */
+.hlf-gallery-watermark {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	padding: 5px 16px;
+	color: rgba(53, 92, 115, .55);
+	font-size: 13px;
+	font-weight: 800;
+	letter-spacing: .12em;
+	border-radius: 6px;
+	backdrop-filter: blur(6px);
+	-webkit-backdrop-filter: blur(6px);
+	pointer-events: none;
+	user-select: none;
+}
 .hlf-gallery-main img { display: block; width: 100%; height: 100%; object-fit: cover; transition: opacity .12s ease; }
 .hlf-gallery-thumbs { display: flex; gap: 8px; margin-top: 8px; overflow-x: auto; padding-bottom: 2px; }
 .hlf-gallery-thumbs img { flex: 0 0 auto; width: 84px; height: 60px; object-fit: cover; border-radius: 8px; transition: transform .12s ease; }
@@ -281,7 +304,8 @@ body.hlf-public {
 .hlf-noc-chart-panel { margin: 22px 0; padding: 16px 18px 14px; background: var(--hlf-surface); border: 1px solid var(--hlf-line); border-radius: 10px; }
 .hlf-noc-chart-heading { display: flex; align-items: end; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
 .hlf-noc-chart-heading h2 { margin: 0; color: var(--hlf-primary); font-size: 16px; letter-spacing: -.02em; }
-.hlf-noc-chart-heading-side { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+/* "NOC COMPARISON" 표기는 제목 바로 오른쪽에 붙인다(요청서: 우측 저 멀리 있던 걸 제목 옆으로). */
+.hlf-noc-chart-title-row { display: flex; align-items: baseline; gap: 8px; }
 /* 위치 비교 지도의 "LOCATION REVIEW" 표기와 같은 스타일(자간을 준 영문 대문자 라벨). */
 .hlf-noc-chart-eyebrow { color: var(--hlf-muted); font-size: 10px; letter-spacing: .06em; }
 .hlf-noc-chart-unit { margin: 0; color: var(--hlf-muted); font-size: 11px; }
@@ -369,6 +393,11 @@ body.hlf-public {
 	.hlf-listing-main .hlf-listing-address-block { gap: 0; }
 	.hlf-listing-address { font-size: 12px; line-height: 1.25; }
 	.hlf-listing-subaddress { line-height: 1.2; }
+	/* 요청서: 모바일은 자리가 좁아 지번 아래 건물명 줄을 또 두지 않고, 층 칸의 "층" 라벨을 건물명으로
+	   대체한다. */
+	.hlf-listing-address-block .hlf-building-name { display: none; }
+	.hlf-listing-floor .hlf-listing-floor-building { display: block; }
+	.hlf-listing-floor .hlf-lease-metric-label--has-building { display: none; }
 	/* 층/임대면적/전용면적은 위 4열 grid에 각각 한 칸씩 직접 합류한다(아래 보증금 등과 열이 맞도록)
 	   — .hlf-listing-meta 자체는 데스크톱과 마찬가지로 display:contents. */
 	.hlf-listing-floor { grid-area: floor; padding: 2px; }
@@ -389,11 +418,17 @@ body.hlf-public {
 	/* 환산임대료는 모바일에서도 임대면적/전용면적 데이터값(11px)과 같은 크기로 — 상위 규칙(12px)만
 	   두면 데스크톱과 달리 모바일에서 NOC만 1px 더 크게 보인다. */
 	.hlf-listing-main .hlf-lease-metric--noc .hlf-lease-metric-value { font-size: 11px; }
-	/* 상세 페이지 Leasing Info 카드: 4열 그대로 두면 좁은 화면에서 값이 줄바꿈되거나 뭉개져 정작
-	   가장 중요한 숫자(보증금/임대료)를 읽기 어려워진다 — 2열로 접어 각 칸에 충분한 너비를 준다. */
-	.hlf-detail-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-	.hlf-detail-metrics .hlf-lease-metric-label { font-size: 11px; }
-	.hlf-detail-metrics .hlf-lease-metric-value { font-size: 16px; }
+	/* 요청서: Leasing Info(보증금/임대료/관리비/환산임대료) 4칸은 모바일에서도 1행에 고정한다 —
+	   2열로 접지 않고 글자 크기·여백만 좁은 화면에 맞게 줄인다. 값이 길면(예: "156,838만원") 셀
+	   안에서 줄바꿈되게 둔다(가로 스크롤/잘림 대신).*/
+	.hlf-detail-metrics { gap: 4px; }
+	.hlf-detail-metrics .hlf-lease-metric { padding: 8px 4px; }
+	.hlf-detail-metrics .hlf-lease-metric-label { font-size: 9px; }
+	.hlf-detail-metrics .hlf-lease-metric-value { font-size: 12px; white-space: normal; word-break: keep-all; }
+	.hlf-detail-metrics .hlf-lease-metric-sub { font-size: 9px; white-space: normal; }
+	/* 특징 노트는 "Leasing Info" 옆(같은 줄 우측)에 붙는데, 모바일에서 줄바꿈되면 기본값(중앙정렬)이
+	   제목 쪽으로 치우쳐 보인다 — 우측 정렬로 오른쪽 끝에 맞춘다. */
+	.hlf-panel-note { text-align: right; }
 	/* 기본정보(방향/주차/사용승인일 등)도 임대조건과 마찬가지로 모바일에서 1행 2열을 유지한다. */
 	.hlf-basic-item { padding: 8px 4px; }
 	.hlf-gallery-main { aspect-ratio: 4 / 3; border-radius: 8px; }

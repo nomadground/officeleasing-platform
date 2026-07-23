@@ -28,6 +28,7 @@
 		{ key: 'direction', label: '방향', type: 'text' },
 		{ key: 'approval_date', label: '사용승인일', type: 'text', placeholder: '예: 2018.06.21' },
 		{ key: 'building_use', label: '건축물용도', type: 'text' },
+		{ key: 'illegal_building', label: '위반건축물 여부', type: 'checkbox' },
 		{ key: 'available_date_text', label: '입주가능일', type: 'text', placeholder: '예: 즉시입주 협의가능' },
 		{ key: 'features', label: '매물특징', type: 'textarea', wide: true },
 		{ key: 'contact_name', label: '담당자명', type: 'text' },

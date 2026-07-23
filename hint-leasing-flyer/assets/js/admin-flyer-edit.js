@@ -39,6 +39,7 @@
 		{ key: 'available_date_text', label: '입주가능일', type: 'text', placeholder: '예: 즉시입주 협의가능' },
 		{ key: 'approval_date', label: '사용승인일', type: 'text', placeholder: '예: 2018.06.21' },
 		{ key: 'building_use', label: '건축물용도', type: 'text' },
+		{ key: 'illegal_building', label: '위반건축물 여부', type: 'checkbox' },
 		{ key: 'features', label: '매물특징', type: 'textarea', wide: true },
 		{ key: 'contact_name', label: '담당자명 (선택 — 이 매물만 다르면 입력)', type: 'text' },
 		{ key: 'contact_phone', label: '담당자 연락처 (선택 — 이 매물만 다르면 입력)', type: 'text' },
