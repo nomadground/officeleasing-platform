@@ -67,6 +67,16 @@ $kakao_js_key = defined( 'HLF_KAKAO_JS_KEY' ) ? HLF_KAKAO_JS_KEY : '';
 	<?php if ( $kakao_js_key && ! empty( $map_items ) ) : ?>
 		<?php // 카카오 지도 SDK 도메인에 미리 연결(DNS/TLS handshake)해 지도 스크립트가 실제 필요할 때 더 빨리 붙게 한다. ?>
 		<link rel="preconnect" href="https://dapi.kakao.com">
+		<?php
+		/*
+		 * 요청서(item 3, 페이지 이동 속도): 이전에는 preconnect만 있어서 브라우저가 이 스크립트의
+		 * 존재를 DOMContentLoaded 이후 JS 실행 시점(loadKakaoMapSdk, assets/js/public-flyer.js)에야
+		 * 알게 됐다 — preload를 추가하면 HTML 파싱 중 preload scanner가 곧바로 이 스크립트를 미리
+		 * 받아오기 시작한다. href는 loadKakaoMapSdk가 실제로 넣는 <script src>와 정확히 같은 URL이어야
+		 * 브라우저가 같은 요청으로 인식해 캐시를 재사용한다(다르면 두 번 받아옴).
+		 */
+		?>
+		<link rel="preload" as="script" href="<?php echo esc_url( 'https://dapi.kakao.com/v2/maps/sdk.js?appkey=' . rawurlencode( $kakao_js_key ) . '&autoload=false' ); ?>">
 	<?php endif; ?>
 	<link rel="stylesheet" href="<?php echo esc_url( HLF_URL . 'assets/css/public.css?v=' . HLF_VERSION ); ?>">
 	<link rel="stylesheet" href="<?php echo esc_url( HLF_URL . 'assets/css/print.css?v=' . HLF_VERSION ); ?>" media="print">
@@ -174,7 +184,7 @@ $kakao_js_key = defined( 'HLF_KAKAO_JS_KEY' ) ? HLF_KAKAO_JS_KEY : '';
 				<section class="hlf-noc-chart-panel" aria-labelledby="hlf-noc-chart-title">
 					<div class="hlf-noc-chart-heading">
 						<div class="hlf-noc-chart-title-row">
-							<h2 id="hlf-noc-chart-title">매물별 환산임대료 비교</h2>
+							<h2 id="hlf-noc-chart-title">환산임대료 비교</h2>
 							<span class="hlf-noc-chart-eyebrow">NOC COMPARISON</span>
 						</div>
 						<p class="hlf-noc-chart-unit">단위:만원/전용면적(평)</p>
@@ -192,7 +202,7 @@ $kakao_js_key = defined( 'HLF_KAKAO_JS_KEY' ) ? HLF_KAKAO_JS_KEY : '';
 			<?php if ( ! empty( $map_items ) ) : ?>
 				<section class="hlf-comparison-map-panel" aria-labelledby="hlf-comparison-map-title">
 					<div class="hlf-comparison-map-heading">
-						<h2 id="hlf-comparison-map-title">매물 위치 비교</h2>
+						<h2 id="hlf-comparison-map-title">위치 확인</h2>
 						<span class="hlf-comparison-map-unit">LOCATION REVIEW</span>
 					</div>
 					<div

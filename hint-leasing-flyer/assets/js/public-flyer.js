@@ -111,10 +111,13 @@
 			var addr = splitAddressLabel( it.address );
 			var labelText = addr.line1 + ( addr.line2 ? ' ' + addr.line2 : '' );
 			var title = it.address + ' NOC ' + noc.toFixed( 1 ) + '만원';
+			// 다른 순번 배지(리스트/지도/상세)와 같은 형식 — 1자리면 앞에 0을 채운다.
+			var index = String( it.order + 1 );
+			if ( index.length < 2 ) { index = '0' + index; }
 			return (
 				'<a class="hlf-noc-chart-item" href="' + escapeAttr( it.url ) + '" data-hlf-listing-key="' + escapeAttr( it.key ) + '" title="' + escapeAttr( title ) + '" aria-label="' + escapeAttr( labelText + ' 매물 상세보기' ) + '" style="--hlf-item-accent:' + accentColor( it.order ) + '">' +
 					'<span class="hlf-noc-chart-value">' + noc.toFixed( 1 ) + '</span>' +
-					'<span class="hlf-noc-chart-bar-wrap"><span class="hlf-noc-chart-bar" style="height:' + height + '%"></span></span>' +
+					'<span class="hlf-noc-chart-bar-wrap"><span class="hlf-noc-chart-bar" style="height:' + height + '%"><span class="hlf-noc-chart-bar-index">' + index + '</span></span></span>' +
 					'<span class="hlf-noc-chart-label">' + escapeHtml( addr.line1 ) + '<br>' + escapeHtml( addr.line2 ) + '</span>' +
 				'</a>'
 			);
@@ -262,12 +265,10 @@
 				var included = sections.filter( function ( section ) { return ! section.classList.contains( 'hlf-print-section-excluded' ); } );
 				if ( included.length ) { included[ included.length - 1 ].classList.add( 'hlf-print-section-last' ); }
 				panel.hidden = true;
-				// 체크한(=인쇄에 포함될) 매물 상세 안의 지도만 이제 만든다 — 체크 해제된 매물은 계속
-				// 만들지 않는다. relayoutMapsForPrint()로 방금 만든 지도까지 인쇄 레이아웃 크기에
-				// 맞춘 뒤에야 인쇄를 시작한다(막 생성된 지도는 beforeprint 시점의 relayout 한 번만
-				// 걸리면 아직 크기가 안 잡힌 채일 수 있어, 여기서 한 번 더 미리 맞춰 둔다).
-				initLazyPrintMaps( document ).then( function () {
-					relayoutMapsForPrint();
+				// 인쇄에는 실제 지도 대신 항상 순번-주소 텍스트 목록을 쓴다(print.css) — 지도 타일
+				// 비동기 로딩과 인쇄 스냅샷 시점이 경합하는 문제라 JS로 미리 만들어봐야 소용이 없다.
+				// 사진만 인쇄 확정 시점에 채워 넣고 로드 완료를 기다린 뒤 인쇄를 시작한다.
+				loadPendingPrintPhotos( document ).then( function () {
 					window.print();
 				} );
 			} );
@@ -351,30 +352,6 @@
 		return kakaoMapLoader;
 	}
 
-	// 인쇄 화면은 폭/높이가 화면과 전혀 다르다(A4 landscape, 2단 grid 폭 등) — 카카오 지도는 생성
-	// 시점의 컨테이너 크기로 내부 캔버스를 굳혀버리므로, 인쇄 시작/종료 시점에 이미 만들어둔 지도마다
-	// relayout()+중심 재설정을 다시 걸어줘야 인쇄 레이아웃 크기에 맞게 다시 그려진다.
-	var initializedMaps = [];
-
-	function fitMapToItems( map, items ) {
-		if ( items.length === 1 ) {
-			map.setCenter( new kakao.maps.LatLng( items[ 0 ].lat, items[ 0 ].lng ) );
-			map.setLevel( 4 );
-		} else {
-			var bounds = new kakao.maps.LatLngBounds();
-			items.forEach( function ( it ) { bounds.extend( new kakao.maps.LatLng( it.lat, it.lng ) ); } );
-			map.setBounds( bounds );
-		}
-	}
-
-	function relayoutMapsForPrint() {
-		if ( ! ( window.kakao && window.kakao.maps ) ) { return; }
-		initializedMaps.forEach( function ( entry ) {
-			entry.map.relayout();
-			fitMapToItems( entry.map, entry.items );
-		} );
-	}
-
 	// 비교 지도(여러 매물)와 상세 개별 지도(매물 1개)는 같은 렌더링 로직을 그대로 쓴다 — 좌표가 1개면
 	// bounds 계산 없이 그 지점으로 센터를 맞추고, 여러 개면 LatLngBounds로 전부 화면에 들어오게 맞춘다.
 	function initMapContainer( container ) {
@@ -423,45 +400,33 @@
 				}
 				if ( it.key ) { ListingSync.register( it.key, marker ); }
 			} );
-
-			initializedMaps.push( { map: map, items: items } );
 		} ).catch( function ( error ) {
 			container.innerHTML = '<p class="hlf-map-empty">카카오 지도를 불러오지 못했습니다. (' + escapeHtml( error.message ) + ')</p>';
 		} );
 	}
 
-	// data-hlf-lazy-map이 붙은 지도(리스트 인쇄물에 끼워 넣는 매물별 상세 지도, 요청서 6)는 여기서
-	// 건너뛴다 — 목록 페이지를 열 때마다 매물 수만큼 카카오 지도를 미리 만들면 이번에 고친 성능
-	// 문제(REST 워터폴 등)와 같은 종류의 낭비가 된다. 인쇄 버튼을 눌러 실제로 그 항목을 선택했을
-	// 때만(initLazyPrintMaps) 만든다.
 	function initMaps() {
-		document.querySelectorAll( '[data-hlf-map-items]:not([data-hlf-lazy-map])' ).forEach( initMapContainer );
+		document.querySelectorAll( '[data-hlf-map-items]' ).forEach( initMapContainer );
 	}
 
-	// 인쇄 선택 패널에서 "인쇄" 확정 시 호출된다 — 지금 화면에 남아있는(=사용자가 체크한) 매물별
-	// 인쇄 전용 지도 중 아직 만들지 않은 것만 그때 가서 만든다. data-hlf-map-initialized로 한 번
-	// 만든 뒤 다시 만들지 않는다(같은 안내문을 여러 번 인쇄해도 매번 다시 로드하지 않음).
-	function initLazyPrintMaps( root ) {
+	// 매물 인쇄 상세(print-item-detail.php)의 대표사진은 항상 display:none 컨테이너 안에 있어(공개
+	// public.css .hlf-print-item-detail) src를 미리 채워두면 브라우저가 언제 실제로 fetch를
+	// 시작할지 보장할 수 없다(loading="lazy"가 "화면 근처"를 display:none에는 적용하지 않음) — 지도와
+	// 같은 방식으로, 인쇄 확정 시점에만 src를 채우고 로드 완료(또는 실패)를 기다린 뒤에 인쇄를
+	// 시작한다.
+	function loadPendingPrintPhotos( root ) {
 		var pending = [];
-		root.querySelectorAll( '[data-hlf-print-section]:not(.hlf-print-section-excluded) [data-hlf-map-items][data-hlf-lazy-map]:not([data-hlf-map-initialized])' ).forEach( function ( container ) {
-			container.setAttribute( 'data-hlf-map-initialized', '1' );
-			pending.push( initMapContainer( container ) );
+		root.querySelectorAll( '[data-hlf-print-section]:not(.hlf-print-section-excluded) [data-hlf-lazy-src]:not([data-hlf-photo-initialized])' ).forEach( function ( img ) {
+			img.setAttribute( 'data-hlf-photo-initialized', '1' );
+			var src = img.getAttribute( 'data-hlf-lazy-src' );
+			if ( ! src ) { return; }
+			pending.push( new Promise( function ( resolve ) {
+				img.addEventListener( 'load', resolve, { once: true } );
+				img.addEventListener( 'error', resolve, { once: true } );
+				img.src = src;
+			} ) );
 		} );
 		return Promise.all( pending );
-	}
-
-	function bindPrintMapRelayout() {
-		// beforeprint/afterprint는 대부분의 브라우저가 지원한다 — 인쇄 미리보기 진입/종료 양쪽에서
-		// 다시 그려야 화면으로 돌아왔을 때도 레이아웃이 깨지지 않는다. matchMedia는 이 두 이벤트를
-		// 지원하지 않는 구형 브라우저를 위한 보조 경로.
-		window.addEventListener( 'beforeprint', relayoutMapsForPrint );
-		window.addEventListener( 'afterprint', relayoutMapsForPrint );
-		if ( window.matchMedia ) {
-			var mql = window.matchMedia( 'print' );
-			var handler = function ( e ) { if ( e.matches ) { relayoutMapsForPrint(); } };
-			if ( mql.addEventListener ) { mql.addEventListener( 'change', handler ); }
-			else if ( mql.addListener ) { mql.addListener( handler ); }
-		}
 	}
 
 	document.addEventListener( 'DOMContentLoaded', function () {
@@ -472,6 +437,5 @@
 		bindLightbox();
 		bindGalleryHoverSwap();
 		initMaps();
-		bindPrintMapRelayout();
 	} );
 } )();

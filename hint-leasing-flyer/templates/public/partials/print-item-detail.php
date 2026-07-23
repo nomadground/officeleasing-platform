@@ -10,8 +10,7 @@
  * +문의처)뿐이다.
  *
  * 필요한 입력 변수(호출부 public-flyer-list.php가 이미 갖고 있는 값 그대로 넘긴다):
- *   $flyer (array), $item (array, HLF_Item_Repository::to_array 결과), $i (0-based 표시 순서),
- *   $kakao_js_key (string)
+ *   $flyer (array), $item (array, HLF_Item_Repository::to_array 결과), $i (0-based 표시 순서)
  */
 defined( 'ABSPATH' ) || exit;
 
@@ -96,7 +95,22 @@ $print_contact = HLF_Flyer_Repository::public_contact( $flyer, $item );
 		<?php if ( ! empty( $print_photo_ids ) ) : ?>
 			<section class="hlf-gallery">
 				<div class="hlf-gallery-main">
-					<?php echo wp_get_attachment_image( $print_photo_ids[0], 'hlf-item-photo', false, array( 'alt' => esc_attr( $print_address ), 'loading' => 'lazy' ) ); ?>
+					<?php
+					/*
+					 * 이 블록은 화면에서 항상 display:none이다(public.css .hlf-print-item-detail) — 일반
+					 * loading="lazy"는 브라우저가 "화면 근처"가 아니면 로드를 미루는데, 이 컨테이너는 인쇄
+					 * 버튼을 눌러 window.print()가 실행되는 그 순간에만 잠깐 display:block으로 바뀌므로
+					 * (print.css), 이미지 fetch 시작과 인쇄 스냅샷 캡처가 경합해 사진이 안 보이는 실사용
+					 * 버그가 있었다. src를 아예 비워두고 인쇄 확정 시점에 JS가 명시적으로 채운 뒤 로드 완료를
+					 * 기다리고서(Promise) window.print()를 호출한다(assets/js/public-flyer.js
+					 * loadPendingPrintPhotos).
+					 */
+					?>
+					<img
+						class="hlf-print-photo"
+						data-hlf-lazy-src="<?php echo esc_url( wp_get_attachment_image_url( $print_photo_ids[0], 'hlf-item-photo' ) ); ?>"
+						alt="<?php echo esc_attr( $print_address ); ?>"
+					>
 				</div>
 			</section>
 		<?php endif; ?>
@@ -107,18 +121,15 @@ $print_contact = HLF_Flyer_Repository::public_contact( $flyer, $item );
 					<h2 id="hlf-print-map-title-<?php echo esc_attr( $item['item_number'] ); ?>">위치</h2>
 				</div>
 				<?php
-				// 인쇄에서 이 항목이 선택됐을 때만 지도를 실제로 그린다(data-hlf-lazy-map) — 매물이
-				// 많은 안내문에서 인쇄 버튼을 누르기도 전에 카카오 지도를 매물 수만큼 미리 만들어두면
-				// 이번에 고친 성능 문제(REST 워터폴 등)와 같은 종류의 낭비가 된다.
+				/*
+				 * 실제 카카오 지도는 인쇄에서 쓰지 않는다 — 인쇄(특히 미리보기) 스냅샷이 찍히는 시점과
+				 * 지도 타일이 비동기로 다 불러와지는 시점이 서로 경합해(beforeprint에서 relayout()을
+				 * 걸어도 타일 자체는 그 뒤에 네트워크로 도착) 실사용 테스트에서 지도가 안 보이는 문제가
+				 * 확인됐다. 순번-주소 텍스트 목록(.hlf-map-print-fallback, public.css에서는 항상
+				 * display:none이지만 print.css가 인쇄에서만 보이게 뒤집는다)만으로 "어디에 있는지"는
+				 * 충분히 전달되고, 이 목록은 순수 텍스트라 로딩 경합이 생길 수 없다.
+				 */
 				?>
-				<div
-					class="hlf-comparison-map hlf-detail-map"
-					data-hlf-kakao-key="<?php echo esc_attr( $kakao_js_key ); ?>"
-					data-hlf-map-items="<?php echo esc_attr( wp_json_encode( $print_map_items ) ); ?>"
-					data-hlf-lazy-map="1"
-				>
-					<p class="hlf-map-empty">지도를 불러오는 중입니다…</p>
-				</div>
 				<div class="hlf-map-print-fallback">
 					<div class="hlf-map-print-fallback-item">
 						<span class="hlf-item-badge hlf-map-print-fallback-index" style="--hlf-item-accent:<?php echo esc_attr( hlf_item_accent_color( $i ) ); ?>"><?php echo esc_html( sprintf( '%02d', $i + 1 ) ); ?></span>

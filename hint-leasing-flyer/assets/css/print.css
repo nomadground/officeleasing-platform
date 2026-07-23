@@ -1,8 +1,13 @@
 /*
  * HLF 인쇄 스타일 (Phase 1 골격). 요청서 2: @page는 단순하게 유지하고, 실제 인쇄 레이아웃/밀도
  * 클래스(.hlf-print-count-1-5/6-8/9-10)와 .print-page-one/.print-page-two wrapper는 Phase 5에서.
+ *
+ * 모바일 인쇄 요청서: size 키워드(A4 landscape)는 데스크톱 브라우저는 잘 따르지만, 모바일(특히
+ * iOS Safari의 AirPrint 시트)에서는 이 키워드를 무시하고 기기 기본값(세로)으로 인쇄되는 경우가
+ * 실제로 있다 — width height를 가로:세로 순서로 직접 명시하면(297mm 210mm, 폭이 높이보다 큼) 모바일
+ * 인쇄 파이프라인이 더 안정적으로 가로를 인식한다.
  */
-@page { size: A4 landscape; margin: 8mm; }
+@page { size: 297mm 210mm; margin: 8mm; }
 
 @media print {
 	body.hlf-public { background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -46,11 +51,14 @@
 	/* NOC 차트는 리스트 인쇄물에서도 매물 비교라는 핵심 목적을 그대로 유지해야 한다 — 화면과
 	   동일하게(가로 스크롤 없이 한 페이지 폭 안에서) 출력한다. */
 	.hlf-noc-chart { overflow-x: visible; flex-wrap: wrap; justify-content: center; }
-	/* 실제 카카오 지도를 인쇄에도 그대로 보여준다 — 화면 레이아웃 기준으로 만들어진 지도 캔버스가
-	   인쇄 시점의(전혀 다른 폭/높이) 레이아웃에 맞게 다시 그려지도록 public-flyer.js가
-	   beforeprint/afterprint에서 각 지도에 relayout()+중심 재설정을 걸어준다. 순번-주소 텍스트
-	   목록(.hlf-map-print-fallback)은 이제 인쇄에서 강제로 띄우지 않는다(기본값 그대로 숨김
-	   유지 — public.css 참고). */
+	/* 실사용 테스트 결과: 실제 카카오 지도를 인쇄에서 그대로 보여주는 이전 방식은 인쇄(특히 미리보기)
+	   스냅샷이 찍히는 시점과 지도 타일이 비동기로 도착하는 시점이 경합해 지도가 안 보이는 문제가
+	   있었다 — beforeprint에서 relayout()을 걸어도 그건 지도 캔버스 "크기"만 새로 맞출 뿐, 그 크기에
+	   맞는 타일 자체는 그 뒤에 네트워크로 도착하는 별개의 비동기 과정이라 print() 호출 시점까지
+	   완료를 보장할 수 없다. 그래서 인쇄에서는 실제 지도 대신 로딩 경합이 있을 수 없는 순번-주소
+	   텍스트 목록(.hlf-map-print-fallback, public.css 기본값은 항상 숨김)을 보여주도록 되돌린다. */
+	.hlf-comparison-map { display: none !important; }
+	.hlf-map-print-fallback { display: flex !important; flex-direction: column; gap: 2px; margin-top: 4px; }
 	/* 고객에게 건네는 소개서 느낌을 위한 최소한의 레터헤드 여백 — 브랜드/주소는 이미 인쇄에서 그대로
 	   보인다(위에서 숨기는 건 화면 전용 버튼/배지뿐). */
 	.hlf-header { margin-bottom: 3px; }
@@ -83,14 +91,6 @@
 	   카드)의 여백도 .hlf-panel과 같은 수준으로 줄여야 어느 한쪽 콘텐츠가 더 커져서 행 전체 높이를
 	   밀어올리지 않는다. */
 	.hlf-gallery, .hlf-comparison-map-panel, .hlf-detail-map-panel { padding: 5px 10px 4px; }
-	/* 지도 로딩 실패/키 미설정 안내문(.hlf-map-empty)은 화면에서는 여유 있는 260px 최소 높이를
-	   쓰지만, 인쇄에서는 그 실패 상태 하나 때문에 갤러리 카드보다 지도 패널이 커져서 행 전체가
-	   밀려 올라가면 안 된다 — 인쇄에서는 이 최소 높이를 없애고 grid stretch로 갤러리 카드 높이에
-	   맞춰지게 둔다(성공 상태의 실제 지도는 원래 자체 최소 높이가 없다). */
-	.hlf-map-empty { min-height: 0; }
-	/* 리스트 인쇄물의 비교 지도는 화면과 달리 그 자체 min-height(360px)만으로 2페이지 예산을 넘긴다
-	   — 인쇄 밀도에 맞게 줄인다(실제 지도는 이 값과 무관하게 남은 칸을 그대로 채운다). */
-	.hlf-comparison-map { min-height: 280px; }
 	.hlf-comparison-map-heading { margin-bottom: 4px; }
 	.hlf-panel-heading, .hlf-comparison-map-heading h2 { margin-bottom: 4px; font-size: 12px; }
 	.hlf-panel-heading-row { margin-bottom: 4px; }

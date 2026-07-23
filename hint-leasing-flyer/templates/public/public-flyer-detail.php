@@ -105,6 +105,16 @@ $basic['주차']       = array( 'value' => $item['parking_available'] ? ( $item[
 	<?php if ( $kakao_js_key && ! empty( $map_items ) ) : ?>
 		<?php // 카카오 지도 SDK 도메인에 미리 연결(DNS/TLS handshake)해 지도 스크립트가 실제 필요할 때 더 빨리 붙게 한다. ?>
 		<link rel="preconnect" href="https://dapi.kakao.com">
+		<?php
+		/*
+		 * 요청서(item 3, 페이지 이동 속도): preconnect만으로는 브라우저가 이 스크립트의 존재를
+		 * DOMContentLoaded 이후 JS 실행 시점(loadKakaoMapSdk, assets/js/public-flyer.js)에야 알게
+		 * 된다 — preload를 추가하면 HTML 파싱 중 preload scanner가 곧바로 미리 받아오기 시작한다.
+		 * href는 loadKakaoMapSdk가 실제로 넣는 <script src>와 정확히 같은 URL이어야 브라우저가 같은
+		 * 요청으로 인식해 캐시를 재사용한다(다르면 두 번 받아옴).
+		 */
+		?>
+		<link rel="preload" as="script" href="<?php echo esc_url( 'https://dapi.kakao.com/v2/maps/sdk.js?appkey=' . rawurlencode( $kakao_js_key ) . '&autoload=false' ); ?>">
 	<?php endif; ?>
 	<link rel="stylesheet" href="<?php echo esc_url( HLF_URL . 'assets/css/public.css?v=' . HLF_VERSION ); ?>">
 	<link rel="stylesheet" href="<?php echo esc_url( HLF_URL . 'assets/css/print.css?v=' . HLF_VERSION ); ?>" media="print">
@@ -144,7 +154,7 @@ $basic['주차']       = array( 'value' => $item['parking_available'] ? ( $item[
 				<section class="hlf-gallery" data-hlf-photos="<?php echo esc_attr( wp_json_encode( $photo_urls ) ); ?>">
 					<div class="hlf-gallery-main">
 						<button type="button" class="hlf-photo-open" data-hlf-lightbox-open data-hlf-lightbox-index="0" aria-label="사진 크게 보기">
-							<?php echo wp_get_attachment_image( $photo_ids[0], 'hlf-item-photo', false, array( 'alt' => esc_attr( $address ), 'loading' => 'eager' ) ); ?>
+							<?php echo wp_get_attachment_image( $photo_ids[0], 'hlf-item-photo', false, array( 'alt' => esc_attr( $address ), 'loading' => 'eager', 'fetchpriority' => 'high' ) ); ?>
 						</button>
 						<span class="hlf-gallery-watermark" aria-hidden="true">HINT</span>
 					</div>
