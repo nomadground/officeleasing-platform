@@ -116,11 +116,16 @@ $basic['주차']       = array( 'value' => $item['parking_available'] ? ( $item[
 			<span class="hlf-item-badge hlf-detail-badge" style="--hlf-item-accent:<?php echo esc_attr( hlf_item_accent_color( $item_order ) ); ?>"><?php echo esc_html( sprintf( '%02d', $item_order + 1 ) ); ?></span>
 			<span class="hlf-header-address">
 				<span class="hlf-header-address-main"><?php echo esc_html( $address ); ?></span>
-				<?php if ( $address_parts['sub'] ) : ?>
-					<span class="hlf-header-address-sub"><?php echo esc_html( $address_parts['sub'] ); ?></span>
-				<?php endif; ?>
-				<?php if ( $item['building_name'] ) : ?>
-					<span class="hlf-building-name"><?php echo esc_html( $item['building_name'] ); ?></span>
+				<?php if ( $address_parts['sub'] || $item['building_name'] ) : ?>
+					<span class="hlf-header-address-subrow">
+						<?php if ( $address_parts['sub'] ) : ?>
+							<span class="hlf-header-address-sub"><?php echo esc_html( $address_parts['sub'] ); ?></span>
+						<?php endif; ?>
+						<?php if ( $item['building_name'] ) : ?>
+							<?php if ( $address_parts['sub'] ) : ?><span class="hlf-building-name-sep">·</span><?php endif; ?>
+							<span class="hlf-building-name"><?php echo esc_html( $item['building_name'] ); ?></span>
+						<?php endif; ?>
+					</span>
 				<?php endif; ?>
 			</span>
 			<span class="hlf-header-actions">
@@ -235,6 +240,10 @@ $basic['주차']       = array( 'value' => $item['parking_available'] ? ( $item[
 			</dl>
 		</section>
 
+		<div class="hlf-detail-list-return">
+			<a class="hlf-detail-list-return-link" href="<?php echo esc_url( $flyer['url'] ); ?>">← 목록</a>
+		</div>
+
 		<?php
 		// 문의처 우선순위: 이 매물의 개별 담당자(override, item_fields의 contact_name/contact_phone)
 		// → Flyer 기본 담당자(flyer_fields) → 대표번호. HLF_Flyer_Repository::public_contact()가
@@ -243,7 +252,7 @@ $basic['주차']       = array( 'value' => $item['parking_available'] ? ( $item[
 		?>
 		<footer class="hlf-footer">
 			<div class="hlf-footer-row">
-				<p class="hlf-footer-copyright">© HINT Co., Ltd. All Rights Reserved. 무단 복제 및 재배포 금지</p>
+				<p class="hlf-footer-copyright"><a class="hlf-footer-admin-link" href="<?php echo esc_url( wp_logout_url( wp_login_url() ) ); ?>">© HINT</a> Co., Ltd. All Rights Reserved. 무단 복제 및 재배포 금지</p>
 				<span class="hlf-footer-contact">
 					<?php if ( $contact['name'] ) : ?>
 						<?php echo esc_html( $contact['name'] ); ?> ·
@@ -257,6 +266,7 @@ $basic['주차']       = array( 'value' => $item['parking_available'] ? ( $item[
 	<div class="hlf-lightbox" id="hlf-lightbox" hidden>
 		<div class="hlf-lightbox-content">
 			<img class="hlf-lightbox-image" id="hlf-lightbox-image" src="" alt="">
+			<span class="hlf-gallery-watermark hlf-gallery-watermark--lightbox" aria-hidden="true">HINT</span>
 			<button type="button" class="hlf-lightbox-button hlf-lightbox-close" data-hlf-lightbox-close aria-label="닫기">✕</button>
 			<?php if ( count( $photo_ids ) > 1 ) : ?>
 				<button type="button" class="hlf-lightbox-button hlf-lightbox-prev" data-hlf-lightbox-prev aria-label="이전 사진">‹</button>

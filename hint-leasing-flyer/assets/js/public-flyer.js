@@ -67,11 +67,13 @@
 
 	/* ---------------- NOC 비교 차트 ---------------- */
 
-	// MVP 기준본(renderNocChart)과 동일한 적응형 스케일 알고리즘 — 현재 매물 범위(최댓값-최솟값)의
-	// 1.15배를 표시 범위로 잡아 막대 높이 차이가 지나치게 크거나(한 매물만 삐죽) 작게(다 비슷해
-	// 보임) 뭉개지지 않게 한다. 최소 표시 범위는 1(전부 같은 값이어도 막대가 납작해지지 않도록).
-	function barHeightPercent( value, chartMin, chartMax ) {
-		var ratio = Math.min( 1, Math.max( 0, ( value - chartMin ) / ( chartMax - chartMin ) ) );
+	// 0을 기준선으로 실제 값에 비례해 막대 높이를 계산한다(요청서: "실제 금액 차이에 비해 막대
+	// 차이가 너무 크게 나온다"). 이전에는 매물들의 최댓값-최솟값 범위만 확대해서 보여줬는데(예:
+	// NOC가 50/48/45로 10%밖에 안 차이나도 그 좁은 범위를 전체 막대 높이로 확대하면 82%/13%처럼
+	// 실제보다 훨씬 크게 벌어져 보였다) — 0부터 시작하는 절대값 비례라야 막대 높이 차이가 실제
+	// 값 차이(%)와 맞아떨어진다.
+	function barHeightPercent( value, chartMax ) {
+		var ratio = chartMax > 0 ? Math.min( 1, Math.max( 0, value / chartMax ) ) : 0;
 		// 최댓값도 100%가 아니라 88%까지만 채운다 — 호버 시 scale(1.15)로 커져도 위 숫자 표시줄과
 		// 겹치지 않을 여유 공간을 항상 남겨둔다.
 		return Math.round( ( 0.08 + ratio * 0.80 ) * 100 );
@@ -99,18 +101,13 @@
 		if ( ! items.length ) { return; }
 
 		var values = items.map( function ( it ) { return Number( it.noc ); } );
-		var dataMin = Math.min.apply( null, values );
 		var dataMax = Math.max.apply( null, values );
-		// 막대 높이 차이를 좀 더 수치에 맞게 드러내기 위해, 값 범위 위아래 여백을 좁힌다
-		// (기존 1.5배 → 1.15배: 막대 높이가 실제 NOC 격차에 더 비례해 보인다).
-		var displayRange = Math.max( ( dataMax - dataMin ) * 1.15, 1 );
-		var center = ( dataMin + dataMax ) / 2;
-		var chartMin = Math.max( 0, center - displayRange / 2 );
-		var chartMax = Math.max( chartMin + 1, center + displayRange / 2 );
+		// 최댓값 막대도 100%가 아니라 여유가 남게, 살짝만(10%) 위로 띄운 값을 기준선으로 쓴다.
+		var chartMax = Math.max( dataMax * 1.1, 1 );
 
 		el.innerHTML = items.map( function ( it ) {
 			var noc = Number( it.noc );
-			var height = barHeightPercent( noc, chartMin, chartMax );
+			var height = barHeightPercent( noc, chartMax );
 			var addr = splitAddressLabel( it.address );
 			var labelText = addr.line1 + ( addr.line2 ? ' ' + addr.line2 : '' );
 			var title = it.address + ' NOC ' + noc.toFixed( 1 ) + '만원';

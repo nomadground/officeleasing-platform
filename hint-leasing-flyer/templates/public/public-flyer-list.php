@@ -109,11 +109,16 @@ $kakao_js_key = defined( 'HLF_KAKAO_JS_KEY' ) ? HLF_KAKAO_JS_KEY : '';
 									<span class="hlf-item-badge hlf-listing-index" style="--hlf-item-accent:<?php echo esc_attr( hlf_item_accent_color( $i ) ); ?>"><?php echo esc_html( sprintf( '%02d', $i + 1 ) ); ?></span>
 									<span class="hlf-listing-address-block">
 										<span class="hlf-listing-address"><span class="hlf-address-highlight"><?php echo esc_html( $address ); ?></span></span>
-										<?php if ( $sub_address ) : ?>
-											<span class="hlf-listing-subaddress"><?php echo esc_html( $sub_address ); ?></span>
-										<?php endif; ?>
-										<?php if ( $item['building_name'] ) : ?>
-											<span class="hlf-building-name"><?php echo esc_html( $item['building_name'] ); ?></span>
+										<?php if ( $sub_address || $item['building_name'] ) : ?>
+											<span class="hlf-listing-subaddress-row">
+												<?php if ( $sub_address ) : ?>
+													<span class="hlf-listing-subaddress"><?php echo esc_html( $sub_address ); ?></span>
+												<?php endif; ?>
+												<?php if ( $item['building_name'] ) : ?>
+													<?php if ( $sub_address ) : ?><span class="hlf-building-name-sep">·</span><?php endif; ?>
+													<span class="hlf-building-name"><?php echo esc_html( $item['building_name'] ); ?></span>
+												<?php endif; ?>
+											</span>
 										<?php endif; ?>
 									</span>
 								</span>
@@ -229,7 +234,7 @@ $kakao_js_key = defined( 'HLF_KAKAO_JS_KEY' ) ? HLF_KAKAO_JS_KEY : '';
 		<?php $contact = HLF_Flyer_Repository::public_contact( $flyer ); ?>
 		<footer class="hlf-footer">
 			<div class="hlf-footer-row">
-				<p class="hlf-footer-copyright">© HINT Co., Ltd. All Rights Reserved. 무단 복제 및 재배포 금지</p>
+				<p class="hlf-footer-copyright"><a class="hlf-footer-admin-link" href="<?php echo esc_url( wp_logout_url( wp_login_url() ) ); ?>">© HINT</a> Co., Ltd. All Rights Reserved. 무단 복제 및 재배포 금지</p>
 				<span class="hlf-footer-contact">
 					<?php if ( $contact['name'] ) : ?>
 						<?php echo esc_html( $contact['name'] ); ?> ·

@@ -419,7 +419,20 @@
 					'</div>' +
 				'</form>' +
 			'</div>' +
-			( editing ? '<section class="hlf-card" id="hlf-src-images"></section>'
+			( editing ?
+				'<section class="hlf-card" id="hlf-src-images"></section>' +
+				// 요청서: 저장 직후 이미지 섹션 옆에 임대안내문 포함 선택창도 함께 둔다 — 예전에는
+				// 저장 후 "전체 매물" 목록으로 나갔다가 다시 "임대안내문" 탭에 들어가 "포함 매물
+				// 관리"에서 체크해야 했다.
+				'<section class="hlf-card" id="hlf-src-flyer-include">' +
+					'<h4>임대안내문에 포함</h4>' +
+					'<p class="hlf-admin-note">이 매물을 바로 특정 임대안내문에 포함시킬 수 있습니다(나중에 "임대안내문" 탭에서도 언제든 추가·제외할 수 있습니다).</p>' +
+					'<div class="hlf-src-flyer-include-row">' +
+						'<select id="hlf-src-flyer-select"><option value="">임대안내문 선택</option></select> ' +
+						'<button type="button" class="button" id="hlf-src-flyer-add">추가</button>' +
+					'</div>' +
+					'<p class="hlf-admin-note" id="hlf-src-flyer-include-status"></p>' +
+				'</section>'
 				: '<p class="hlf-admin-note hlf-image-pending">매물 사진은 저장한 뒤 추가할 수 있습니다 — 먼저 위 내용을 저장해 주세요.</p>' ) +
 			// 원본 매물(officeleasing) 가져오기는 "새 매물 등록"에서만 제공한다 — 수정 화면은 이미
 			// 특정 매물 하나를 편집 중이라 다른 원본으로 통째로 갈아끼우는 개념이 성립하지 않는다.
@@ -431,8 +444,29 @@
 		bindAddressSearch( form );
 		bindContactPicker( form );
 		bindSourceFormSubmit( form, src );
-		if ( editing ) { renderSourceImages( src ); }
+		if ( editing ) { renderSourceImages( src ); bindSourceFlyerInclude( src ); }
 		else { bindImportToggle(); if ( importState.open ) { bindImportResults(); } }
+	}
+
+	// 요청서: 매물 저장 직후 화면에서 바로 임대안내문에 포함시킬 수 있는 선택창.
+	function bindSourceFlyerInclude( src ) {
+		var select = document.getElementById( 'hlf-src-flyer-select' );
+		var addBtn = document.getElementById( 'hlf-src-flyer-add' );
+		var statusEl = document.getElementById( 'hlf-src-flyer-include-status' );
+		if ( ! select || ! addBtn ) { return; }
+		loadFlyers( function ( flyers ) {
+			select.innerHTML = '<option value="">임대안내문 선택</option>' + flyers.map( function ( f ) {
+				return '<option value="' + f.id + '">' + escAttr( f.title || '(제목 없음)' ) + ' / ' + escAttr( f.flyer_number ) + '</option>';
+			} ).join( '' );
+		} );
+		addBtn.addEventListener( 'click', function () {
+			var flyerId = select.value;
+			if ( ! flyerId ) { statusEl.textContent = '임대안내문을 먼저 선택하세요.'; return; }
+			addBtn.disabled = true;
+			api( 'flyers/' + flyerId + '/source-listings/' + src.id, { method: 'PUT' } )
+				.then( function () { statusEl.textContent = '포함했습니다.'; addBtn.disabled = false; } )
+				.catch( function ( err ) { statusEl.textContent = '추가하지 못했습니다: ' + err.message; addBtn.disabled = false; } );
+		} );
 	}
 
 	/* ---------- 원본 매물(officeleasing) 가져오기 — "새 매물 등록"에서만 ---------- */

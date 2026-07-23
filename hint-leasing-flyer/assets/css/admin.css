@@ -91,6 +91,8 @@
 .hlf-admin .hlf-address-block h4 { margin: 0 0 8px; }
 .hlf-admin .hlf-address-search-row { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
 .hlf-admin .hlf-address-search-row .hlf-admin-note { margin: 0; }
+/* 요청서: 매물 저장 직후 임대안내문 포함 선택창. */
+.hlf-admin .hlf-src-flyer-include-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
 .hlf-admin .hlf-ocr-section h4 { margin: 0 0 8px; }
 .hlf-admin .hlf-ocr-preview { display: block; max-width: 100%; max-height: 220px; margin: 8px 0; object-fit: contain; background: #f0f0f1; border-radius: 4px; }
 .hlf-admin .hlf-ocr-preview[hidden] { display: none; }

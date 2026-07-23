@@ -78,11 +78,16 @@ $print_contact = HLF_Flyer_Repository::public_contact( $flyer, $item );
 		<span class="hlf-item-badge hlf-detail-badge" style="--hlf-item-accent:<?php echo esc_attr( hlf_item_accent_color( $i ) ); ?>"><?php echo esc_html( sprintf( '%02d', $i + 1 ) ); ?></span>
 		<span class="hlf-header-address">
 			<span class="hlf-header-address-main"><?php echo esc_html( $print_address ); ?></span>
-			<?php if ( $print_address_parts['sub'] ) : ?>
-				<span class="hlf-header-address-sub"><?php echo esc_html( $print_address_parts['sub'] ); ?></span>
-			<?php endif; ?>
-			<?php if ( $item['building_name'] ) : ?>
-				<span class="hlf-building-name"><?php echo esc_html( $item['building_name'] ); ?></span>
+			<?php if ( $print_address_parts['sub'] || $item['building_name'] ) : ?>
+				<span class="hlf-header-address-subrow">
+					<?php if ( $print_address_parts['sub'] ) : ?>
+						<span class="hlf-header-address-sub"><?php echo esc_html( $print_address_parts['sub'] ); ?></span>
+					<?php endif; ?>
+					<?php if ( $item['building_name'] ) : ?>
+						<?php if ( $print_address_parts['sub'] ) : ?><span class="hlf-building-name-sep">·</span><?php endif; ?>
+						<span class="hlf-building-name"><?php echo esc_html( $item['building_name'] ); ?></span>
+					<?php endif; ?>
+				</span>
 			<?php endif; ?>
 		</span>
 	</div>
@@ -177,7 +182,7 @@ $print_contact = HLF_Flyer_Repository::public_contact( $flyer, $item );
 
 	<footer class="hlf-footer">
 		<div class="hlf-footer-row">
-			<p class="hlf-footer-copyright">© HINT Co., Ltd. All Rights Reserved. 무단 복제 및 재배포 금지</p>
+			<p class="hlf-footer-copyright"><a class="hlf-footer-admin-link" href="<?php echo esc_url( wp_logout_url( wp_login_url() ) ); ?>">© HINT</a> Co., Ltd. All Rights Reserved. 무단 복제 및 재배포 금지</p>
 			<span class="hlf-footer-contact">
 				<?php if ( $print_contact['name'] ) : ?>
 					<?php echo esc_html( $print_contact['name'] ); ?> ·

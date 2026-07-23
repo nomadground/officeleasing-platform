@@ -184,13 +184,33 @@
 		return { floor_current: ( pair && pair[ 1 ] ) || '', floor_total: ( pair && pair[ 2 ] ) || '' };
 	}
 
-	function ocrParseAreas( text ) {
+	// 네이버부동산 캡처는 "계약/전용면적"처럼 두 면적이 라벨까지 한 줄에 합쳐 나오는 경우가 있다(실제
+	// 캡처로 확인: "계약/전용면적        337.2m¥247 9m (HEET74%)" — OCR이 ㎡/구분자(/)/소수점(.)을
+	// 통째로 흘려서 "X㎡/Y㎡" 정식 패턴에도, "계약면적"/"임대면적" 개별 라벨(이 줄은 "계약/전용면적"이라
+	// 그 라벨들의 부분 문자열이 아님)에도 안 걸린다. 라벨이 있는 줄에서 숫자 토큰 앞의 두 개를
+	// 순서대로(계약→전용) 쓰는 최후 수단 — 반드시 정규화 전 원문(rawText)에 대해 실행해야 한다.
+	// ocrNormalizeText()의 "(\d)\s+(?=\d)" 규칙이 "247 9"(소수점이 공백으로 깨진 값)를 "2479"로
+	// 뭉개버려서 소수점 복구가 불가능해지기 때문이다(반대로 원문은 아직 그 규칙을 안 거쳐 공백이
+	// 남아있다).
+	function ocrParseCombinedAreaLine( rawText ) {
+		var line = ocrLabeledValue( rawText, [ '계약/전용면적', '계약/전용 면적', '공급/전용면적' ] );
+		if ( ! line ) { return null; }
+		var numbers = line.match( /\d+(?:[.\s]\d+)?/g );
+		if ( ! numbers || numbers.length < 2 ) { return null; }
+		return {
+			lease: numbers[ 0 ].replace( /\s+/, '.' ),
+			exclusive: numbers[ 1 ].replace( /\s+/, '.' ),
+		};
+	}
+
+	function ocrParseAreas( text, rawText ) {
 		var pair = text.match( /(\d+(?:\.\d+)?)\s*㎡\s*\/\s*(\d+(?:\.\d+)?)\s*㎡/ );
+		var combined = ocrParseCombinedAreaLine( rawText || text );
 		var contract = ocrLabeledValue( text, [ '계약면적', '임대면적' ] );
 		var exclusive = ocrLabeledValue( text, [ '전용면적' ] );
 		return {
-			lease_area_sqm: ocrNormalizeAreaSqm( ( pair && pair[ 1 ] ) || contract ),
-			exclusive_area_sqm: ocrNormalizeAreaSqm( ( pair && pair[ 2 ] ) || exclusive ),
+			lease_area_sqm: ocrNormalizeAreaSqm( ( pair && pair[ 1 ] ) || ( combined && combined.lease ) || contract ),
+			exclusive_area_sqm: ocrNormalizeAreaSqm( ( pair && pair[ 2 ] ) || ( combined && combined.exclusive ) || exclusive ),
 		};
 	}
 
@@ -259,7 +279,9 @@
 			direction: ocrExtractDirection( ocrLabeledValue( text, [ '방향' ] ) ),
 			available_date_text: ocrExtractAvailableDate( ocrLabeledValue( text, [ '입주가능일', '주가능일' ] ) ),
 			total_parking: ocrLabeledValue( text, [ '총주차대수', '주차대수' ] ),
-			approval_date: ocrLabeledValue( text, [ '사용승인일' ] ),
+			// 준공인가일: 실제 캡처로 확인된 경우 이 라벨로 나온다(같은 의미로 쓰는 출처가 있음) — "사용승인일"
+			// 라벨만 찾으면 이 표기가 통째로 안 잡혀서 필드가 비어 있었다.
+			approval_date: ocrLabeledValue( text, [ '사용승인일', '준공인가일' ] ),
 			building_use: ocrExtractBuildingUse( ocrLabeledValue( text, [ '건축물 용도', '건축물용도' ] ) ),
 		};
 	}
@@ -275,7 +297,7 @@
 		var values = Object.assign(
 			{ article_no: ocrParseArticleNo( text ) },
 			ocrParseLeaseAmounts( text ),
-			ocrParseAreas( text ),
+			ocrParseAreas( text, rawText ),
 			ocrParseFloor( text ),
 			ocrParsePropertyTable( text )
 		);

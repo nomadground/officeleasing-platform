@@ -44,10 +44,13 @@ body.hlf-public {
 .hlf-header-address { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .hlf-header-address-main { color: #fff; font-weight: 800; font-size: 15px; }
 .hlf-header-address-sub { color: rgba(255, 255, 255, .8); font-size: 12px; }
-/* 건물명(선택 입력, 요청서) — 주소 바로 다음 줄에 작게. 배경색이 다른 두 곳(색반전 헤더/흰 카드)에서
-   각각 어울리는 색으로 오버라이드한다. */
-.hlf-building-name { display: block; font-size: 11px; font-weight: 600; }
-.hlf-header-address .hlf-building-name { color: rgba(255, 255, 255, .75); }
+/* 건물명(선택 입력, 요청서) — 도로명주소 바로 오른쪽에 같은 줄로 붙인다. 배경색이 다른 두 곳(색반전
+   헤더/흰 카드)에서 각각 어울리는 색으로 오버라이드한다. */
+.hlf-header-address-subrow { display: flex; align-items: baseline; gap: 4px; }
+.hlf-building-name { font-size: 11px; font-weight: 600; }
+.hlf-building-name-sep { font-size: 10px; opacity: .6; }
+.hlf-header-address .hlf-building-name,
+.hlf-header-address .hlf-building-name-sep { color: rgba(255, 255, 255, .75); }
 .hlf-flyer-number { color: var(--hlf-muted); font-size: 13px; }
 .hlf-detail-badge { width: 22px; height: 20px; margin-right: 0; font-size: 10px; vertical-align: middle; }
 /* padding으로 탭 영역을 넓혀 모바일에서 오터치 없이 누르기 쉽게 한다(시각적 크기는 거의 그대로). */
@@ -130,7 +133,10 @@ body.hlf-public {
 	-webkit-box-orient: vertical;
 }
 .hlf-listing-subaddress { overflow: hidden; color: var(--hlf-muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
-.hlf-listing-address-block .hlf-building-name { color: var(--hlf-muted); }
+/* 요청서: 건물명은 도로명주소 오른쪽에 같은 줄로. */
+.hlf-listing-subaddress-row { display: flex; align-items: baseline; gap: 4px; min-width: 0; }
+.hlf-listing-address-block .hlf-building-name,
+.hlf-listing-address-block .hlf-building-name-sep { color: var(--hlf-muted); flex: 0 0 auto; }
 /* 지번주소에 노란 형광펜 효과 — 텍스트 전체가 아니라 글자 높이의 아래 절반에만 배경이 걸치는
    "형광펜 밑줄" 느낌(위 절반은 투명, 아래 절반만 노란색). inline 요소라 텍스트 폭에 딱 맞게
    붙는다(box-decoration-break로 줄바꿈되어도 줄마다 각각 칠해지도록). */
@@ -144,9 +150,9 @@ body.hlf-public {
 .hlf-listing-floor, .hlf-listing-lease-area, .hlf-listing-area { padding: 2px 8px; text-align: center; border-left: 1px solid var(--hlf-line); }
 .hlf-listing-floor { border-left: 0; }
 .hlf-listing-floor-value, .hlf-listing-area-value { display: block; margin-top: 1px; color: var(--hlf-ink); font-weight: 800; font-size: 12px; line-height: 1.2; white-space: nowrap; }
-/* 건물명은 데스크톱에서 주소 아래 줄로 이미 보이므로(hlf-listing-address-block .hlf-building-name),
+/* 건물명은 데스크톱에서 도로명주소 옆에 이미 보이므로(hlf-listing-address-block .hlf-building-name),
    층 칸의 이 대체 라벨은 데스크톱에서 숨긴다 — 모바일(700px 이하)에서만 "층"이라는 라벨 대신
-   건물명을 보여준다(요청서: 자리가 좁은 모바일에서 지번 아래 줄을 또 쓰지 않고 이미 있는 "층"
+   건물명을 보여준다(요청서: 자리가 좁은 모바일에서 도로명주소 옆줄을 또 쓰지 않고 이미 있는 "층"
    라벨 자리를 재활용). */
 .hlf-listing-floor .hlf-listing-floor-building { display: none; }
 /* 임대/전용면적: 제곱미터를 먼저(크게), 평수는 평당가처럼 그 아래 작게. */
@@ -191,20 +197,22 @@ body.hlf-public {
    클릭/포커스를 가로채면 안 되므로(사진 확대 버튼이 바로 아래 겹쳐 있음) pointer-events:none. */
 .hlf-gallery-watermark {
 	position: absolute;
-	top: 50%;
+	top: 58%;
 	left: 50%;
 	transform: translate(-50%, -50%);
-	padding: 5px 16px;
+	padding: 8px 22px;
 	color: rgba(53, 92, 115, .55);
-	font-size: 13px;
+	font-size: 15px;
 	font-weight: 800;
 	letter-spacing: .12em;
-	border-radius: 6px;
-	backdrop-filter: blur(6px);
-	-webkit-backdrop-filter: blur(6px);
+	border-radius: 8px;
+	backdrop-filter: blur(8px);
+	-webkit-backdrop-filter: blur(8px);
 	pointer-events: none;
 	user-select: none;
 }
+/* 라이트박스(확대 보기)는 캔버스가 훨씬 커서 같은 크기로는 잘 안 보인다 — 글자/블러 박스를 키운다. */
+.hlf-gallery-watermark--lightbox { padding: 12px 30px; font-size: 20px; border-radius: 10px; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
 .hlf-gallery-main img { display: block; width: 100%; height: 100%; object-fit: cover; transition: opacity .12s ease; }
 .hlf-gallery-thumbs { display: flex; gap: 8px; margin-top: 8px; overflow-x: auto; padding-bottom: 2px; }
 .hlf-gallery-thumbs img { flex: 0 0 auto; width: 84px; height: 60px; object-fit: cover; border-radius: 8px; transition: transform .12s ease; }
@@ -252,6 +260,22 @@ body.hlf-public {
 /* "Leasing Info"/"Property Details" 카드 — NOC 차트/지도 패널과 같은 카드 톤(배경/보더/라운드)을
    재사용해 상세페이지 안의 모든 섹션이 하나의 시각 언어로 보이게 한다. */
 .hlf-panel { margin: 22px 0; padding: 16px 18px 14px; background: var(--hlf-surface); border: 1px solid var(--hlf-line); border-radius: 10px; }
+/* Property Details 아래 목록 버튼(요청서) — 헤더의 "← 목록" 링크와 별개로, 상세 내용을 다 본 뒤
+   다시 스크롤해 올라가지 않고도 목록으로 돌아갈 수 있게 페이지 하단에도 하나 더 둔다. */
+.hlf-detail-list-return { margin: 4px 0 22px; text-align: center; }
+.hlf-detail-list-return-link {
+	display: inline-block;
+	padding: 9px 22px;
+	color: var(--hlf-primary);
+	font-weight: 700;
+	font-size: 13px;
+	text-decoration: none;
+	background: var(--hlf-surface);
+	border: 1px solid var(--hlf-line);
+	border-radius: 999px;
+	transition: background .15s, color .15s;
+}
+.hlf-detail-list-return-link:hover { color: #fff; background: var(--hlf-primary); }
 .hlf-panel-heading { margin: 0 0 10px; color: var(--hlf-primary); font-size: 16px; letter-spacing: -.02em; }
 /* "Leasing Info" 옆에 매물특징(자유 텍스트)을 작은 글씨로 중앙 배치한다. */
 .hlf-panel-heading-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
@@ -298,6 +322,10 @@ body.hlf-public {
 /* 저작권/무단 재배포 금지 고지 — 모든 공개 화면(리스트/상세) 및 인쇄물(같은 템플릿을 print.css
    미디어쿼리로 재사용) 하단에 표시한다. */
 .hlf-footer-copyright { margin: 0; color: var(--hlf-muted); font-size: 11px; line-height: 1.6; }
+/* "© HINT"는 관리자 로그인 페이지로 가는 히든 버튼이다(요청서) — 평문과 구분되지 않도록 색/밑줄을
+   그대로 상속만 하고, 클릭 시 wp_logout_url()로 기존 로그인 세션을 먼저 정리해 항상 새로 로그인하게
+   한다(HLF_Routes/템플릿 쪽 PHP에서 wp_logout_url( wp_login_url() )로 생성). */
+.hlf-footer-admin-link { color: inherit; text-decoration: none; }
 
 /* NOC(환산임대료) 비교 차트 — 서버가 계산한 값(hlf_calculate_item_metrics)을 그대로 막대로만
    그린다(계산 로직 재구현 없음, assets/js/public-flyer.js 참고). */
@@ -393,9 +421,10 @@ body.hlf-public {
 	.hlf-listing-main .hlf-listing-address-block { gap: 0; }
 	.hlf-listing-address { font-size: 12px; line-height: 1.25; }
 	.hlf-listing-subaddress { line-height: 1.2; }
-	/* 요청서: 모바일은 자리가 좁아 지번 아래 건물명 줄을 또 두지 않고, 층 칸의 "층" 라벨을 건물명으로
+	/* 요청서: 모바일은 자리가 좁아 도로명주소 옆 건물명을 또 두지 않고, 층 칸의 "층" 라벨을 건물명으로
 	   대체한다. */
-	.hlf-listing-address-block .hlf-building-name { display: none; }
+	.hlf-listing-address-block .hlf-building-name,
+	.hlf-listing-address-block .hlf-building-name-sep { display: none; }
 	.hlf-listing-floor .hlf-listing-floor-building { display: block; }
 	.hlf-listing-floor .hlf-lease-metric-label--has-building { display: none; }
 	/* 층/임대면적/전용면적은 위 4열 grid에 각각 한 칸씩 직접 합류한다(아래 보증금 등과 열이 맞도록)
