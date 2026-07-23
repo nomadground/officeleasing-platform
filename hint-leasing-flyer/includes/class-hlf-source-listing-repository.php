@@ -25,7 +25,7 @@ final class HLF_Source_Listing_Repository {
 	 * 테이블은 썸네일을 표시하지 않으므로 list()에서 false로 넘겨, 원본마다 사진 개수만큼 반복되는
 	 * wp_get_attachment_image_url() 조회를 통째로 건너뛴다(Item to_array의 image_previews 최적화와 동일).
 	 */
-	public static function to_array( WP_Post $source, ?int $included_count = null, bool $include_previews = true ): array {
+	public static function to_array( WP_Post $source, ?int $included_count = null, bool $include_previews = true, ?array $linked_items = null ): array {
 		$data                        = HLF_Meta_Schema::read_source( $source->ID );
 		$data['title']               = get_the_title( $source );
 		$data['metrics']             = hlf_calculate_item_metrics( $data );
@@ -33,6 +33,8 @@ final class HLF_Source_Listing_Repository {
 			$data['image_previews'] = self::image_previews( $data );
 		}
 		$data['included_flyer_count'] = null === $included_count ? self::included_flyer_count( $source->ID ) : $included_count;
+		// "링크 복사" 버튼(전체 매물 목록)용 — 이 원본이 포함된 각 Flyer의 개별 매물 공개 URL.
+		$data['linked_items'] = null === $linked_items ? self::linked_items_for_source( $source->ID ) : $linked_items;
 		return $data;
 	}
 
@@ -73,6 +75,7 @@ final class HLF_Source_Listing_Repository {
 		$page     = max( 1, (int) ( $args['page'] ?? 1 ) );
 		$search   = trim( (string) ( $args['search'] ?? '' ) );
 		$linked   = (string) ( $args['linked'] ?? '' );
+		$contact  = trim( (string) ( $args['contact'] ?? '' ) );
 
 		$query_args = array(
 			'post_type'      => HLF_Post_Types::SOURCE,
@@ -86,13 +89,22 @@ final class HLF_Source_Listing_Repository {
 		// 주소는 title(등록 시 도로명/지번주소로 세팅)에도, lot_address/road_address 메타에도 있으므로
 		// 세 곳 중 하나라도 매칭되게 한다. WP는 's'(제목/본문)와 meta_query를 AND로 묶으므로 여기서는
 		// 메타 LIKE OR만 쓰고 제목은 등록 시 주소로 세팅되는 특성에 의존한다(둘 다 주소라 실질 동일).
+		// 담당자(contact) 필터는 검색어와 별개 조건이라 AND로 묶는다 — 검색어의 OR 그룹을 top-level에
+		// 바로 두면 담당자 조건까지 OR로 풀려버리므로 반드시 하위 그룹으로 감싼다.
+		$meta_query = array();
 		if ( '' !== $search ) {
-			$query_args['meta_query'] = array(
+			$meta_query[] = array(
 				'relation' => 'OR',
 				array( 'key' => 'lot_address', 'value' => $search, 'compare' => 'LIKE' ),
 				array( 'key' => 'road_address', 'value' => $search, 'compare' => 'LIKE' ),
 				array( 'key' => 'features', 'value' => $search, 'compare' => 'LIKE' ),
 			);
+		}
+		if ( '' !== $contact ) {
+			$meta_query[] = array( 'key' => 'contact_name', 'value' => $contact, 'compare' => '=' );
+		}
+		if ( $meta_query ) {
+			$query_args['meta_query'] = count( $meta_query ) > 1 ? array_merge( array( 'relation' => 'AND' ), $meta_query ) : $meta_query;
 		}
 
 		// "연결"은 Item 쪽 메타(source_link_map)로만 알 수 있어 source 자체의 meta_query로는 표현할 수
@@ -111,9 +123,10 @@ final class HLF_Source_Listing_Repository {
 		$query = new WP_Query( $query_args );
 		$items = array_map(
 			static function ( $post ) use ( $link_map ) {
-				$count = isset( $link_map[ $post->ID ] ) ? count( $link_map[ $post->ID ] ) : 0;
-				// 목록 테이블은 썸네일을 그리지 않으므로 image_previews 계산은 건너뛴다(false).
-				return self::to_array( $post, $count, false );
+				$flyer_item_map = $link_map[ $post->ID ] ?? array();
+				// 목록 테이블은 썸네일을 그리지 않으므로 image_previews 계산은 건너뛴다(false). linked_items는
+				// 이미 배치로 구한 $link_map에서 바로 만들어("링크 복사" 버튼용) 원본마다 추가 쿼리가 없다.
+				return self::to_array( $post, count( $flyer_item_map ), false, self::linked_item_urls( $flyer_item_map ) );
 			},
 			$query->posts
 		);
@@ -281,11 +294,33 @@ final class HLF_Source_Listing_Repository {
 	}
 
 	/**
-	 * 모든 Item을 한 번 훑어 source_listing_id → {포함한 Flyer ID 집합} 맵을 만든다. 목록 화면에서
-	 * 원본마다 카운트 쿼리를 따로 날리는 N+1을 피하기 위한 배치 계산이다. get_posts가 postmeta
-	 * 캐시를 프라이밍하므로 아래 get_post_meta는 추가 쿼리가 아니라 캐시 조회다.
+	 * 단건 조회용 linked_item_urls() — included_flyer_count()와 같은 원리로, 이 원본을 출처로 갖는
+	 * Item만 뽑아 {flyer_id => item_number} 맵을 만든 뒤 URL을 붙인다("링크복사" 버튼용).
+	 */
+	public static function linked_items_for_source( int $source_id ): array {
+		$items = get_posts( array(
+			'post_type'      => HLF_Post_Types::ITEM,
+			'post_status'    => array( 'publish', 'inherit', 'draft' ),
+			'posts_per_page' => -1,
+			'no_found_rows'  => true,
+			'meta_key'       => 'source_listing_id',
+			'meta_value'     => $source_id,
+		) );
+		$flyer_item_map = array();
+		foreach ( $items as $item ) {
+			$flyer_item_map[ (int) $item->post_parent ] = (string) get_post_meta( $item->ID, 'item_number', true );
+		}
+		return self::linked_item_urls( $flyer_item_map );
+	}
+
+	/**
+	 * 모든 Item을 한 번 훑어 source_listing_id → {flyer_id => item_number} 맵을 만든다. 목록 화면에서
+	 * 원본마다 카운트/링크 쿼리를 따로 날리는 N+1을 피하기 위한 배치 계산이다. get_posts가 postmeta
+	 * 캐시를 프라이밍하므로 아래 get_post_meta는 추가 쿼리가 아니라 캐시 조회다. 값은 단순 bool이
+	 * 아니라 item_number까지 담아, 목록의 "링크복사" 버튼이 원본마다 다시 쿼리하지 않고 이 맵만으로
+	 * 공개 URL(HLF_Routes::item_url)을 만들 수 있게 한다.
 	 *
-	 * @return array<int, array<int,bool>> source_id => (flyer_id => true) 집합.
+	 * @return array<int, array<int,string>> source_id => (flyer_id => item_number) 집합.
 	 */
 	private static function source_link_map(): array {
 		$items = get_posts( array(
@@ -308,9 +343,32 @@ final class HLF_Source_Listing_Repository {
 			if ( ! isset( $map[ $sid ] ) ) {
 				$map[ $sid ] = array();
 			}
-			$map[ $sid ][ $fid ] = true;
+			$map[ $sid ][ $fid ] = (string) get_post_meta( $item->ID, 'item_number', true );
 		}
 		return $map;
+	}
+
+	/**
+	 * 이 원본이 포함된 Flyer들의 개별 매물 공개 페이지 URL 목록(하나의 원본이 여러 Flyer에 동시에
+	 * 포함될 수 있어 배열이다). 목록/단건 조회 둘 다 $link_map(source_link_map의 부분집합, 이미
+	 * 배치로 계산됨)을 그대로 넘겨받아 쓰므로 원본마다 추가 쿼리가 생기지 않는다.
+	 *
+	 * @param array<int,string> $flyer_item_map flyer_id => item_number.
+	 * @return array<int, array{flyer_id:int, item_number:string, url:string}>
+	 */
+	private static function linked_item_urls( array $flyer_item_map ): array {
+		$links = array();
+		foreach ( $flyer_item_map as $flyer_id => $item_number ) {
+			if ( '' === $item_number ) {
+				continue;
+			}
+			$links[] = array(
+				'flyer_id'    => (int) $flyer_id,
+				'item_number' => $item_number,
+				'url'         => HLF_Routes::item_url( (int) $flyer_id, $item_number ),
+			);
+		}
+		return $links;
 	}
 
 	/**
@@ -347,6 +405,16 @@ final class HLF_Source_Listing_Repository {
 		$interior_image_ids = array_values( array_unique( array_map( 'intval', $interior_image_ids ) ) );
 		$requested          = $exterior_image_id > 0 ? array_merge( array( $exterior_image_id ), $interior_image_ids ) : $interior_image_ids;
 
+		// 요청서: 대표 1장 + 아래 슬라이드 3장(대표 포함 4장)으로 제한한다 — HLF_Item_Repository와
+		// 같은 상한(MAX_IMAGES), 이 저장소는 Item과 별개 클래스라 상수도 그대로 다시 둔다.
+		if ( count( $requested ) > HLF_Item_Repository::MAX_IMAGES ) {
+			return new WP_Error(
+				'hlf_image_limit',
+				'사진은 대표 이미지를 포함해 최대 ' . HLF_Item_Repository::MAX_IMAGES . '장까지 등록할 수 있습니다.',
+				array( 'status' => 400 )
+			);
+		}
+
 		// delete_image()가 "이미 저장된 목록에서 하나 뺀 나머지"를 그대로 이 메서드에 다시 넘기므로,
 		// 이미 붙어 있던 나머지까지 매번 재확인하면 그중 하나를 다른 사람이 붙였다는 이유만으로
 		// "빼기" 자체가 막혀버린다 — 권한 확인은 이번 요청에서 새로 추가되는 ID에만 적용한다.
@@ -368,6 +436,11 @@ final class HLF_Source_Listing_Repository {
 			}
 		}
 
+		// 새로 추가되는 ID만 hlf-item-photo/hlf-item-thumb 사이즈를 생성해 둔다("최적 사이즈로 리사이징
+		// 출력" 요청서) — HLF_Item_Repository::ensure_image_sizes와 같은 이유·같은 안전성(실패해도
+		// 조용히 넘어감).
+		self::ensure_image_sizes( array_diff( $requested, $current_ids ) );
+
 		update_post_meta( $source_id, 'exterior_image_id', $exterior_image_id );
 		update_post_meta( $source_id, 'interior_image_ids', $interior_image_ids );
 
@@ -378,6 +451,26 @@ final class HLF_Source_Listing_Repository {
 			return new WP_Error( 'hlf_image_save_failed', '이미지 정보를 저장하지 못했습니다. 다시 시도해 주세요.', array( 'status' => 500 ) );
 		}
 		return true;
+	}
+
+	/** HLF_Item_Repository::ensure_image_sizes와 동일 — 원본 매물도 같은 두 사이즈를 공유해 쓴다. */
+	private static function ensure_image_sizes( array $attachment_ids ): void {
+		if ( ! $attachment_ids ) {
+			return;
+		}
+		if ( ! function_exists( 'wp_generate_attachment_metadata' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/image.php';
+		}
+		foreach ( $attachment_ids as $attachment_id ) {
+			$file = get_attached_file( $attachment_id );
+			if ( ! $file ) {
+				continue;
+			}
+			$metadata = wp_generate_attachment_metadata( $attachment_id, $file );
+			if ( $metadata ) {
+				wp_update_attachment_metadata( $attachment_id, $metadata );
+			}
+		}
 	}
 
 	/** 이미지 하나를 원본 매물에서 뗀다(Attachment 파일 자체는 삭제하지 않음 — Item과 동일 정책). */

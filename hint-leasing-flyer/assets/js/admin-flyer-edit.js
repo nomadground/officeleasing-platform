@@ -17,6 +17,8 @@
 
 	var root = document.getElementById( 'hlf-flyer-edit-root' );
 	var flyerId = HLF_ADMIN.flyerId;
+	// 서버(HLF_Item_Repository::MAX_IMAGES)와 같은 상한 — 대표 1장 + 슬라이드 3장(대표 포함 4장).
+	var HLF_MAX_IMAGES = 4;
 
 	// key: 스키마 필드명(HLF_Meta_Schema::writable_fields()와 동일해야 함) / type: 입력 위젯.
 	var ITEM_FIELDS = [
@@ -845,6 +847,12 @@
 					interior.push( id );
 				}
 			} );
+			// 요청서: 대표 1장 + 슬라이드 3장(대표 포함 4장)까지만 — 서버(HLF_Item_Repository::MAX_IMAGES)와
+			// 같은 상한을 여기서도 미리 걸어 불필요한 실패 요청을 막는다.
+			if ( interior.length > HLF_MAX_IMAGES - 1 ) {
+				interior = interior.slice( 0, HLF_MAX_IMAGES - 1 );
+				window.alert( '사진은 대표 이미지를 포함해 최대 ' + HLF_MAX_IMAGES + '장까지 등록할 수 있습니다. 앞에서부터 ' + HLF_MAX_IMAGES + '장만 반영합니다.' );
+			}
 			saveImageState( item, exterior, interior );
 		} );
 		frame.open();
@@ -933,6 +941,13 @@
 
 		itemForm.addEventListener( 'submit', function ( event ) {
 			event.preventDefault();
+			// 요청서: 주소검색으로 후보를 확정해야만(latitude/longitude가 채워짐 — bindAddressSearch의
+			// 후보 클릭에서만 값이 들어간다) 저장할 수 있다.
+			if ( ! itemForm.elements.latitude.value || ! itemForm.elements.longitude.value ) {
+				itemError.textContent = '지번주소로 주소 검색을 실행해 후보를 선택해 주세요(좌표 확정 필요).';
+				itemError.hidden = false;
+				return;
+			}
 			var submitButton = itemForm.querySelector( 'button[type="submit"]' );
 			submitButton.disabled = true;
 			itemError.hidden = true;

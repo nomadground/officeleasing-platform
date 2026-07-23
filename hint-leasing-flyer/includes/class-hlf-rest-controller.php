@@ -159,6 +159,10 @@ final class HLF_REST_Controller {
 					'search'   => array( 'type' => 'string' ),
 					// Dashboard의 "연결된 매물"/"미연결 매물" 카드 클릭 시 이 목록으로 넘어와 필터링하는 데 쓴다.
 					'linked'   => array( 'type' => 'string', 'enum' => array( '', 'linked', 'unlinked' ) ),
+					// 요청서: 목록이 커지면 로딩이 느려지므로, 기본값으로 "내 매물"만 먼저 보여주고
+					// "전체 보기"를 눌러야 전부 나오게 한다 — contact_name 정확히 일치(담당자 디렉터리에
+					// 저장된 이름 그대로) 필터.
+					'contact'  => array( 'type' => 'string' ),
 					'page'     => array( 'type' => 'integer', 'minimum' => 1 ),
 					'per_page' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 100 ),
 				),
@@ -628,6 +632,7 @@ final class HLF_REST_Controller {
 		return rest_ensure_response( HLF_Source_Listing_Repository::list( array(
 			'search'   => (string) ( $params['search'] ?? '' ),
 			'linked'   => (string) ( $params['linked'] ?? '' ),
+			'contact'  => (string) ( $params['contact'] ?? '' ),
 			'page'     => (int) ( $params['page'] ?? 1 ),
 			'per_page' => (int) ( $params['per_page'] ?? 20 ),
 		) ) );

@@ -18,6 +18,10 @@ defined( 'ABSPATH' ) || exit;
 
 final class HLF_Item_Repository {
 
+	// 요청서: 갤러리 사진은 대표 1장 + 아래 슬라이드 3장(대표 포함 4장)까지만 허용한다 — 그 이상은
+	// 갤러리 카드/슬라이드 폭을 고정 크기로 유지하기 어렵다(assets/css/public.css).
+	const MAX_IMAGES = 4;
+
 	public static function format_item_number( int $seq ): string {
 		return (string) $seq;
 	}
@@ -321,6 +325,16 @@ final class HLF_Item_Repository {
 		$interior_image_ids = array_values( array_unique( array_map( 'intval', $interior_image_ids ) ) );
 		$requested          = $exterior_image_id > 0 ? array_merge( array( $exterior_image_id ), $interior_image_ids ) : $interior_image_ids;
 
+		// 요청서: 대표 1장 + 아래 슬라이드 3장(대표 포함 4장)으로 제한한다 — 갤러리 카드/슬라이드 폭을
+		// 그 이상 스크롤 없이 고정 크기로 보여주기 위한 전제(assets/css/public.css).
+		if ( count( $requested ) > self::MAX_IMAGES ) {
+			return new WP_Error(
+				'hlf_image_limit',
+				'사진은 대표 이미지를 포함해 최대 ' . self::MAX_IMAGES . '장까지 등록할 수 있습니다.',
+				array( 'status' => 400 )
+			);
+		}
+
 		// delete_image()는 "지금 이미 저장된 목록에서 하나 뺀 나머지"를 그대로 이 메서드에 다시
 		// 넘긴다 — 그 이미 저장돼 있던 나머지까지 매번 읽기 권한을 재확인하면, 다른 사람이 원래
 		// 정상적으로 붙여 둔 이미지가 하나 섞여 있다는 이유만으로 "빼기" 작업 자체가 막혀버린다.
@@ -352,6 +366,13 @@ final class HLF_Item_Repository {
 			}
 		}
 
+		// 이미 등록돼 있던 사진의 원본 첨부 파일은 이 플러그인이 add_image_size로 등록한 hlf-item-photo/
+		// hlf-item-thumb 크기를 아직 안 가지고 있을 수 있다(그 사이즈가 생기기 전에 업로드됐거나, 이
+		// 매물에 처음 붙는 경우) — 새로 추가되는 ID에 한해 그 자리에서 생성해 둔다("최적 사이즈로
+		// 리사이징 출력" 요청서). 실패해도(예: 파일 손상) 저장 자체는 계속 진행한다 — 화면에는
+		// wp_get_attachment_image()가 사이즈 없는 attachment에 자동으로 원본을 대신 써 주므로 안전하다.
+		self::ensure_image_sizes( array_diff( $requested, $current_ids ) );
+
 		update_post_meta( $item_id, 'exterior_image_id', $exterior_image_id );
 		update_post_meta( $item_id, 'interior_image_ids', $interior_image_ids );
 
@@ -366,6 +387,31 @@ final class HLF_Item_Repository {
 		}
 
 		return true;
+	}
+
+	/**
+	 * wp_generate_attachment_metadata()는 admin(wp-admin/includes/image.php)에서만 자동으로
+	 * 로드되는데, 이 메서드는 REST 요청(공개 화면 쪽) 컨텍스트에서도 호출되므로 필요하면 직접
+	 * require한다. 실패(파일 손상 등)해도 조용히 넘어간다 — 사이즈가 없으면 화면에서 원본으로
+	 * 대체될 뿐 저장 자체를 막을 이유는 아니다.
+	 */
+	private static function ensure_image_sizes( array $attachment_ids ): void {
+		if ( ! $attachment_ids ) {
+			return;
+		}
+		if ( ! function_exists( 'wp_generate_attachment_metadata' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/image.php';
+		}
+		foreach ( $attachment_ids as $attachment_id ) {
+			$file = get_attached_file( $attachment_id );
+			if ( ! $file ) {
+				continue;
+			}
+			$metadata = wp_generate_attachment_metadata( $attachment_id, $file );
+			if ( $metadata ) {
+				wp_update_attachment_metadata( $attachment_id, $metadata );
+			}
+		}
 	}
 
 	/**

@@ -177,6 +177,7 @@
 .hlf-admin .hlf-listup-tab.is-active { background: #2271b1; border-color: #2271b1; color: #fff; font-weight: 700; }
 .hlf-admin .hlf-listup-main { min-width: 0; }
 .hlf-admin .hlf-listup-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.hlf-admin .hlf-listup-head-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .hlf-admin .hlf-listup-title { margin: 0 0 8px; font-size: 20px; }
 
 .hlf-admin .hlf-stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 12px 0; }
@@ -189,6 +190,10 @@
 .hlf-admin .hlf-toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 12px 0; }
 .hlf-admin .hlf-toolbar input[type="search"] { min-width: 260px; }
 .hlf-admin .hlf-filter-chips { display: flex; gap: 6px; }
+/* 요청서: 담당자(내 매물) 필터 드롭다운 + 전체 보기 토글 — 전체 매물/포함 매물 관리 공용. */
+.hlf-admin .hlf-contact-filter { display: flex; gap: 6px; align-items: center; margin-left: auto; }
+.hlf-admin .hlf-contact-filter select:disabled { opacity: .55; }
+.hlf-admin .hlf-contact-filter button.is-active { background: #2271b1; border-color: #2271b1; color: #fff; }
 .hlf-admin .hlf-filter-chip { background: #f0f0f1; border: 1px solid #dcdcde; border-radius: 999px; padding: 4px 12px; font-size: 12px; cursor: pointer; }
 .hlf-admin .hlf-filter-chip.is-active { background: #2271b1; border-color: #2271b1; color: #fff; }
 .hlf-admin .hlf-bulk-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 10px 12px; margin-bottom: 10px; background: #f0f6fc; border: 1px solid #c5d9ed; border-radius: 6px; }

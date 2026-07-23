@@ -46,6 +46,8 @@
 	];
 	var CHECKBOX_ROW_KEYS = [ 'parking_available', 'elevator_available' ];
 	var ADDRESS_SEARCH_DEBOUNCE_MS = 700;
+	// 서버(HLF_Item_Repository::MAX_IMAGES)와 같은 상한 — 대표 1장 + 슬라이드 3장(대표 포함 4장).
+	var HLF_MAX_IMAGES = 4;
 
 	var OFFICELEASING_STATUS_CHOICES = [
 		{ value: '', label: '전체 상태' },
@@ -134,6 +136,27 @@
 		var c = dir.contacts[ sel.index ];
 		return c ? { name: c.name, phone: c.phone } : { name: '', phone: '' };
 	}
+	// 요청서: "전체 매물"/"포함 매물 관리" 목록이 커지면 로딩이 느려지므로, 기본값으로 이 기기에
+	// 선택된 담당자("나") 매물만 먼저 보여준다 — 담당자를 아직 선택하지 않았으면(미지정) 필터링할
+	// "나"가 없으므로 처음부터 전체를 보여준다.
+	function preferredContactName( dir ) {
+		var c = currentStaffContact( dir );
+		return ( c && c.name ) ? c.name : '';
+	}
+
+	// 담당자 드롭다운 + "전체 보기" 토글 마크업(전체 매물/포함 매물 관리 공용).
+	function contactFilterHtml( dir, selected, showAll, idPrefix ) {
+		var contacts = ( dir && dir.contacts ) || [];
+		if ( ! contacts.length ) { return ''; }
+		var options = contacts.map( function ( c ) {
+			return '<option value="' + escAttr( c.name ) + '"' + ( c.name === selected ? ' selected' : '' ) + '>' + esc( c.name ) + '</option>';
+		} ).join( '' );
+		return '<div class="hlf-contact-filter">' +
+			'<select id="' + idPrefix + '-contact"' + ( showAll ? ' disabled' : '' ) + '>' + options + '</select> ' +
+			'<button type="button" class="button' + ( showAll ? ' is-active' : '' ) + '" id="' + idPrefix + '-showall">' + ( showAll ? '내 매물만 보기' : '전체 보기' ) + '</button>' +
+		'</div>';
+	}
+
 	function staffLabel( dir ) {
 		var sel = loadStaffSelection();
 		if ( ! sel || null === sel.index || undefined === sel.index ) { return '미지정 (HINT)'; }
@@ -277,8 +300,15 @@
 		{ key: 'unlinked', label: '미연결' }
 	];
 
-	function renderSourceList( searchTerm, filter ) {
+	// contact가 undefined면(탭을 처음 열 때) 담당자 디렉터리를 먼저 읽어 이 기기에 선택된 담당자로
+	// 한 번 재호출한다(요청서 — 목록이 커지면 기본값은 "내 매물"만 먼저, "전체 보기"로 전체 전환).
+	function renderSourceList( searchTerm, filter, contact, showAll ) {
 		filter = filter || '';
+		if ( undefined === contact ) {
+			loadContacts( function ( dir ) { renderSourceList( searchTerm, filter, preferredContactName( dir ), false ); } );
+			return;
+		}
+		showAll = !! showAll;
 		var el = main();
 		el.innerHTML =
 			'<div class="hlf-listup-head">' +
@@ -293,6 +323,7 @@
 						return '<button type="button" class="hlf-filter-chip' + ( filter === f.key ? ' is-active' : '' ) + '" data-hlf-src-filter="' + f.key + '">' + esc( f.label ) + '</button>';
 					} ).join( '' ) +
 				'</div>' +
+				contactFilterHtml( state.contacts, contact, showAll, 'hlf-src' ) +
 			'</div>' +
 			'<div class="hlf-bulk-bar" id="hlf-src-bulk" hidden>' +
 				'<span id="hlf-src-bulk-count">0개 선택됨</span> → ' +
@@ -303,11 +334,21 @@
 
 		document.getElementById( 'hlf-src-new' ).addEventListener( 'click', function () { renderSourceForm( null ); } );
 		var searchInput = document.getElementById( 'hlf-src-search' );
-		document.getElementById( 'hlf-src-search-btn' ).addEventListener( 'click', function () { renderSourceList( searchInput.value, filter ); } );
-		searchInput.addEventListener( 'keydown', function ( e ) { if ( 'Enter' === e.key ) { renderSourceList( searchInput.value, filter ); } } );
+		document.getElementById( 'hlf-src-search-btn' ).addEventListener( 'click', function () { renderSourceList( searchInput.value, filter, contact, showAll ); } );
+		searchInput.addEventListener( 'keydown', function ( e ) { if ( 'Enter' === e.key ) { renderSourceList( searchInput.value, filter, contact, showAll ); } } );
 		el.querySelectorAll( '[data-hlf-src-filter]' ).forEach( function ( btn ) {
-			btn.addEventListener( 'click', function () { renderSourceList( searchInput.value, btn.getAttribute( 'data-hlf-src-filter' ) ); } );
+			btn.addEventListener( 'click', function () { renderSourceList( searchInput.value, btn.getAttribute( 'data-hlf-src-filter' ), contact, showAll ); } );
 		} );
+		var contactSelect = document.getElementById( 'hlf-src-contact' );
+		if ( contactSelect ) {
+			contactSelect.addEventListener( 'change', function () { renderSourceList( searchInput.value, filter, contactSelect.value, false ); } );
+		}
+		var showAllBtn = document.getElementById( 'hlf-src-showall' );
+		if ( showAllBtn ) {
+			showAllBtn.addEventListener( 'click', function () {
+				renderSourceList( searchInput.value, filter, contactSelect ? contactSelect.value : contact, ! showAll );
+			} );
+		}
 
 		loadFlyers( function ( flyers ) {
 			var sel = document.getElementById( 'hlf-src-bulk-flyer' );
@@ -320,6 +361,7 @@
 
 		var q = '' !== ( searchTerm || '' ) ? ( '&search=' + encodeURIComponent( searchTerm ) ) : '';
 		q += '' !== filter ? ( '&linked=' + encodeURIComponent( filter ) ) : '';
+		q += ( ! showAll && contact ) ? ( '&contact=' + encodeURIComponent( contact ) ) : '';
 		api( 'source-listings?per_page=100' + q ).then( function ( data ) {
 			renderSourceTable( data.items || [] );
 		} ).catch( function ( err ) { errorText( document.getElementById( 'hlf-src-results' ), '목록을 불러오지 못했습니다: ' + err.message ); } );
@@ -350,6 +392,7 @@
 						'<td class="hlf-row-actions">' +
 							'<button type="button" class="button button-small" data-hlf-src-edit="' + it.id + '">수정</button>' +
 							'<button type="button" class="button button-small" data-hlf-src-preview="' + it.id + '">미리보기</button>' +
+							'<button type="button" class="button button-small" data-hlf-src-copy="' + it.id + '">링크 복사</button>' +
 							'<button type="button" class="button button-small hlf-danger" data-hlf-src-delete="' + it.id + '">삭제</button>' +
 						'</td>' +
 					'</tr>';
@@ -384,6 +427,21 @@
 
 		box.querySelectorAll( '[data-hlf-src-edit]' ).forEach( function ( b ) { b.addEventListener( 'click', function () { renderSourceForm( Number( b.getAttribute( 'data-hlf-src-edit' ) ) ); } ); } );
 		box.querySelectorAll( '[data-hlf-src-preview]' ).forEach( function ( b ) { b.addEventListener( 'click', function () { window.open( CONF.sourcePreviewUrlBase + b.getAttribute( 'data-hlf-src-preview' ), '_blank', 'noopener' ); } ); } );
+		box.querySelectorAll( '[data-hlf-src-copy]' ).forEach( function ( b ) {
+			b.addEventListener( 'click', function () {
+				var id = Number( b.getAttribute( 'data-hlf-src-copy' ) );
+				var item = items.filter( function ( x ) { return x.id === id; } )[ 0 ];
+				var links = ( item && item.linked_items ) || [];
+				// 원본 매물 하나가 여러 안내문에 동시에 포함될 수 있다(class-hlf-source-listing-repository.php
+				// 참고) — 어느 안내문의 상세페이지인지 구분할 정보가 목록에는 없으므로, 가장 최근에
+				// 포함된(배열 끝) 링크를 복사하고 여러 개일 때는 그 사실을 알린다.
+				if ( ! links.length ) { toast( '아직 어느 안내문에도 포함되지 않아 복사할 링크가 없습니다.' ); return; }
+				var url = links[ links.length - 1 ].url;
+				var message = links.length > 1 ? ( links.length + '개 안내문에 포함되어 최근 안내문의 링크를 복사했습니다.' ) : '링크를 복사했습니다.';
+				if ( navigator.clipboard ) { navigator.clipboard.writeText( url ).then( function () { toast( message ); }, function () { window.prompt( '링크', url ); } ); }
+				else { window.prompt( '링크', url ); }
+			} );
+		} );
 		box.querySelectorAll( '[data-hlf-src-delete]' ).forEach( function ( b ) {
 			b.addEventListener( 'click', function () {
 				var id = Number( b.getAttribute( 'data-hlf-src-delete' ) );
@@ -412,17 +470,19 @@
 
 	/* ==================== 전체 매물 폼(등록/수정) ==================== */
 
-	function renderSourceForm( sourceId ) {
+	// returnFlyerId: "임대안내문 > 포함 매물 관리"에서 "+ 신규 매물 등록"으로 들어온 경우에만 넘어온다
+	// — 새 매물을 저장하자마자 이 Flyer에 바로 포함시키고 그 관리 화면으로 되돌아가기 위한 값이다.
+	function renderSourceForm( sourceId, returnFlyerId ) {
 		var el = main();
 		el.innerHTML = '<p class="hlf-admin-loading">불러오는 중…</p>';
 		if ( sourceId ) {
-			api( 'source-listings/' + sourceId ).then( function ( src ) { drawSourceForm( src ); } )
+			api( 'source-listings/' + sourceId ).then( function ( src ) { drawSourceForm( src, returnFlyerId ); } )
 				.catch( function ( err ) { errorText( el, '매물을 불러오지 못했습니다: ' + err.message ); } );
 		} else {
 			importState = { open: false, results: null, importingId: null, lastQuery: { search: '', status: '' } };
 			loadContacts( function ( dir ) {
 				var def = currentStaffContact( dir );
-				drawSourceForm( { id: null, contact_name: def.name, contact_phone: def.phone } );
+				drawSourceForm( { id: null, contact_name: def.name, contact_phone: def.phone }, returnFlyerId );
 			} );
 		}
 	}
@@ -443,7 +503,7 @@
 			'<input id="' + id + '" type="' + def.type + '" name="' + def.key + '" value="' + escAttr( v ) + '"' + step + ph + '></div>';
 	}
 
-	function drawSourceForm( src ) {
+	function drawSourceForm( src, returnFlyerId ) {
 		var editing = !! src.id;
 		var el = main();
 
@@ -489,12 +549,14 @@
 				: '<p class="hlf-admin-note hlf-image-pending">매물 사진은 저장한 뒤 추가할 수 있습니다 — 먼저 위 내용을 저장해 주세요.</p>' ) +
 			( editing ? '' : '<div id="hlf-src-import-wrap">' + renderImportToggle() + renderImportPanel() + '</div>' );
 
-		document.getElementById( 'hlf-src-back' ).addEventListener( 'click', function () { renderSourceList(); } );
+		document.getElementById( 'hlf-src-back' ).addEventListener( 'click', function () {
+			if ( returnFlyerId ) { renderFlyerManage( returnFlyerId ); } else { renderSourceList(); }
+		} );
 		var form = document.getElementById( 'hlf-src-form' );
 		window.HLFOcr.bindSection( form );
 		bindAddressSearch( form );
 		bindContactPicker( form );
-		bindSourceFormSubmit( form, src );
+		bindSourceFormSubmit( form, src, returnFlyerId );
 		if ( editing ) { renderSourceImages( src ); bindSourceFlyerInclude( src ); }
 		else { bindImportToggle(); if ( importState.open ) { bindImportResults(); } }
 	}
@@ -672,16 +734,35 @@
 		}
 	}
 
-	function bindSourceFormSubmit( form, src ) {
+	function bindSourceFormSubmit( form, src, returnFlyerId ) {
 		var errorEl = form.querySelector( '[data-hlf-src-error]' );
 		form.addEventListener( 'submit', function ( e ) {
 			e.preventDefault();
+			// 요청서: 주소검색으로 후보를 확정해야만(latitude/longitude가 채워짐, addressBlock의
+			// hidden input — bindAddressSearch의 후보 클릭에서만 값이 들어간다) 저장할 수 있다 —
+			// 지번주소를 직접 타이핑만 하고 검색 버튼/후보 선택을 건너뛰면 좌표 없는 매물이 되어
+			// 공개 상세페이지 지도에 표시되지 않는 문제를 막는다.
+			if ( ! form.elements.latitude.value || ! form.elements.longitude.value ) {
+				errorEl.textContent = '지번주소로 주소 검색을 실행해 후보를 선택해 주세요(좌표 확정 필요).';
+				errorEl.hidden = false;
+				return;
+			}
 			var btn = form.querySelector( 'button[type="submit"]' );
 			btn.disabled = true; errorEl.hidden = true;
 			var payload = readSourceForm( form );
+			var isNew = ! src.id;
 			var path = src.id ? ( 'source-listings/' + src.id ) : 'source-listings';
 			api( path, { method: src.id ? 'PUT' : 'POST', body: JSON.stringify( payload ) } )
 				.then( function ( saved ) {
+					// "포함 매물 관리" 화면의 "+ 신규 매물 등록"으로 들어온 새 매물이면, 별도로 다시
+					// 포함 선택창을 거치지 않고 바로 이 안내문에 포함시킨 뒤 그 관리 화면으로 돌아간다.
+					if ( isNew && returnFlyerId ) {
+						return api( 'flyers/' + returnFlyerId + '/source-listings/' + saved.id, { method: 'PUT' } )
+							.then( function () {
+								toast( '등록하고 이 안내문에 포함했습니다.' );
+								renderFlyerManage( returnFlyerId );
+							} );
+					}
 					toast( '저장했습니다.' );
 					renderSourceForm( saved.id );
 				} )
@@ -853,6 +934,12 @@
 			var chosen = frame.state().get( 'selection' ).map( function ( a ) { return a.id; } );
 			var current = ( src.exterior_image_id ? [ Number( src.exterior_image_id ) ] : [] ).concat( ( src.interior_image_ids || [] ).map( Number ) );
 			var merged = current.concat( chosen.filter( function ( id ) { return current.indexOf( id ) === -1; } ) );
+			// 요청서: 대표 1장 + 슬라이드 3장(대표 포함 4장)까지만 — 서버(HLF_Source_Listing_Repository::
+			// set_images, HLF_Item_Repository::MAX_IMAGES 재사용)와 같은 상한을 여기서도 미리 건다.
+			if ( merged.length > HLF_MAX_IMAGES ) {
+				merged = merged.slice( 0, HLF_MAX_IMAGES );
+				window.alert( '사진은 대표 이미지를 포함해 최대 ' + HLF_MAX_IMAGES + '장까지 등록할 수 있습니다. 앞에서부터 ' + HLF_MAX_IMAGES + '장만 반영합니다.' );
+			}
 			saveSourceImages( src, merged[ 0 ] || 0, merged.slice( 1 ) );
 		} );
 		frame.open();
@@ -978,31 +1065,54 @@
 		} );
 	}
 
-	function renderFlyerManage( flyerId, searchTerm ) {
+	// contact/showAll: renderSourceList와 같은 이유(요청서) — 기본값은 이 기기에 선택된 담당자("나")
+	// 매물만 후보로 먼저 보여주고, "전체 보기"를 눌러야 전체 후보가 나온다.
+	function renderFlyerManage( flyerId, searchTerm, contact, showAll ) {
+		if ( undefined === contact ) {
+			loadContacts( function ( dir ) { renderFlyerManage( flyerId, searchTerm, preferredContactName( dir ), false ); } );
+			return;
+		}
+		showAll = !! showAll;
 		var el = main();
 		el.innerHTML = '<p class="hlf-admin-loading">불러오는 중…</p>';
 		api( 'flyers/' + flyerId ).then( function ( flyer ) {
 			el.innerHTML =
 				'<div class="hlf-listup-head">' +
 					'<h2 class="hlf-listup-title">포함 매물 관리 — ' + esc( flyer.title || flyer.flyer_number ) + '</h2>' +
-					'<button type="button" class="button" id="hlf-fm-back">← 목록</button>' +
+					'<div class="hlf-listup-head-actions">' +
+						'<button type="button" class="button button-primary" id="hlf-fm-new-source">+ 신규 매물 등록</button>' +
+						'<button type="button" class="button" id="hlf-fm-back">← 목록</button>' +
+					'</div>' +
 				'</div>' +
 				'<p class="hlf-admin-note hlf-safe-note">체크 해제 시 이 안내문에서만 제거되며, 원본 매물과 다른 안내문에 포함된 동일 매물은 그대로 유지됩니다. (최대 ' + esc( CONF.maxItems ) + '개)</p>' +
 				'<div class="hlf-included-summary" id="hlf-fm-included"></div>' +
 				'<div class="hlf-toolbar">' +
 					'<input type="search" id="hlf-fm-search" placeholder="원본 매물 주소·키워드 검색" value="' + escAttr( searchTerm || '' ) + '">' +
 					'<button type="button" class="button" id="hlf-fm-search-btn">검색</button>' +
+					contactFilterHtml( state.contacts, contact, showAll, 'hlf-fm' ) +
 				'</div>' +
 				'<div id="hlf-fm-results"><p class="hlf-admin-loading">불러오는 중…</p></div>';
 
 			document.getElementById( 'hlf-fm-back' ).addEventListener( 'click', renderFlyerList );
+			document.getElementById( 'hlf-fm-new-source' ).addEventListener( 'click', function () { renderSourceForm( null, flyerId ); } );
 			var si = document.getElementById( 'hlf-fm-search' );
-			document.getElementById( 'hlf-fm-search-btn' ).addEventListener( 'click', function () { renderFlyerManage( flyerId, si.value ); } );
-			si.addEventListener( 'keydown', function ( e ) { if ( 'Enter' === e.key ) { renderFlyerManage( flyerId, si.value ); } } );
+			document.getElementById( 'hlf-fm-search-btn' ).addEventListener( 'click', function () { renderFlyerManage( flyerId, si.value, contact, showAll ); } );
+			si.addEventListener( 'keydown', function ( e ) { if ( 'Enter' === e.key ) { renderFlyerManage( flyerId, si.value, contact, showAll ); } } );
+			var fmContactSelect = document.getElementById( 'hlf-fm-contact' );
+			if ( fmContactSelect ) {
+				fmContactSelect.addEventListener( 'change', function () { renderFlyerManage( flyerId, si.value, fmContactSelect.value, false ); } );
+			}
+			var fmShowAllBtn = document.getElementById( 'hlf-fm-showall' );
+			if ( fmShowAllBtn ) {
+				fmShowAllBtn.addEventListener( 'click', function () {
+					renderFlyerManage( flyerId, si.value, fmContactSelect ? fmContactSelect.value : contact, ! showAll );
+				} );
+			}
 
 			renderIncludedSummary( flyer );
 
 			var q = '' !== ( searchTerm || '' ) ? ( '&search=' + encodeURIComponent( searchTerm ) ) : '';
+			q += ( ! showAll && contact ) ? ( '&contact=' + encodeURIComponent( contact ) ) : '';
 			api( 'source-listings?per_page=100' + q ).then( function ( data ) {
 				renderManageResults( flyer, data.items || [] );
 			} ).catch( function ( err ) { errorText( document.getElementById( 'hlf-fm-results' ), '원본 매물을 불러오지 못했습니다: ' + err.message ); } );

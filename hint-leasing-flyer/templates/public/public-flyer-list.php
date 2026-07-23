@@ -91,6 +91,15 @@ $kakao_js_key = defined( 'HLF_KAKAO_JS_KEY' ) ? HLF_KAKAO_JS_KEY : '';
 				<span class="hlf-badge hlf-badge--draft">미발행 미리보기</span>
 			<?php endif; ?>
 			<span class="hlf-header-actions">
+				<?php
+				/*
+				 * 요청서: 인쇄에서는 공유/인쇄 버튼이 숨어(print.css) 헤더 우측이 비므로, 화면에서는
+				 * 아래 .hlf-title-row에 있는 매물 수 문구를 인쇄에서만 이 자리로 옮겨 헤더-리스트 사이
+				 * 불필요한 간격(.hlf-title-row의 margin-top)을 없앤다. 화면에서는 항상 숨어 있다가
+				 * (public.css) 인쇄에서만 보인다(print.css).
+				 */
+				?>
+				<span class="hlf-print-result-count"><?php echo esc_html( count( $items ) ); ?>개 매물</span>
 				<button type="button" class="hlf-share-button" data-hlf-share-url="<?php echo esc_attr( $flyer['url'] ); ?>">공유<span class="hlf-share-status" data-hlf-share-status></span></button>
 				<button type="button" class="hlf-print-button" data-hlf-print>인쇄</button>
 			</span>
