@@ -108,10 +108,16 @@ final class HLF_Source_Listing_Repository {
 		}
 
 		// "연결"은 Item 쪽 메타(source_link_map)로만 알 수 있어 source 자체의 meta_query로는 표현할 수
-		// 없다 — 먼저 맵을 구해 post__in/post__not_in으로 걸러낸다(빈 배열은 WP_Query에서 "필터 없음"과
-		// 동일하게 취급되므로, linked인데 아무것도 안 걸린 경우 존재하지 않는 ID(0)로 안전하게 0건 처리).
-		$link_map = self::source_link_map();
-		if ( 'linked' === $linked || 'unlinked' === $linked ) {
+		// 없다 — linked/unlinked 필터가 걸린 경우에만 전체 맵이 필요하다(어떤 source가 걸리는지 DB
+		// 쿼리 전에 알아야 post__in/post__not_in을 만들 수 있으므로). 필터가 없는 기본 목록에서는
+		// 전체 Item을 훑을 필요 없이, 쿼리 실행 후 이번 페이지에 뽑힌 source_id들만으로 범위를 좁혀
+		// 링크 맵을 구한다(요청서: 매물 몇천 건이 돼도 목록 로딩이 전체 Item 수에 비례해 느려지지
+		// 않도록).
+		$needs_full_map = 'linked' === $linked || 'unlinked' === $linked;
+		if ( $needs_full_map ) {
+			$link_map = self::source_link_map();
+			// 빈 배열은 WP_Query에서 "필터 없음"과 동일하게 취급되므로, linked인데 아무것도 안 걸린
+			// 경우 존재하지 않는 ID(0)로 안전하게 0건 처리한다.
 			$linked_ids = array_map( 'intval', array_keys( $link_map ) );
 			if ( 'linked' === $linked ) {
 				$query_args['post__in'] = $linked_ids ?: array( 0 );
@@ -121,6 +127,7 @@ final class HLF_Source_Listing_Repository {
 		}
 
 		$query = new WP_Query( $query_args );
+		$link_map = $needs_full_map ? $link_map : self::source_link_map_for( wp_list_pluck( $query->posts, 'ID' ) );
 		$items = array_map(
 			static function ( $post ) use ( $link_map ) {
 				$flyer_item_map = $link_map[ $post->ID ] ?? array();
@@ -236,6 +243,7 @@ final class HLF_Source_Listing_Repository {
 			return $linked;
 		}
 
+		self::invalidate_stats_cache();
 		return $item_id;
 	}
 
@@ -252,6 +260,9 @@ final class HLF_Source_Listing_Repository {
 				return $result;
 			}
 			$deleted++;
+		}
+		if ( $deleted > 0 ) {
+			self::invalidate_stats_cache();
 		}
 		return $deleted;
 	}
@@ -349,6 +360,46 @@ final class HLF_Source_Listing_Repository {
 	}
 
 	/**
+	 * source_link_map()의 범위 제한판 — 전체 Item이 아니라 주어진 source_id들에 연결된 Item만
+	 * 훑는다(GPT 코드 감사 P1#3: 목록 화면에서 linked/unlinked 필터가 없을 때는 이번 페이지에 뽑힌
+	 * source_id 수십 개만 알면 되므로, 전체 Item 수에 비례해 느려지는 source_link_map()을 쓸 이유가
+	 * 없다). 빈 배열이면 쿼리 자체를 건너뛴다(0건 페이지 등).
+	 *
+	 * @param array<int,int> $source_ids
+	 * @return array<int, array<int,string>>
+	 */
+	private static function source_link_map_for( array $source_ids ): array {
+		$source_ids = array_values( array_unique( array_map( 'intval', $source_ids ) ) );
+		if ( ! $source_ids ) {
+			return array();
+		}
+
+		$items = get_posts( array(
+			'post_type'      => HLF_Post_Types::ITEM,
+			'post_status'    => array( 'publish', 'inherit', 'draft' ),
+			'posts_per_page' => -1,
+			'no_found_rows'  => true,
+			'meta_query'     => array(
+				array( 'key' => 'source_listing_id', 'value' => $source_ids, 'compare' => 'IN' ),
+			),
+		) );
+
+		$map = array();
+		foreach ( $items as $item ) {
+			$sid = (int) get_post_meta( $item->ID, 'source_listing_id', true );
+			if ( $sid <= 0 ) {
+				continue;
+			}
+			$fid = (int) $item->post_parent;
+			if ( ! isset( $map[ $sid ] ) ) {
+				$map[ $sid ] = array();
+			}
+			$map[ $sid ][ $fid ] = (string) get_post_meta( $item->ID, 'item_number', true );
+		}
+		return $map;
+	}
+
+	/**
 	 * 이 원본이 포함된 Flyer들의 개별 매물 공개 페이지 URL 목록(하나의 원본이 여러 Flyer에 동시에
 	 * 포함될 수 있어 배열이다). 목록/단건 조회 둘 다 $link_map(source_link_map의 부분집합, 이미
 	 * 배치로 계산됨)을 그대로 넘겨받아 쓰므로 원본마다 추가 쿼리가 생기지 않는다.
@@ -371,13 +422,28 @@ final class HLF_Source_Listing_Repository {
 		return $links;
 	}
 
+	const STATS_TRANSIENT = 'hlf_source_stats_v1';
+	const STATS_TTL       = 30; // 초. GPT 코드 감사 P1#4 참고.
+
 	/**
 	 * 대시보드용 원본 매물 통계: 전체 / 연결(1개 이상 Flyer에 포함) / 미연결.
 	 * "연결"은 source_link_map의 키 중 실제 hlf_source_listing인 것만 센다(officeleasing import로
 	 * 생긴 Item의 source_listing_id는 officeleasing 글을 가리키므로 여기 카탈로그 카운트에서 제외된다).
+	 *
+	 * 이 계산은 전체 Source + 전체 Item을 훑어야 해서(연결 여부는 Item 쪽 메타로만 알 수 있음)
+	 * 데이터가 많아질수록 느려진다(GPT 코드 감사 P1#4) — 완전히 없앨 수는 없지만(별도 카운터 메타를
+	 * 새로 도입하는 건 더 큰 구조 변경이라 이번 범위 밖으로 미룬다), 대시보드를 열 때마다 매번 다시
+	 * 계산할 필요는 없으므로 짧은 TTL(30초) transient로 캐시한다. include_in_flyer/exclude_from_flyer가
+	 * 캐시를 즉시 무효화하므로 직접 조작한 경우는 바로 반영되고, 그 외 경로(Flyer 삭제 cascade 등)로
+	 * 바뀐 경우는 최대 30초 뒤에 반영된다 — 대시보드 통계 표시라 이 정도 지연은 무해하다고 판단.
 	 * @return array{total:int,linked:int,unlinked:int}
 	 */
 	public static function stats(): array {
+		$cached = get_transient( self::STATS_TRANSIENT );
+		if ( is_array( $cached ) && isset( $cached['total'], $cached['linked'], $cached['unlinked'] ) ) {
+			return $cached;
+		}
+
 		$source_ids = get_posts( array(
 			'post_type'      => HLF_Post_Types::SOURCE,
 			'post_status'    => 'publish',
@@ -388,7 +454,15 @@ final class HLF_Source_Listing_Repository {
 		$total    = count( $source_ids );
 		$link_map = self::source_link_map();
 		$linked   = count( array_intersect( array_map( 'intval', $source_ids ), array_keys( $link_map ) ) );
-		return array( 'total' => $total, 'linked' => $linked, 'unlinked' => max( 0, $total - $linked ) );
+		$stats    = array( 'total' => $total, 'linked' => $linked, 'unlinked' => max( 0, $total - $linked ) );
+
+		set_transient( self::STATS_TRANSIENT, $stats, self::STATS_TTL );
+		return $stats;
+	}
+
+	/** include_in_flyer/exclude_from_flyer로 연결 상태가 바뀌면 다음 stats() 호출이 즉시 새로 계산하게 한다. */
+	private static function invalidate_stats_cache(): void {
+		delete_transient( self::STATS_TRANSIENT );
 	}
 
 	/* ---------------- 이미지(원본 매물) ---------------- */

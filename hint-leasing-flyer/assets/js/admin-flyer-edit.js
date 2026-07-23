@@ -832,6 +832,8 @@
 			button: { text: '선택 완료' },
 			multiple: true,
 			library: { type: 'image' },
+			// HLF_Image_Pipeline이 이 값으로 자기 업로드만 골라 최적화한다(GPT 코드 감사 P0#2).
+			uploader: { params: { hlf_upload: '1' } },
 		} );
 		frame.on( 'select', function () {
 			var selectedIds = frame.state().get( 'selection' ).toJSON().map( function ( attachment ) { return attachment.id; } );

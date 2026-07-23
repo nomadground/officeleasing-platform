@@ -79,10 +79,23 @@ officeleasing-core / ACF가 없어도 활성화·동작한다(데이터 접근�
 - **업로드 이미지 최적화(`class-hlf-image-pipeline.php`)**: 새 이미지 처리 코드를 짜지 않고 워드프레스
   코어 훅만 조합한다 — `big_image_size_threshold`(900px, EXIF 방향 보정도 이 코어 경로가 함께 처리),
   `wp_editor_set_quality`(JPEG 82%), `image_editor_output_format`(PNG로 올라온 사진의 파생 이미지는
-  JPEG로 출력), `wp_handle_upload_prefilter`(이미지 업로드 1MB/1000px 상한 — 900px 자동 리사이즈가
-  실제 최적화를 담당하고, 이 상한은 비정상적으로 큰 원본만 걸러내는 안전망. 직원 전용 업로드라는
-  전제로 건 제한, 이미지가 아닌 업로드는 그대로 통과). WebP 생성은 Smush Pro 같은 전용 플러그인의
-  영역이라 넣지 않았다(이 플러그인은 다른 플러그인에 의존하지 않는다는 기존 원칙과 같은 이유).
+  JPEG로 출력), `wp_handle_upload_prefilter`(이미지 업로드 12MB/10000px 상한 — 900px 자동 리사이즈가
+  실제 최적화를 담당하고, 이 상한은 서버 리사이즈 처리 중 메모리를 과도하게 잡아먹는 비정상적으로
+  큰 원본만 걸러내는 안전망). 네 필터 전부 `wp.media` 업로더가 `uploader.params.hlf_upload='1'`로
+  표시한 요청에만 적용된다(GPT 코드 감사 P0#2) — 이 표시가 없는 업로드(테마 로고, ACF 이미지, 다른
+  플러그인, 관리자 계정의 일반 미디어 업로드 등)는 전혀 손대지 않는다. WebP 생성은 Smush Pro 같은
+  전용 플러그인의 영역이라 넣지 않았다(이 플러그인은 다른 플러그인에 의존하지 않는다는 기존 원칙과
+  같은 이유).
+- **Flyer 번호 원자적 발급**: 날짜별 순번을 `wp_options`의 `UNIQUE(option_name)` + `INSERT ... ON
+  DUPLICATE KEY UPDATE ... LAST_INSERT_ID(expr)`로 원자적으로 증가시킨다(`HLF_Flyer_Repository::
+  next_daily_sequence()`) — `class-hlf-item-repository.php`의 Item 번호 발급과 같은 패턴. 직원이
+  거의 동시에 Flyer를 두 번 만들어도(더블클릭, 느린 네트워크 재요청, 여러 PC 동시 사용) 같은 번호가
+  나오지 않는다(GPT 코드 감사 P1#8).
+- **전체 매물 목록/대시보드 통계 성능**: `source_link_map()`(전체 Item을 훑어 원본↔Flyer 연결을
+  계산)은 linked/unlinked 필터가 실제로 걸렸을 때만 쓰고, 기본 목록은 이번 페이지에 뽑힌 source_id
+  범위로만 좁힌 `source_link_map_for()`를 쓴다. 대시보드 `stats()`(전체 Source + 전체 Item을 훑는
+  계산)는 30초 TTL transient로 캐시하고 매물 포함/해제 시 즉시 무효화한다(GPT 코드 감사 P1#3/#4 —
+  매물 수가 늘어도 목록/대시보드 로딩이 그에 비례해 느려지지 않게 한다).
 
 ## Phase 4 구현 범위 — NOC 비교차트 · 위치 비교 지도 · 공유 · 라이트박스
 공개 화면(list/detail)에 최소한의 순수 표시 JS(`assets/js/public-flyer.js`)를 처음 도입했다 —

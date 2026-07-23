@@ -929,7 +929,9 @@
 
 	function openImagePicker( src ) {
 		if ( ! window.wp || ! window.wp.media ) { window.alert( '미디어 라이브러리를 불러오지 못했습니다. 새로고침 후 다시 시도해 주세요.' ); return; }
-		var frame = window.wp.media( { title: '매물 사진 선택', multiple: 'add', library: { type: 'image' }, button: { text: '선택' } } );
+		// uploader.params.hlf_upload: HLF_Image_Pipeline이 이 값으로 자기 업로드만 골라 최적화한다
+		// (GPT 코드 감사 P0#2 — 이 표시가 없으면 다른 화면의 업로드까지 전역으로 영향을 준다).
+		var frame = window.wp.media( { title: '매물 사진 선택', multiple: 'add', library: { type: 'image' }, button: { text: '선택' }, uploader: { params: { hlf_upload: '1' } } } );
 		frame.on( 'select', function () {
 			var chosen = frame.state().get( 'selection' ).map( function ( a ) { return a.id; } );
 			var current = ( src.exterior_image_id ? [ Number( src.exterior_image_id ) ] : [] ).concat( ( src.interior_image_ids || [] ).map( Number ) );
@@ -1075,6 +1077,12 @@
 		showAll = !! showAll;
 		var el = main();
 		el.innerHTML = '<p class="hlf-admin-loading">불러오는 중…</p>';
+		// 성능(GPT/Codex 코드 감사): source-listings 목록 쿼리는 flyer 상세 응답 값을 전혀 쓰지 않는데도
+		// 예전에는 flyers/{id}가 끝난 "다음에" 불렀다(순차 waterfall) — 두 요청을 동시에 시작하고,
+		// flyer 상세가 다 그려진 뒤 이미 진행 중인 source-listings 응답을 이어 붙인다.
+		var q = '' !== ( searchTerm || '' ) ? ( '&search=' + encodeURIComponent( searchTerm ) ) : '';
+		q += ( ! showAll && contact ) ? ( '&contact=' + encodeURIComponent( contact ) ) : '';
+		var sourceListingsPromise = api( 'source-listings?per_page=100' + q );
 		api( 'flyers/' + flyerId ).then( function ( flyer ) {
 			el.innerHTML =
 				'<div class="hlf-listup-head">' +
@@ -1111,9 +1119,7 @@
 
 			renderIncludedSummary( flyer );
 
-			var q = '' !== ( searchTerm || '' ) ? ( '&search=' + encodeURIComponent( searchTerm ) ) : '';
-			q += ( ! showAll && contact ) ? ( '&contact=' + encodeURIComponent( contact ) ) : '';
-			api( 'source-listings?per_page=100' + q ).then( function ( data ) {
+			sourceListingsPromise.then( function ( data ) {
 				renderManageResults( flyer, data.items || [] );
 			} ).catch( function ( err ) { errorText( document.getElementById( 'hlf-fm-results' ), '원본 매물을 불러오지 못했습니다: ' + err.message ); } );
 		} ).catch( function ( err ) { errorText( el, '안내문을 불러오지 못했습니다: ' + err.message ); } );

@@ -39,19 +39,36 @@ final class HLF_Flyer_Repository {
 
 	/**
 	 * 새 Flyer 생성 시 한 번만 호출한다(create() 참고) — 오늘 날짜(사이트 로컬 시간) 6자리 + 그날
-	 * 이미 발급된 개수+1(2자리)을 조합해 저장한다. 동시 생성 시 아주 드물게 같은 순번이 나올 수
-	 * 있는 카운트 기반 계산이지만(원자적 증가 아님), 이 플러그인의 다른 저사용량 내부 운영 전제와
-	 * 같은 수준의 위험으로 판단해 별도 원자적 카운터 없이 단순하게 둔다.
+	 * 이미 발급된 개수+1(2자리)을 조합해 저장한다.
+	 *
+	 * 순번은 next_daily_sequence()의 원자적 카운터로 받는다(GPT 코드 감사 P1#8) — 예전에는
+	 * SELECT COUNT(*)로 "오늘 몇 개 만들어졌는지"를 계산해 +1했는데, 두 요청이 그 COUNT를 거의 동시에
+	 * 읽으면(더블클릭, 느린 네트워크 재요청, 여러 PC 동시 사용) 같은 번호를 받을 수 있었다 — 공개 URL의
+	 * 유일 식별자라 중복되면 같은 번호로 서로 다른 Flyer 중 하나만 찾아지는 실사용 버그가 된다.
 	 */
 	private static function assign_flyer_number( int $flyer_id ): void {
-		global $wpdb;
 		$date_prefix = current_time( 'ymd' );
-		$count       = (int) $wpdb->get_var( $wpdb->prepare(
-			"SELECT COUNT(*) FROM {$wpdb->postmeta} WHERE meta_key = %s AND meta_value LIKE %s",
-			HLF_Meta_Schema::FLYER_NUMBER,
-			$wpdb->esc_like( $date_prefix ) . '%'
+		$seq         = self::next_daily_sequence( $date_prefix );
+		update_post_meta( $flyer_id, HLF_Meta_Schema::FLYER_NUMBER, $date_prefix . sprintf( '%02d', $seq ) );
+	}
+
+	/**
+	 * 날짜별 발급 순번을 원자적으로 1 증가시켜 반환한다. wp_options의 UNIQUE(option_name) 제약을
+	 * INSERT ... ON DUPLICATE KEY UPDATE ... LAST_INSERT_ID(expr)와 함께 쓰면, 해당 행에 걸리는
+	 * MySQL 잠금 덕분에 두 요청이 정확히 같은 순간에 들어와도 서로 다른 값을 받는다(WooCommerce
+	 * 주문번호 등에서도 쓰는 표준 패턴 — get_option()/update_option()의 조회-후-저장 방식은 그 사이
+	 * 시간차 때문에 이 문제를 그대로 재현하므로 쓰지 않는다). 옵션 자체는 get_option()으로 다시 읽지
+	 * 않으므로(항상 이 함수를 통해서만 값을 얻음) 오브젝트 캐시와 어긋날 걱정이 없다.
+	 */
+	private static function next_daily_sequence( string $date_prefix ): int {
+		global $wpdb;
+		$option_name = 'hlf_flyer_seq_' . $date_prefix;
+		$wpdb->query( $wpdb->prepare(
+			"INSERT INTO {$wpdb->options} (option_name, option_value, autoload) VALUES (%s, '1', 'no')
+			 ON DUPLICATE KEY UPDATE option_value = LAST_INSERT_ID( option_value + 1 )",
+			$option_name
 		) );
-		update_post_meta( $flyer_id, HLF_Meta_Schema::FLYER_NUMBER, $date_prefix . sprintf( '%02d', $count + 1 ) );
+		return (int) $wpdb->get_var( 'SELECT LAST_INSERT_ID()' );
 	}
 
 	/** "LF-000123" → 123. 형식이 안 맞으면 0. 새 형식(순수 숫자 8자리) 번호는 get_by_number()가 별도 처리. */
