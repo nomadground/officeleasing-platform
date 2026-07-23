@@ -31,7 +31,9 @@ $print_photo_ids = array_values( array_unique( array_filter( $print_photo_ids ) 
 $print_has_coords = $item['latitude'] && $item['longitude'];
 $print_map_items  = $print_has_coords ? array( array(
 	'key'     => $item['item_number'],
-	'order'   => 0,
+	// $i(호출부가 넘긴 0-based 표시 순서)를 써야 배지·마커 번호가 이 항목의 실제 순번과 맞는다
+	// (0으로 고정돼 있으면 어느 매물이든 마커가 항상 "01"로 나오는 회귀 버그).
+	'order'   => $i,
 	'lat'     => (float) $item['latitude'],
 	'lng'     => (float) $item['longitude'],
 	'address' => $print_address,

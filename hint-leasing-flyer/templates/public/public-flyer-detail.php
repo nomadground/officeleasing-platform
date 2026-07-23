@@ -45,7 +45,9 @@ $kakao_js_key = defined( 'HLF_KAKAO_JS_KEY' ) ? HLF_KAKAO_JS_KEY : '';
 $has_coords   = $item['latitude'] && $item['longitude'];
 $map_items    = $has_coords ? array( array(
 	'key'     => $item['item_number'],
-	'order'   => 0,
+	// 리스트/차트와 같은 순번 배지가 지도 마커에도 나오게 한다 — 0으로 고정돼 있으면(회귀 버그) 어느
+	// 매물을 보든 마커가 항상 "01"로 나온다.
+	'order'   => $item_order,
 	'lat'     => (float) $item['latitude'],
 	'lng'     => (float) $item['longitude'],
 	'address' => $address,
@@ -250,8 +252,8 @@ $basic['주차']       = array( 'value' => $item['parking_available'] ? ( $item[
 			</dl>
 		</section>
 
-		<div class="hlf-detail-list-return">
-			<a class="hlf-detail-list-return-link" href="<?php echo esc_url( $flyer['url'] ); ?>">← 목록</a>
+		<div class="hlf-detail-footer-note">
+			<p class="hlf-footer-copyright"><a class="hlf-footer-admin-link" href="<?php echo esc_url( wp_logout_url( HLF_Portal::portal_url() ) ); ?>">© HINT</a> Co., Ltd. All Rights Reserved. 무단 복제 및 재배포 금지</p>
 		</div>
 
 		<?php
@@ -262,7 +264,7 @@ $basic['주차']       = array( 'value' => $item['parking_available'] ? ( $item[
 		?>
 		<footer class="hlf-footer">
 			<div class="hlf-footer-row">
-				<p class="hlf-footer-copyright"><a class="hlf-footer-admin-link" href="<?php echo esc_url( wp_logout_url( HLF_Portal::portal_url() ) ); ?>">© HINT</a> Co., Ltd. All Rights Reserved. 무단 복제 및 재배포 금지</p>
+				<a class="hlf-detail-list-return-link" href="<?php echo esc_url( $flyer['url'] ); ?>">← 목록</a>
 				<span class="hlf-footer-contact">
 					<?php if ( $contact['name'] ) : ?>
 						<?php echo esc_html( $contact['name'] ); ?> ·

@@ -259,6 +259,10 @@
 			loadPendingPrintPhotos( document ),
 			relayoutMapsForPrint(),
 		] ).then( function () {
+			// 지도 준비를 위해 잠깐 visibility:hidden으로 켜뒀던 .hlf-print-item-detail을 여기서
+			// 뗀다 — 화면(display:none)으로 잠깐 돌아가지만 바로 이어지는 window.print()가 스스로
+			// @media print 규칙(display:block !important)을 적용하므로 인쇄 결과에는 영향이 없다.
+			unprimePrintDetails();
 			window.print();
 		} );
 	}
@@ -532,6 +536,14 @@
 		document.querySelectorAll( '[data-hlf-map-items]:not([data-hlf-lazy-map])' ).forEach( initMapContainer );
 	}
 
+	// initLazyPrintMaps()가 지도를 만들기 전 잠깐 보이게 해둔 .hlf-print-item-detail들 — 인쇄가
+	// 끝나면(afterprint) 다시 원래대로(화면 전용 display:none) 되돌린다.
+	var primedPrintDetails = [];
+	function unprimePrintDetails() {
+		primedPrintDetails.forEach( function ( el ) { el.classList.remove( 'hlf-print-priming' ); } );
+		primedPrintDetails = [];
+	}
+
 	// 인쇄 선택 패널에서 "인쇄" 확정 시(또는 패널이 없는 상세 페이지에서 인쇄 버튼 클릭 시) 호출된다 —
 	// 지금 화면에 남아있는(=사용자가 체크한) 매물별 인쇄 전용 지도 중 아직 만들지 않은 것만 그때 가서
 	// 만든다. data-hlf-map-initialized로 한 번 만든 뒤 다시 만들지 않는다.
@@ -539,6 +551,15 @@
 		var pending = [];
 		root.querySelectorAll( '[data-hlf-print-section]:not(.hlf-print-section-excluded) [data-hlf-map-items][data-hlf-lazy-map]:not([data-hlf-map-initialized])' ).forEach( function ( container ) {
 			container.setAttribute( 'data-hlf-map-initialized', '1' );
+			// 이 컨테이너는 화면에서 항상 display:none인 .hlf-print-item-detail 안에 있다(public.css) —
+			// 지도를 만드는 시점(new kakao.maps.Map(container, ...))에 컨테이너 크기가 0이면 카카오
+			// 지도가 빈 채로 굳어버린다(실사용 버그: 인쇄 시 지도가 안 나옴). 지도를 만들기 직전에
+			// 실제로 보이게 해 정상적인 크기를 갖게 한다.
+			var detail = container.closest( '.hlf-print-item-detail' );
+			if ( detail && ! detail.classList.contains( 'hlf-print-priming' ) ) {
+				detail.classList.add( 'hlf-print-priming' );
+				primedPrintDetails.push( detail );
+			}
 			pending.push( initMapContainer( container ) );
 		} );
 		return Promise.all( pending );
@@ -569,7 +590,9 @@
 	// 보장하진 못하지만, beforeprint에서라도 relayout을 걸어두면 완전히 빈 지도보다는 낫다.
 	function bindPrintMapRelayout() {
 		window.addEventListener( 'beforeprint', function () { relayoutMapsForPrint(); } );
-		window.addEventListener( 'afterprint', function () { relayoutMapsForPrint(); } );
+		// 인쇄(또는 인쇄 다이얼로그 취소)가 끝나면 initLazyPrintMaps()가 지도를 만들려고 잠깐 보이게
+		// 해뒀던 .hlf-print-item-detail을 다시 화면 전용(display:none) 상태로 되돌린다.
+		window.addEventListener( 'afterprint', function () { relayoutMapsForPrint(); unprimePrintDetails(); } );
 		if ( window.matchMedia ) {
 			var mql = window.matchMedia( 'print' );
 			var handler = function ( e ) { if ( e.matches ) { relayoutMapsForPrint(); } };
