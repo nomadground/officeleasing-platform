@@ -1,8 +1,16 @@
 <?php
 /**
- * 공개 URL 라우팅 (요청서 1-E).
- *   목록: /listup/{flyer-number}/            예 /listup/LF-000123/
- *   상세: /listup/{flyer-number}/{item-number}/  예 /listup/LF-000123/I0003/
+ * 공개 URL 라우팅 (요청서 1-E, 이후 요청서 7로 프리픽스 변경).
+ *   목록: /list/{flyer-number}/            예 /list/26072301/
+ *   상세: /list/{flyer-number}/{item-number}/  예 /list/26072301/3/
+ *
+ * 프리픽스 변경 이력: 원래 공개 프리픽스는 /listup/였다(직원 포털이 /listad/였을 때). 요청서 7에서
+ * 직원 포털이 /listup/으로 옮겨가면서 공개 프리픽스를 /list/로 바꿨다 — 그래서 이미 실제로 공유된
+ * 옛 /listup/{flyer}/{item}?/ 링크(옛 "LF-000123" 형식 번호 포함)를 절대 깨뜨리면 안 된다. 아래
+ * add_rewrite_rules()가 새 /list/ 규칙과 옛 /listup/ 규칙을 동시에 등록해 둘 다 공개 템플릿으로
+ * 라우팅한다 — 리다이렉트가 아니라 진짜 별칭(alias)이라 URL도 그대로 유지된다. 직원 포털의
+ * /listup/은 세그먼트 없는 정확한 경로(^listup/?$)만 쓰므로(HLF_Portal), 매물 세그먼트가 항상
+ * 붙는 이 옛 공개 규칙(^listup/([^/]+)/...)과 절대 겹치지 않는다.
  *
  * 공개 페이지는 REST가 아니라 서버 렌더링(template_include 계열)으로 출력한다 — SEO/공유 안정성,
  * 공개 데이터 노출 최소화. 접근 정책:
@@ -18,6 +26,10 @@ defined( 'ABSPATH' ) || exit;
 
 final class HLF_Routes {
 
+	/** 새로 발급하는 링크에만 쓰는 프리픽스(요청서 7). 옛 프리픽스는 LEGACY_PREFIX로 계속 라우팅만. */
+	const PREFIX        = 'list';
+	const LEGACY_PREFIX = 'listup';
+
 	public static function init(): void {
 		add_action( 'init', array( __CLASS__, 'add_rewrite_rules' ), 10 );
 		add_filter( 'query_vars', array( __CLASS__, 'register_query_vars' ) );
@@ -29,16 +41,18 @@ final class HLF_Routes {
 		add_rewrite_tag( '%hlf_flyer_number%', '([^/]+)' );
 		add_rewrite_tag( '%hlf_item_number%', '([^/]+)' );
 
-		add_rewrite_rule(
-			'^listup/([^/]+)/([^/]+)/?$',
-			'index.php?hlf_flyer_number=$matches[1]&hlf_item_number=$matches[2]',
-			'top'
-		);
-		add_rewrite_rule(
-			'^listup/([^/]+)/?$',
-			'index.php?hlf_flyer_number=$matches[1]',
-			'top'
-		);
+		foreach ( array( self::PREFIX, self::LEGACY_PREFIX ) as $prefix ) {
+			add_rewrite_rule(
+				'^' . $prefix . '/([^/]+)/([^/]+)/?$',
+				'index.php?hlf_flyer_number=$matches[1]&hlf_item_number=$matches[2]',
+				'top'
+			);
+			add_rewrite_rule(
+				'^' . $prefix . '/([^/]+)/?$',
+				'index.php?hlf_flyer_number=$matches[1]',
+				'top'
+			);
+		}
 	}
 
 	public static function register_query_vars( array $vars ): array {
@@ -57,11 +71,11 @@ final class HLF_Routes {
 	}
 
 	public static function flyer_url( int $flyer_id ): string {
-		return home_url( user_trailingslashit( 'listup/' . HLF_Flyer_Repository::format_number( $flyer_id ) ) );
+		return home_url( user_trailingslashit( self::PREFIX . '/' . HLF_Flyer_Repository::format_number( $flyer_id ) ) );
 	}
 
 	public static function item_url( int $flyer_id, string $item_number ): string {
-		return home_url( user_trailingslashit( 'listup/' . HLF_Flyer_Repository::format_number( $flyer_id ) . '/' . $item_number ) );
+		return home_url( user_trailingslashit( self::PREFIX . '/' . HLF_Flyer_Repository::format_number( $flyer_id ) . '/' . $item_number ) );
 	}
 
 	private static function send_404(): void {

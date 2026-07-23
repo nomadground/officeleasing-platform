@@ -22,7 +22,7 @@ final class HLF_Plugin {
 		// wp-admin "Leasing Flyer" 메뉴(목록/편집 화면). 데이터는 위 REST를 그대로 호출한다.
 		HLF_Admin_UI::init();
 
-		// 직원 전용 포털(/listad/) — 로그인 게이트 + wp-admin 리디렉션 + 화면 자산. 데이터는 여기서도
+		// 직원 전용 포털(/listup/) — 로그인 게이트 + wp-admin 리디렉션 + 화면 자산. 데이터는 여기서도
 		// 위와 같은 hlf/v1 REST를 그대로 호출한다(HLF_Portal은 새 진입점만 담당).
 		HLF_Portal::init();
 

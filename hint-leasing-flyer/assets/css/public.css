@@ -44,6 +44,10 @@ body.hlf-public {
 .hlf-header-address { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .hlf-header-address-main { color: #fff; font-weight: 800; font-size: 15px; }
 .hlf-header-address-sub { color: rgba(255, 255, 255, .8); font-size: 12px; }
+/* 건물명(선택 입력, 요청서) — 주소 바로 다음 줄에 작게. 배경색이 다른 두 곳(색반전 헤더/흰 카드)에서
+   각각 어울리는 색으로 오버라이드한다. */
+.hlf-building-name { display: block; font-size: 11px; font-weight: 600; }
+.hlf-header-address .hlf-building-name { color: rgba(255, 255, 255, .75); }
 .hlf-flyer-number { color: var(--hlf-muted); font-size: 13px; }
 .hlf-detail-badge { width: 22px; height: 20px; margin-right: 0; font-size: 10px; vertical-align: middle; }
 /* padding으로 탭 영역을 넓혀 모바일에서 오터치 없이 누르기 쉽게 한다(시각적 크기는 거의 그대로). */
@@ -126,6 +130,7 @@ body.hlf-public {
 	-webkit-box-orient: vertical;
 }
 .hlf-listing-subaddress { overflow: hidden; color: var(--hlf-muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.hlf-listing-address-block .hlf-building-name { color: var(--hlf-muted); }
 /* 지번주소에 노란 형광펜 효과 — 텍스트 전체가 아니라 글자 높이의 아래 절반에만 배경이 걸치는
    "형광펜 밑줄" 느낌(위 절반은 투명, 아래 절반만 노란색). inline 요소라 텍스트 폭에 딱 맞게
    붙는다(box-decoration-break로 줄바꿈되어도 줄마다 각각 칠해지도록). */

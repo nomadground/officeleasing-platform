@@ -2,8 +2,11 @@
 /**
  * leasing_flyer_item CRUD + 식별자.
  *
- * 식별자 분리(요청서 1-D):
- * - item_number  : Flyer 내부에서 한 번 생성되면 절대 안 바뀌는 URL 식별자. 포맷 "I0001".
+ * 식별자 분리(요청서 1-D, 번호 포맷은 요청서 7로 변경):
+ * - item_number  : Flyer 내부에서 한 번 생성되면 절대 안 바뀌는 URL 식별자. 요청서 7 이후 새 item은
+ *   "1", "2"…처럼 순수 숫자만 쓴다(예 /list/26072301/3/). 이 필드가 생기기 전(옛 "I0001" 포맷)에
+ *   만들어진 item은 저장된 값 그대로 유지된다 — item_number는 애초에 저장값이라 이 포맷 변경이
+ *   기존 값을 절대 건드리지 않는다.
  * - display_order: 화면 표시 순번. reorder로 언제든 바뀐다.
  * 브라우저 index/배열 순서를 영구 ID로 쓰지 않는다.
  *
@@ -16,7 +19,7 @@ defined( 'ABSPATH' ) || exit;
 final class HLF_Item_Repository {
 
 	public static function format_item_number( int $seq ): string {
-		return 'I' . sprintf( '%04d', $seq );
+		return (string) $seq;
 	}
 
 	/** 부모 flyer 소속 item들을 display_order 오름차순으로 반환. */
@@ -112,11 +115,12 @@ final class HLF_Item_Repository {
 			return (int) $wpdb->get_var( 'SELECT LAST_INSERT_ID()' );
 		}
 
-		// 시드 행이 없음 → 기존 item_number 최댓값에서 복구.
+		// 시드 행이 없음 → 기존 item_number 최댓값에서 복구. 옛 포맷("I0001")과 요청서 7의 새 포맷
+		// (순수 숫자, 예 "3") 둘 다 인식한다 — "I" 접두사는 있어도 없어도 그만이다.
 		$max = 0;
 		foreach ( self::get_items( $flyer_id ) as $item ) {
 			$num = (string) get_post_meta( $item->ID, 'item_number', true );
-			if ( preg_match( '/^I0*(\d+)$/', $num, $m ) ) {
+			if ( preg_match( '/^I?0*(\d+)$/', $num, $m ) ) {
 				$max = max( $max, (int) $m[1] );
 			}
 		}

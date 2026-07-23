@@ -112,6 +112,9 @@ $kakao_js_key = defined( 'HLF_KAKAO_JS_KEY' ) ? HLF_KAKAO_JS_KEY : '';
 										<?php if ( $sub_address ) : ?>
 											<span class="hlf-listing-subaddress"><?php echo esc_html( $sub_address ); ?></span>
 										<?php endif; ?>
+										<?php if ( $item['building_name'] ) : ?>
+											<span class="hlf-building-name"><?php echo esc_html( $item['building_name'] ); ?></span>
+										<?php endif; ?>
 									</span>
 								</span>
 								<span class="hlf-listing-meta">

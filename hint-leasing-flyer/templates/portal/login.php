@@ -1,6 +1,6 @@
 <?php
 /**
- * 직원 포털(/listad/) 로그인 화면. 미로그인 사용자에게만 노출된다(HLF_Portal::dispatch()).
+ * 직원 포털(/listup/) 로그인 화면. 미로그인 사용자에게만 노출된다(HLF_Portal::dispatch()).
  * 인증은 워드프레스 네이티브(wp_signon)만 쓴다 — 이 파일은 폼(마크업)만 담당하고, 실제 인증
  * 처리는 HLF_Portal::handle_login_request()가 이 파일이 include되기 전에 이미 끝낸 상태다
  * (성공하면 그 안에서 바로 redirect+exit하므로 이 파일까지 오지 않는다).

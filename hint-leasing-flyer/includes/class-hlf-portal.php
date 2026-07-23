@@ -1,10 +1,12 @@
 <?php
 /**
- * 직원 전용 포털(/listad/) — 요청서: "직원 포털 기능 통합".
+ * 직원 전용 포털(/listup/, 요청서 7 이후 — 원래는 /listad/였다가 공개 프리픽스가 /listup/에서
+ * /list/로 옮겨가면서 비게 된 /listup/을 포털이 물려받았다) — 요청서: "직원 포털 기능 통합".
  *
  * 설계 원칙(중요):
- * - Repository/REST Controller/Snapshot/OCR/카카오 주소검색/공개 /listup/ 등 기존 로직은 전혀
- *   건드리지 않는다. 이 클래스는 "새 진입점 하나(/listad/)" + "로그인 게이트" + "wp-admin 리디렉션"
+ * - Repository/REST Controller/Snapshot/OCR/카카오 주소검색/공개 /list/(+옛 링크 호환용 /listup/
+ *   별칭, HLF_Routes 참고) 등 기존 로직은 전혀 건드리지 않는다. 이 클래스는 "새 진입점
+ *   하나(/listup/, 세그먼트 없는 정확한 경로)" + "로그인 게이트" + "wp-admin 리디렉션"
  *   만 담당하고, 실제 데이터 CRUD는 화면(assets/js/portal.js)이 기존 hlf/v1 REST를 그대로 호출한다.
  * - 로그인은 반드시 워드프레스 네이티브 인증(wp_signon → wp_authenticate → 인증 쿠키)만 쓴다.
  *   별도 회원가입/계정 시스템을 두지 않는다 — 로그인 실패 시에도 다른 보안 플러그인(로그인 시도
@@ -42,11 +44,11 @@ final class HLF_Portal {
 	}
 
 	public static function add_rewrite_rules(): void {
-		// tab/flyer_id는 경로가 아니라 일반 쿼리스트링(예: /listad/?tab=flyers)이라 별도 rewrite
-		// 태그가 필요 없다 — 워드프레스는 경로(listad/)만 매칭하면 나머지 ?key=value는 그대로
+		// tab/flyer_id는 경로가 아니라 일반 쿼리스트링(예: /listup/?tab=flyers)이라 별도 rewrite
+		// 태그가 필요 없다 — 워드프레스는 경로(listup/)만 매칭하면 나머지 ?key=value는 그대로
 		// $_GET에 남긴다. 화면 전환은 JS(portal.js)가 location.search를 읽어 처리한다(요청서: 기본
-		// 진입 주소는 항상 /listad/로 유지).
-		add_rewrite_rule( '^listad/?$', 'index.php?' . self::QUERY_VAR . '=1', 'top' );
+		// 진입 주소는 항상 /listup/로 유지).
+		add_rewrite_rule( '^listup/?$', 'index.php?' . self::QUERY_VAR . '=1', 'top' );
 	}
 
 	public static function register_query_vars( array $vars ): array {
@@ -55,7 +57,7 @@ final class HLF_Portal {
 	}
 
 	public static function portal_url(): string {
-		return home_url( user_trailingslashit( 'listad' ) );
+		return home_url( user_trailingslashit( 'listup' ) );
 	}
 
 	private static function is_portal_request(): bool {
@@ -72,7 +74,7 @@ final class HLF_Portal {
 	}
 
 	/**
-	 * /listad/ 요청 전체를 여기서 가로챈다:
+	 * /listup/ 요청 전체를 여기서 가로챈다:
 	 *   미로그인            → 로그인 처리(POST) 또는 로그인 화면
 	 *   로그인 O, 권한 X    → 403
 	 *   로그인 O, 권한 O    → 포털 화면
@@ -107,7 +109,7 @@ final class HLF_Portal {
 
 	/**
 	 * 로그인 폼 POST 처리. 반드시 워드프레스 네이티브 인증만 쓴다(wp_signon → 인증 쿠키/세션).
-	 * 성공 시 항상 /listad/로 이동(요청서: "로그인 성공 후에는 /listad/로 이동한다").
+	 * 성공 시 항상 /listup/로 이동(요청서: "로그인 성공 후에는 /listup/로 이동한다").
 	 */
 	private static function handle_login_request(): void {
 		if ( 'POST' !== ( $_SERVER['REQUEST_METHOD'] ?? '' ) || ! isset( $_POST[ self::LOGIN_FIELD ] ) ) {
@@ -177,7 +179,7 @@ final class HLF_Portal {
 	}
 
 	/**
-	 * 포털 화면 자산은 /listad/ 요청에서만 로드한다(요청서 검증 항목: "관리자 화면과 Public 화면의
+	 * 포털 화면 자산은 /listup/ 요청에서만 로드한다(요청서 검증 항목: "관리자 화면과 Public 화면의
 	 * asset 분리"). wp.media는 프론트엔드에서도 wp_footer 훅으로 미디어 템플릿을 출력하므로
 	 * (코어 wp_enqueue_media()가 admin_footer/wp_footer 둘 다에 wp_print_media_templates를 건다)
 	 * portal.php가 wp_head()/wp_footer()를 호출하는 한 정상 동작한다.

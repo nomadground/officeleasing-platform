@@ -1,8 +1,8 @@
 <?php
 /**
  * Plugin Name: HINT Leasing Flyer
- * Description: 임대매물 전달용 Leasing Flyer. 발행 시점 조건을 스냅샷으로 저장하고 /listup/ 공개 URL로 공유한다. officeleasing-core에 의존하지 않고 단독 동작한다.
- * Version: 0.3.5-beta.1
+ * Description: 임대매물 전달용 Leasing Flyer. 발행 시점 조건을 스냅샷으로 저장하고 /list/ 공개 URL로 공유한다. officeleasing-core에 의존하지 않고 단독 동작한다.
+ * Version: 0.3.6-beta.1
  * Requires at least: 6.0
  * Requires PHP: 8.0
  * Author: HINT
@@ -24,14 +24,16 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'HLF_VERSION', '0.3.5-beta.1' );
+define( 'HLF_VERSION', '0.3.6-beta.1' );
 define( 'HLF_FILE', __FILE__ );
 define( 'HLF_DIR', plugin_dir_path( __FILE__ ) );
 define( 'HLF_URL', plugin_dir_url( __FILE__ ) );
 
 // rewrite 규칙을 바꿀 때마다 올린다 → 다음 요청에서 1회만 자동 flush (permalinks.php의 버전비교 패턴과 동일).
 // 2: /listad/ 직원 포털 rewrite 규칙 추가(HLF_Portal).
-define( 'HLF_REWRITE_VERSION', 2 );
+// 3: 요청서 7 — 공개 프리픽스 /listup/ -> /list/(옛 /listup/ 링크는 별칭으로 계속 라우팅,
+//    HLF_Routes 참고), 직원 포털 /listad/ -> /listup/(HLF_Portal).
+define( 'HLF_REWRITE_VERSION', 3 );
 
 require_once HLF_DIR . 'includes/class-hlf-calculations.php';
 require_once HLF_DIR . 'includes/class-hlf-display-helpers.php';

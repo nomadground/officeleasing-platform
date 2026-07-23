@@ -1,6 +1,6 @@
 <?php
 /**
- * 직원 포털(/listad/) 화면 껍데기. 로그인 + capability 검사는 HLF_Portal::dispatch()가 이 파일을
+ * 직원 포털(/listup/) 화면 껍데기. 로그인 + capability 검사는 HLF_Portal::dispatch()가 이 파일을
  * include하기 전에 이미 끝낸 상태다. 4탭(Dashboard/전체 매물/임대안내문/설정) 렌더링과 REST 호출은
  * assets/js/portal.js가 전담한다(admin-listup.js와 같은 구조, 다만 wp-admin이 아니라 이 프론트엔드
  * 템플릿에서 wp.media/OCR을 쓸 수 있어야 하므로 wp_head()/wp_footer()를 직접 호출한다 — 이 플러그인의
@@ -29,8 +29,8 @@ defined( 'ABSPATH' ) || exit;
 	<div class="hlf-portal-layout">
 		<nav class="hlf-portal-nav">
 			<button type="button" class="hlf-portal-navbtn" data-hlf-tab="dashboard">Dashboard</button>
-			<button type="button" class="hlf-portal-navbtn" data-hlf-tab="sources">전체 매물</button>
 			<button type="button" class="hlf-portal-navbtn" data-hlf-tab="flyers">임대안내문</button>
+			<button type="button" class="hlf-portal-navbtn" data-hlf-tab="sources">전체 매물</button>
 			<button type="button" class="hlf-portal-navbtn" data-hlf-tab="settings">설정</button>
 		</nav>
 		<main class="hlf-portal-main" id="hlf-portal-root">

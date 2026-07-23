@@ -22,6 +22,7 @@
 	var ITEM_FIELDS = [
 		{ key: 'road_address', label: '도로명주소', type: 'text' },
 		{ key: 'lot_address', label: '지번주소', type: 'text' },
+		{ key: 'building_name', label: '건물명(선택 — 입력하지 않으면 표시되지 않음)', type: 'text' },
 		{ key: 'latitude', label: '위도', type: 'number', step: 'any' },
 		{ key: 'longitude', label: '경도', type: 'number', step: 'any' },
 		{ key: 'floor_current', label: '해당층', type: 'text', placeholder: '예: 3 또는 B1' },
@@ -445,7 +446,7 @@
 	// 순서는 요청서 5번 관리자 UX 배치를 그대로 따른다: 지번주소(+주소 검색) → 도로명주소 → 위도/경도.
 	// ITEM_FIELDS 배열 자체는 road_address가 lot_address보다 앞이라(다른 화면 순서용) 여기서는 그
 	// 순서를 그대로 쓰지 않고 이 배열 순서대로 명시적으로 재배치한다.
-	var ADDRESS_FIELD_KEYS = [ 'lot_address', 'road_address', 'latitude', 'longitude' ];
+	var ADDRESS_FIELD_KEYS = [ 'lot_address', 'road_address', 'building_name', 'latitude', 'longitude' ];
 
 	// 체크박스 2개(주차 가능/엘리베이터 있음)는 한 줄에 나란히 둔다 — 2열 grid의 홀/짝 순서에 맞춰
 	// 배열 순서만 조정하는 방식은 앞쪽 필드 개수가 바뀌면 다시 어긋난다(실제로 확인됨: 그렇게

@@ -1,5 +1,5 @@
 /**
- * 직원 포털(/listad/) 화면. HINT List Up 관리자 화면(admin-listup.js)과 거의 동일한 4탭
+ * 직원 포털(/listup/) 화면. HINT List Up 관리자 화면(admin-listup.js)과 거의 동일한 4탭
  * 구조·REST 호출을 그대로 재사용한다(Repository/REST Controller/Snapshot 로직은 전혀 새로
  * 만들지 않는다) — 차이는 두 가지뿐이다:
  *   1) 이 화면은 wp-admin이 아니라 프론트엔드 템플릿(templates/portal/portal.php)에 얹히므로
@@ -661,6 +661,7 @@
 		var out = {};
 		var defs = SOURCE_FIELDS.concat( [
 			{ key: 'lot_address', type: 'text' }, { key: 'road_address', type: 'text' },
+			{ key: 'building_name', type: 'text' },
 			{ key: 'latitude', type: 'number' }, { key: 'longitude', type: 'number' }
 		] );
 		defs.forEach( function ( def ) {
@@ -682,6 +683,8 @@
 					'<input id="hlf-src-f-lot_address" type="text" name="lot_address" value="' + escAttr( src.lot_address || '' ) + '"></div>' +
 				'<div class="hlf-field"><label for="hlf-src-f-road_address">도로명주소</label>' +
 					'<input id="hlf-src-f-road_address" type="text" name="road_address" value="' + escAttr( src.road_address || '' ) + '" readonly class="hlf-field-readonly"></div>' +
+				'<div class="hlf-field"><label for="hlf-src-f-building_name">건물명(선택)</label>' +
+					'<input id="hlf-src-f-building_name" type="text" name="building_name" placeholder="입력하지 않으면 표시되지 않습니다" value="' + escAttr( src.building_name || '' ) + '"></div>' +
 			'</div>' +
 			'<input type="hidden" name="latitude" value="' + escAttr( src.latitude || '' ) + '">' +
 			'<input type="hidden" name="longitude" value="' + escAttr( src.longitude || '' ) + '">' +

@@ -1,5 +1,5 @@
 /*
- * 직원 포털(/listad/) 전용 스타일. admin.css(HINT List Up 관리자 화면)의 컴포넌트 클래스
+ * 직원 포털(/listup/) 전용 스타일. admin.css(HINT List Up 관리자 화면)의 컴포넌트 클래스
  * (.hlf-card/.hlf-table/.hlf-field/.hlf-stat-card/.hlf-toolbar/.hlf-filter-chip 등)를 그대로
  * 재사용한다 — HLF_Portal::maybe_enqueue_assets()가 admin.css도 함께 로드하고, <body>에
  * .hlf-admin 클래스를 얹어 그 안의 ".hlf-admin .xyz" 스코프 규칙이 그대로 적용되게 한다.

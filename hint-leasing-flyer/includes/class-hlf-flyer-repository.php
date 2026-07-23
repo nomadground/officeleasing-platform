@@ -2,8 +2,12 @@
 /**
  * leasing_flyer CRUD + 식별자.
  *
- * Flyer 번호(요청서 1-D): post ID 기반 표시 포맷. 예 123 → "LF-000123".
- * 별도 sequence table/option 없이 post ID 자체를 쓰므로 동시성에 안전하다.
+ * Flyer 번호:
+ * - 요청서 7 이후(새 Flyer): 생성 시각 날짜 6자리 + 그날 순번 2자리(예 "26072301"). 생성 시점에
+ *   HLF_Meta_Schema::FLYER_NUMBER로 한 번만 저장되고 이후 절대 바뀌지 않는다.
+ * - 요청서 1-D(이 필드가 생기기 전에 만들어진 옛 Flyer): post ID 기반 표시 포맷. 예 123 →
+ *   "LF-000123". 별도 sequence table/option 없이 post ID 자체를 쓰므로 동시성에 안전하다 — 옛
+ *   Flyer는 이 계산 방식을 계속 쓴다(format_number() 참고, 절대 새 형식으로 바뀌지 않는다).
  */
 defined( 'ABSPATH' ) || exit;
 
@@ -24,11 +28,33 @@ final class HLF_Flyer_Repository {
 		return array( 'name' => $name, 'phone' => $phone );
 	}
 
+	/** 이 Flyer에 저장된 번호가 있으면 그대로, 없으면(옛 Flyer) post ID 기반 옛 포맷으로 계산. */
 	public static function format_number( int $flyer_id ): string {
+		$stored = get_post_meta( $flyer_id, HLF_Meta_Schema::FLYER_NUMBER, true );
+		if ( $stored ) {
+			return (string) $stored;
+		}
 		return self::NUMBER_PREFIX . sprintf( '%06d', $flyer_id );
 	}
 
-	/** "LF-000123" → 123. 형식이 안 맞으면 0. */
+	/**
+	 * 새 Flyer 생성 시 한 번만 호출한다(create() 참고) — 오늘 날짜(사이트 로컬 시간) 6자리 + 그날
+	 * 이미 발급된 개수+1(2자리)을 조합해 저장한다. 동시 생성 시 아주 드물게 같은 순번이 나올 수
+	 * 있는 카운트 기반 계산이지만(원자적 증가 아님), 이 플러그인의 다른 저사용량 내부 운영 전제와
+	 * 같은 수준의 위험으로 판단해 별도 원자적 카운터 없이 단순하게 둔다.
+	 */
+	private static function assign_flyer_number( int $flyer_id ): void {
+		global $wpdb;
+		$date_prefix = current_time( 'ymd' );
+		$count       = (int) $wpdb->get_var( $wpdb->prepare(
+			"SELECT COUNT(*) FROM {$wpdb->postmeta} WHERE meta_key = %s AND meta_value LIKE %s",
+			HLF_Meta_Schema::FLYER_NUMBER,
+			$wpdb->esc_like( $date_prefix ) . '%'
+		) );
+		update_post_meta( $flyer_id, HLF_Meta_Schema::FLYER_NUMBER, $date_prefix . sprintf( '%02d', $count + 1 ) );
+	}
+
+	/** "LF-000123" → 123. 형식이 안 맞으면 0. 새 형식(순수 숫자 8자리) 번호는 get_by_number()가 별도 처리. */
 	public static function parse_number( string $flyer_number ): int {
 		if ( ! preg_match( '/^LF-0*(\d+)$/', trim( $flyer_number ), $m ) ) {
 			return 0;
@@ -36,9 +62,24 @@ final class HLF_Flyer_Repository {
 		return (int) $m[1];
 	}
 
-	/** Flyer 번호로 포스트를 찾는다. 타입 불일치/미존재는 null. */
+	/**
+	 * Flyer 번호로 포스트를 찾는다. 타입 불일치/미존재는 null. 새 형식(날짜+순번, 숫자만 8자리)은
+	 * FLYER_NUMBER 메타로 직접 조회하고, 옛 형식("LF-000123")은 그 안의 post ID를 그대로 쓴다 — 두
+	 * 경로 모두 마지막에 get_post()로 상태와 무관하게 포스트를 가져온다(HLF_Routes::dispatch()가
+	 * draft/archived 등 상태별 접근 정책을 이미 별도로 검사하므로 여기서 상태를 미리 거르지 않는다).
+	 */
 	public static function get_by_number( string $flyer_number ): ?WP_Post {
-		$id = self::parse_number( $flyer_number );
+		$flyer_number = trim( $flyer_number );
+		if ( preg_match( '/^\d{8}$/', $flyer_number ) ) {
+			global $wpdb;
+			$id = (int) $wpdb->get_var( $wpdb->prepare(
+				"SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = %s AND meta_value = %s LIMIT 1",
+				HLF_Meta_Schema::FLYER_NUMBER,
+				$flyer_number
+			) );
+		} else {
+			$id = self::parse_number( $flyer_number );
+		}
 		if ( $id <= 0 ) {
 			return null;
 		}
@@ -68,6 +109,8 @@ final class HLF_Flyer_Repository {
 		$flyer_id = (int) $flyer_id;
 		// item 시퀀스 시드(0). item 추가 전에 행이 존재해야 원자적 증가가 안전하다.
 		add_post_meta( $flyer_id, HLF_Meta_Schema::FLYER_ITEM_SEQ, 0, true );
+		// 요청서 7: 새 형식 Flyer 번호는 생성 시점에 한 번만 배정하고 이후 절대 바뀌지 않는다.
+		self::assign_flyer_number( $flyer_id );
 		self::apply_meta_fields( $flyer_id, $data );
 		return $flyer_id;
 	}

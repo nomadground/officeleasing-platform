@@ -116,6 +116,9 @@ $basic['주차']       = array( 'value' => $item['parking_available'] ? ( $item[
 				<?php if ( $address_parts['sub'] ) : ?>
 					<span class="hlf-header-address-sub"><?php echo esc_html( $address_parts['sub'] ); ?></span>
 				<?php endif; ?>
+				<?php if ( $item['building_name'] ) : ?>
+					<span class="hlf-building-name"><?php echo esc_html( $item['building_name'] ); ?></span>
+				<?php endif; ?>
 			</span>
 			<span class="hlf-header-actions">
 				<button type="button" class="hlf-share-button" data-hlf-share-url="<?php echo esc_attr( HLF_Routes::item_url( $flyer['id'], $item['item_number'] ) ); ?>">공유<span class="hlf-share-status" data-hlf-share-status></span></button>

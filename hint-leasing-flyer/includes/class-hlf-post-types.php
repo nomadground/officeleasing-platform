@@ -4,7 +4,7 @@
  *
  * 설계(요청서 1-A):
  * - leasing_flyer:      public=false, show_ui=true, show_in_rest=true, publicly_queryable=false.
- *                       공개 노출은 CPT 기본 rewrite가 아니라 /listup/ 커스텀 rewrite + template_include로만 한다.
+ *                       공개 노출은 CPT 기본 rewrite가 아니라 /list/ 커스텀 rewrite + template_include로만 한다.
  * - leasing_flyer_item: public=false, show_ui=false, show_in_menu=false. 발행 시점 조건 snapshot.
  *                       개별 wp-admin 편집 화면을 열지 않고, 항상 부모 flyer 권한으로 REST를 통해서만 다룬다.
  * - 커스텀 상태 'archived': 기존 공유 링크는 읽기 전용으로 유지하되 신규 공유만 중단(요청서 1-I).
@@ -78,7 +78,7 @@ final class HLF_Post_Types {
 			'publicly_queryable'  => false,
 			'exclude_from_search' => true,
 			'has_archive'         => false,
-			'rewrite'             => false, // 공개 URL은 /listup/ 커스텀 rewrite가 전담(HLF_Routes).
+			'rewrite'             => false, // 공개 URL은 /list/ 커스텀 rewrite가 전담(HLF_Routes).
 			'hierarchical'        => false,
 			'supports'            => array( 'title', 'author' ),
 			'capability_type'     => array( 'leasing_flyer', 'leasing_flyers' ),

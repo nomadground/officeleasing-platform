@@ -16,6 +16,14 @@ final class HLF_Meta_Schema {
 	const FLYER_ITEM_SEQ = '_hlf_next_item_seq';
 
 	/**
+	 * 요청서 7: 새 형식 Flyer 번호(생성 시각의 날짜 6자리 + 그날 순번 2자리, 예 "26072301"). 생성
+	 * 시점에 한 번만 기록되고 이후 절대 바뀌지 않는다(HLF_Flyer_Repository::create() 참고). 이 메타가
+	 * 없는 Flyer(이 필드가 생기기 전에 만들어짐)는 옛 방식("LF-000123", post ID 기반 실시간 계산)을
+	 * 그대로 쓴다 — 기존에 이미 공유된 링크의 번호가 이 변경으로 바뀌는 일은 없다.
+	 */
+	const FLYER_NUMBER = '_hlf_flyer_number';
+
+	/**
 	 * item 필드 정의. key => [ 'type' => string|int|float|bool|int_array, 'default' => mixed ].
 	 * 'source_*'는 원본 listing/building 연결(선택). 나머지는 발행 시점 snapshot 값.
 	 */
@@ -39,6 +47,9 @@ final class HLF_Meta_Schema {
 			// 주소/좌표 (building 스냅샷)
 			'road_address'           => array( 'type' => 'string' ),
 			'lot_address'            => array( 'type' => 'string' ),
+			// 건물명(선택) — officeleasing 연동 없이 직접 입력하는 자유 텍스트. 비워두면 어디에도
+			// 표시하지 않는다(요청서: "안쓰면 안나오게").
+			'building_name'          => array( 'type' => 'string' ),
 			'latitude'               => array( 'type' => 'geo' ),
 			'longitude'              => array( 'type' => 'geo' ),
 
@@ -197,6 +208,13 @@ final class HLF_Meta_Schema {
 		register_post_meta( HLF_Post_Types::FLYER, self::FLYER_ITEM_SEQ, array(
 			'single'        => true,
 			'type'          => 'integer',
+			'show_in_rest'  => false,
+			'auth_callback' => $auth,
+		) );
+
+		register_post_meta( HLF_Post_Types::FLYER, self::FLYER_NUMBER, array(
+			'single'        => true,
+			'type'          => 'string',
 			'show_in_rest'  => false,
 			'auth_callback' => $auth,
 		) );

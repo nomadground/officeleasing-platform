@@ -80,6 +80,9 @@ $print_contact = HLF_Flyer_Repository::public_contact( $flyer, $item );
 			<?php if ( $print_address_parts['sub'] ) : ?>
 				<span class="hlf-header-address-sub"><?php echo esc_html( $print_address_parts['sub'] ); ?></span>
 			<?php endif; ?>
+			<?php if ( $item['building_name'] ) : ?>
+				<span class="hlf-building-name"><?php echo esc_html( $item['building_name'] ); ?></span>
+			<?php endif; ?>
 		</span>
 	</div>
 
