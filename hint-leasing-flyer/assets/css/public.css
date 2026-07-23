@@ -41,11 +41,11 @@ body.hlf-public {
 /* 요청서 8: 화면에서는 매물 수 문구 자체를 완전히 없앤다 — 인쇄에서만 헤더 우측(공유/인쇄 버튼
    빈자리)에 보이는 문구다(print.css). */
 .hlf-print-result-count { display: none; }
-.hlf-brand { display: flex; align-items: baseline; gap: 6px; color: #fff; }
+.hlf-brand { display: flex; align-items: baseline; gap: 6px; color: #fff; margin: 0; font-size: inherit; font-weight: inherit; }
 .hlf-brand-main { font-size: 20px; font-weight: 900; letter-spacing: .02em; }
 .hlf-brand-sub { font-size: 12px; font-weight: 600; color: rgba(255, 255, 255, .85); }
 .hlf-header-address { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-.hlf-header-address-main { color: #fff; font-weight: 800; font-size: 15px; }
+.hlf-header-address-main { display: block; margin: 0; color: #fff; font-weight: 800; font-size: 15px; }
 .hlf-header-address-sub { color: rgba(255, 255, 255, .8); font-size: 12px; }
 /* 건물명(선택 입력, 요청서) — 도로명주소 바로 오른쪽에 같은 줄로 붙인다. 배경색이 다른 두 곳(색반전
    헤더/흰 카드)에서 각각 어울리는 색으로 오버라이드한다. */
@@ -415,6 +415,7 @@ body.hlf-public {
 	transition: transform .15s, filter .15s;
 }
 .hlf-map-marker.is-active { transform: scale(1.25); z-index: 5; filter: brightness(.82); }
+.hlf-map-marker:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 .hlf-map-unavailable { margin: 22px 0; padding: 16px; color: var(--hlf-muted); font-size: 13px; text-align: center; border: 1px dashed var(--hlf-line); border-radius: 8px; }
 /* 인쇄용 순번-주소 목록 — 화면에서는 숨기고 print.css에서만 보여준다(카카오 지도는 인쇄로 재현하기
    어렵고, 인쇄물에 실제로 필요한 정보는 "어디에 있는지" 텍스트로 충분하다). */

@@ -125,7 +125,7 @@ $basic['주차']       = array( 'value' => $item['parking_available'] ? ( $item[
 			<a class="hlf-back" href="<?php echo esc_url( $flyer['url'] ); ?>">← 목록</a>
 			<span class="hlf-item-badge hlf-detail-badge" style="--hlf-item-accent:<?php echo esc_attr( hlf_item_accent_color( $item_order ) ); ?>"><?php echo esc_html( sprintf( '%02d', $item_order + 1 ) ); ?></span>
 			<span class="hlf-header-address">
-				<span class="hlf-header-address-main"><?php echo esc_html( $address ); ?></span>
+				<h1 class="hlf-header-address-main"><?php echo esc_html( $address ); ?></h1>
 				<?php if ( $address_parts['sub'] || $item['building_name'] ) : ?>
 					<span class="hlf-header-address-subrow">
 						<?php if ( $address_parts['sub'] ) : ?>
@@ -267,13 +267,13 @@ $basic['주차']       = array( 'value' => $item['parking_available'] ? ( $item[
 					<?php if ( $contact['name'] ) : ?>
 						<?php echo esc_html( $contact['name'] ); ?> ·
 					<?php endif; ?>
-					<a href="<?php echo esc_attr( 'tel:' . preg_replace( '/[^0-9+]/', '', $contact['phone'] ) ); ?>"><?php echo esc_html( $contact['phone'] ); ?></a>
+					<a href="<?php echo esc_url( 'tel:' . preg_replace( '/[^0-9+]/', '', $contact['phone'] ) ); ?>"><?php echo esc_html( $contact['phone'] ); ?></a>
 				</span>
 			</div>
 		</footer>
 	</div>
 
-	<div class="hlf-lightbox" id="hlf-lightbox" hidden>
+	<div class="hlf-lightbox" id="hlf-lightbox" role="dialog" aria-modal="true" aria-label="사진 크게 보기" hidden>
 		<div class="hlf-lightbox-content">
 			<img class="hlf-lightbox-image" id="hlf-lightbox-image" src="" alt="">
 			<span class="hlf-gallery-watermark hlf-gallery-watermark--lightbox" aria-hidden="true">HINT</span>

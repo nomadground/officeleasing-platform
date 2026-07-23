@@ -203,7 +203,7 @@ $print_contact = HLF_Flyer_Repository::public_contact( $flyer, $item );
 				<?php if ( $print_contact['name'] ) : ?>
 					<?php echo esc_html( $print_contact['name'] ); ?> ·
 				<?php endif; ?>
-				<a href="<?php echo esc_attr( 'tel:' . preg_replace( '/[^0-9+]/', '', $print_contact['phone'] ) ); ?>"><?php echo esc_html( $print_contact['phone'] ); ?></a>
+				<a href="<?php echo esc_url( 'tel:' . preg_replace( '/[^0-9+]/', '', $print_contact['phone'] ) ); ?>"><?php echo esc_html( $print_contact['phone'] ); ?></a>
 			</span>
 		</div>
 	</footer>

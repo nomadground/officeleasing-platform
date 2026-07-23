@@ -49,7 +49,10 @@ if ( ! function_exists( 'hlf_format_address' ) ) {
 if ( ! function_exists( 'hlf_item_accent_color' ) ) {
 	/** 매물 순번(0-based, 화면 표시 순서와 동일) 기반 고정 팔레트 accent color. */
 	function hlf_item_accent_color( int $order ): string {
-		static $palette = array( '#355c73', '#a8582c', '#3d7a4f', '#7a4a9c', '#b8862e', '#3d6e8a', '#8a3d4a', '#4a7a3d' );
+		// 5번째 색(#b8862e)은 흰색 텍스트 대비 3.24:1로 WCAG AA 본문 텍스트 기준(4.5:1) 미달이었다 —
+		// 같은 색상 계열을 유지한 채 명도만 낮춰 4.81:1로 교체(#936b25). assets/js/public-flyer.js의
+		// ACCENT_PALETTE와 값이 완전히 같아야 하므로 그쪽도 함께 바꿨다(파일 상단 주석 규칙).
+		static $palette = array( '#355c73', '#a8582c', '#3d7a4f', '#7a4a9c', '#936b25', '#3d6e8a', '#8a3d4a', '#4a7a3d' );
 		return $palette[ $order % count( $palette ) ];
 	}
 }

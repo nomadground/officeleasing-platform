@@ -24,7 +24,9 @@
 	// 매물별 고정 accent color. 리스트 번호 배지(서버 렌더링, includes/class-hlf-display-helpers.php의
 	// hlf_item_accent_color)와 여기(NOC 차트 막대·지도 마커, 클라이언트 렌더링)가 완전히 같은 배열/규칙을
 	// 써야 색이 어긋나지 않는다 — 이 배열을 바꾸면 PHP 쪽 팔레트도 함께 바꿀 것.
-	var ACCENT_PALETTE = [ '#355c73', '#a8582c', '#3d7a4f', '#7a4a9c', '#b8862e', '#3d6e8a', '#8a3d4a', '#4a7a3d' ];
+	// PHP hlf_item_accent_color()(class-hlf-display-helpers.php)와 값이 완전히 같아야 한다 — 5번째
+	// 색은 흰색 텍스트 대비가 WCAG AA(4.5:1) 미달(3.24:1)이라 #936b25(4.81:1)로 함께 교체했다.
+	var ACCENT_PALETTE = [ '#355c73', '#a8582c', '#3d7a4f', '#7a4a9c', '#936b25', '#3d6e8a', '#8a3d4a', '#4a7a3d' ];
 	function accentColor( order ) {
 		return ACCENT_PALETTE[ order % ACCENT_PALETTE.length ];
 	}
@@ -314,6 +316,13 @@
 
 		var imageEl = document.getElementById( 'hlf-lightbox-image' );
 		var currentIndex = 0;
+		// 라이트박스를 연 트리거 버튼 — 닫을 때 포커스를 여기로 되돌린다(포커스가 사라진 배경 요소나
+		// 문서 맨 위로 튀지 않게 함, 키보드/스크린리더 사용자 기준).
+		var lastFocused = null;
+
+		function focusableButtons() {
+			return Array.prototype.slice.call( lightbox.querySelectorAll( 'button' ) );
+		}
 
 		function show( index ) {
 			currentIndex = ( index % photos.length + photos.length ) % photos.length;
@@ -323,11 +332,17 @@
 		function close() {
 			lightbox.hidden = true;
 			imageEl.src = '';
+			if ( lastFocused && document.contains( lastFocused ) ) { lastFocused.focus(); }
+			lastFocused = null;
 		}
 
 		gallery.querySelectorAll( '[data-hlf-lightbox-open]' ).forEach( function ( button ) {
 			button.addEventListener( 'click', function () {
+				lastFocused = button;
 				show( Number( button.getAttribute( 'data-hlf-lightbox-index' ) ) );
+				// hidden 해제 직후에 포커스를 옮겨야 스크린리더가 "대화상자 열림"을 인식한다.
+				var closeBtn = lightbox.querySelector( '[data-hlf-lightbox-close]' );
+				if ( closeBtn ) { closeBtn.focus(); }
 			} );
 		} );
 
@@ -346,6 +361,21 @@
 			if ( event.key === 'Escape' ) { close(); }
 			if ( event.key === 'ArrowLeft' && prevButton ) { show( currentIndex - 1 ); }
 			if ( event.key === 'ArrowRight' && nextButton ) { show( currentIndex + 1 ); }
+			// Tab이 라이트박스 밖(배경 페이지)으로 빠져나가지 않도록 버튼 목록 안에서만 순환시킨다
+			// (라이트박스 안 포커스 가능한 요소는 버튼뿐 — 별도 라이브러리 없는 최소 focus trap).
+			if ( event.key === 'Tab' ) {
+				var buttons = focusableButtons();
+				if ( ! buttons.length ) { return; }
+				var first = buttons[ 0 ];
+				var last = buttons[ buttons.length - 1 ];
+				if ( event.shiftKey && document.activeElement === first ) {
+					event.preventDefault();
+					last.focus();
+				} else if ( ! event.shiftKey && document.activeElement === last ) {
+					event.preventDefault();
+					first.focus();
+				}
+			}
 		} );
 	}
 
@@ -465,7 +495,20 @@
 
 				if ( it.url ) {
 					marker.style.cursor = 'pointer';
-					marker.addEventListener( 'click', function () { window.location.href = it.url; } );
+					// 순수 <div>는 기본적으로 포커스를 받지 못하고 스크린리더에도 상호작용 요소로
+					// 알려지지 않는다(마우스 클릭만 가능) — 카카오 CustomOverlay가 실제 <a>/<button>을
+					// 못 받으므로(임의 DOM 노드만 허용) role/tabindex/키보드 핸들러를 직접 부여한다.
+					marker.setAttribute( 'role', 'button' );
+					marker.setAttribute( 'tabindex', '0' );
+					marker.setAttribute( 'aria-label', ( it.address || '' ) + ' 매물 상세보기' );
+					var goToItem = function () { window.location.href = it.url; };
+					marker.addEventListener( 'click', goToItem );
+					marker.addEventListener( 'keydown', function ( event ) {
+						if ( event.key === 'Enter' || event.key === ' ' || event.key === 'Spacebar' ) {
+							event.preventDefault();
+							goToItem();
+						}
+					} );
 				}
 				if ( it.key ) {
 					ListingSync.register( it.key, marker );

@@ -148,6 +148,21 @@ Item 편집 폼 상단에 "네이버부동산 캡처로 자동 입력" 섹션(`r
 - 추출/파싱 결과는 항상 "제안값"일 뿐이다 — 폼 필드에만 채워질 뿐 자동 저장되지 않고, 기존 "매물
   추가/수정" 저장 버튼을 직접 눌러야 실제로 반영된다.
 
+## 코드 리뷰 반영(접근성/정리) — v0.4.0-beta.6
+- **`uninstall.php`**: `hlf_contact_directory` 옵션과, 날짜별로 하루 하나씩 무기한 쌓이던
+  `hlf_flyer_seq_*`(Flyer 번호 원자적 카운터, `HLF_Flyer_Repository::next_daily_sequence()`) 옵션들을
+  삭제 시점에 정리한다.
+- **전화번호 링크**: `tel:` href에 `esc_attr()` 대신 워드프레스 관례대로 `esc_url()`을 쓴다(`tel`은
+  코어의 기본 허용 프로토콜 목록에 포함돼 있어 실제로 잘려나가지 않는다).
+- **배지 accent 팔레트**: `hlf_item_accent_color()`(PHP)/`ACCENT_PALETTE`(JS)의 5번째 색을
+  `#b8862e`(흰 글자 대비 3.24:1, WCAG AA 미달) → `#936b25`(4.81:1)로 교체.
+- **공개 페이지 `<h1>`**: 목록 페이지는 헤더 브랜드(`HINT`), 상세 페이지는 헤더 주소를 `<h1>`로 —
+  페이지당 정확히 하나, 스크린리더가 페이지 구조를 파악할 수 있게 한다.
+- **라이트박스**: `role="dialog" aria-modal="true"` + 열 때 닫기 버튼으로 포커스 이동, 닫을 때 원래
+  트리거로 포커스 복원, Tab이 라이트박스 밖으로 새지 않는 최소 focus trap.
+- **지도 마커**: 클릭 가능한 마커(카카오 `CustomOverlay`라 `<a>`/`<button>`으로 바꿀 수 없음)에
+  `role="button"`/`tabindex="0"`/`aria-label` + Enter·Space 키보드 실행 지원.
+
 ## 후속 단계에서 제외
 AI 이미지 적합성 판별, 워터마크 제거/자동 보정, 얼굴·번호판 블러, 이미지 Drag & Drop/크롭 편집기,
 이미지 순서 변경(위/아래) UI, officeleasing 원본 이미지 자동 동기화, PDF 생성, 인쇄 밀도별 레이아웃,

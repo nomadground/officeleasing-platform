@@ -84,7 +84,7 @@ $kakao_js_key = defined( 'HLF_KAKAO_JS_KEY' ) ? HLF_KAKAO_JS_KEY : '';
 <body class="hlf-public hlf-list">
 	<div class="hlf-shell">
 		<header class="hlf-header">
-			<span class="hlf-brand"><span class="hlf-brand-main">HINT</span><span class="hlf-brand-sub">㈜힌트부동산중개법인</span></span>
+			<h1 class="hlf-brand"><span class="hlf-brand-main">HINT</span><span class="hlf-brand-sub">㈜힌트부동산중개법인</span></h1>
 			<?php if ( 'archived' === $status ) : ?>
 				<span class="hlf-badge hlf-badge--archived">보관된 목록</span>
 			<?php elseif ( 'draft' === $status ) : ?>
@@ -254,7 +254,7 @@ $kakao_js_key = defined( 'HLF_KAKAO_JS_KEY' ) ? HLF_KAKAO_JS_KEY : '';
 					<?php if ( $contact['name'] ) : ?>
 						<?php echo esc_html( $contact['name'] ); ?> ·
 					<?php endif; ?>
-					<a href="<?php echo esc_attr( 'tel:' . preg_replace( '/[^0-9+]/', '', $contact['phone'] ) ); ?>"><?php echo esc_html( $contact['phone'] ); ?></a>
+					<a href="<?php echo esc_url( 'tel:' . preg_replace( '/[^0-9+]/', '', $contact['phone'] ) ); ?>"><?php echo esc_html( $contact['phone'] ); ?></a>
 				</span>
 			</div>
 		</footer>
