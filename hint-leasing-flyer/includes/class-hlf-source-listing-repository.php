@@ -458,10 +458,17 @@ final class HLF_Source_Listing_Repository {
 		if ( ! $attachment_ids ) {
 			return;
 		}
-		if ( ! function_exists( 'wp_generate_attachment_metadata' ) ) {
-			require_once ABSPATH . 'wp-admin/includes/image.php';
-		}
 		foreach ( $attachment_ids as $attachment_id ) {
+			// 이미 두 사이즈가 다 있으면 다시 인코딩할 필요가 없다 — HLF_Item_Repository::
+			// ensure_image_sizes와 같은 이유(무거운 재생성 비용을 아낀다).
+			$existing = wp_get_attachment_metadata( $attachment_id );
+			$sizes    = is_array( $existing ) ? ( $existing['sizes'] ?? array() ) : array();
+			if ( isset( $sizes['hlf-item-photo'] ) && isset( $sizes['hlf-item-thumb'] ) ) {
+				continue;
+			}
+			if ( ! function_exists( 'wp_generate_attachment_metadata' ) ) {
+				require_once ABSPATH . 'wp-admin/includes/image.php';
+			}
 			$file = get_attached_file( $attachment_id );
 			if ( ! $file ) {
 				continue;

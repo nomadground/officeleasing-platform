@@ -14,6 +14,21 @@
  */
 defined( 'ABSPATH' ) || exit;
 
+// mbstring은 필수 확장이 아니다 — 없는 환경에서 mb_strlen()/mb_strpos() 직접 호출은 치명적 오류로
+// 이어진다. 여기서 쓰는 곳(검색어 길이 제한, 지번 문자열 포함 여부 확인)은 폴백 시 바이트 단위로
+// 동작해 멀티바이트 문자열에서 정확도가 약간 떨어질 수 있지만 기능 자체가 깨지지는 않는다 — 정상
+// 환경(mbstring 있음)에서는 지금과 완전히 동일하게 동작한다.
+if ( ! function_exists( 'hlf_mb_strlen' ) ) {
+	function hlf_mb_strlen( string $s ) {
+		return function_exists( 'mb_strlen' ) ? mb_strlen( $s, 'UTF-8' ) : strlen( $s );
+	}
+}
+if ( ! function_exists( 'hlf_mb_strpos' ) ) {
+	function hlf_mb_strpos( string $haystack, string $needle ) {
+		return function_exists( 'mb_strpos' ) ? mb_strpos( $haystack, $needle, 0, 'UTF-8' ) : strpos( $haystack, $needle );
+	}
+}
+
 final class HLF_REST_Controller {
 
 	const NS = 'hlf/v1';
@@ -523,7 +538,7 @@ final class HLF_REST_Controller {
 		if ( '' === $query ) {
 			return new WP_Error( 'hlf_kakao_query_required', '검색할 주소를 입력해 주세요.', array( 'status' => 400 ) );
 		}
-		if ( mb_strlen( $query ) > 200 ) {
+		if ( hlf_mb_strlen( $query ) > 200 ) {
 			return new WP_Error( 'hlf_kakao_query_too_long', '검색어가 너무 깁니다.', array( 'status' => 400 ) );
 		}
 
@@ -596,7 +611,7 @@ final class HLF_REST_Controller {
 				$sub_no   = (string) ( $address['sub_address_no'] ?? '' );
 				$same_bunji = $query_main_no !== '' && $main_no === $query_main_no
 					&& ( $query_sub_no === '' ? true : $sub_no === $query_sub_no )
-					&& ( '' === $region_3 || false !== mb_strpos( $query, $region_3 ) );
+					&& ( '' === $region_3 || false !== hlf_mb_strpos( $query, $region_3 ) );
 
 				if ( $same_bunji ) {
 					$address_name = rtrim( (string) ( $address['address_name'] ?? '' ) );

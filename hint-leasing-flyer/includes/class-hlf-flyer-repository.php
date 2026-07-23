@@ -63,14 +63,19 @@ final class HLF_Flyer_Repository {
 	}
 
 	/**
-	 * Flyer 번호로 포스트를 찾는다. 타입 불일치/미존재는 null. 새 형식(날짜+순번, 숫자만 8자리)은
+	 * Flyer 번호로 포스트를 찾는다. 타입 불일치/미존재는 null. 새 형식(날짜 6자리 + 일일 순번)은
 	 * FLYER_NUMBER 메타로 직접 조회하고, 옛 형식("LF-000123")은 그 안의 post ID를 그대로 쓴다 — 두
 	 * 경로 모두 마지막에 get_post()로 상태와 무관하게 포스트를 가져온다(HLF_Routes::dispatch()가
 	 * draft/archived 등 상태별 접근 정책을 이미 별도로 검사하므로 여기서 상태를 미리 거르지 않는다).
+	 *
+	 * 순번은 assign_flyer_number()에서 sprintf('%02d', ...)로 만들어지므로 평소엔 정확히 8자리지만,
+	 * 하루에 100번째 이상 생성되면(순번이 두 자리를 넘어서면) 잘리지 않고 그대로 3자리 이상이 되어
+	 * 9자리 이상 번호가 나올 수 있다 — 정확히 8자리만 받아들이면 그 경우 조용히 404가 났다(실사용
+	 * 버그). 8자리 "이상"으로 받아 옛 "LF-"형식과는 계속 구분되게 한다(그쪽은 앞에 LF-가 붙는다).
 	 */
 	public static function get_by_number( string $flyer_number ): ?WP_Post {
 		$flyer_number = trim( $flyer_number );
-		if ( preg_match( '/^\d{8}$/', $flyer_number ) ) {
+		if ( preg_match( '/^\d{8,}$/', $flyer_number ) ) {
 			global $wpdb;
 			$id = (int) $wpdb->get_var( $wpdb->prepare(
 				"SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = %s AND meta_value = %s LIMIT 1",

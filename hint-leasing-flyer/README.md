@@ -1,20 +1,26 @@
 # HINT Leasing Flyer (플러그인)
 
-임대매물 전달용 Leasing Flyer. 발행 시점 조건을 **스냅샷**으로 저장하고 `/listup/` 공개 URL로 공유한다.
+임대매물 전달용 Leasing Flyer. 발행 시점 조건을 **스냅샷**으로 저장하고 `/list/` 공개 URL로 공유한다
+(예전 `/listup/{flyer}/{item}?/` 매물 URL은 legacy alias로 계속 유효하다 — 이미 공유된 링크를 깨지
+않기 위해 새 `/list/` 규칙과 함께 등록만 유지한다, `class-hlf-routes.php`).
 officeleasing-core / ACF가 없어도 활성화·동작한다(데이터 접근은 워드프레스 네이티브 메타 API로만).
 
 ## Phase 1 구현 범위
 - 부트스트랩(`hint-leasing-flyer.php`, `class-hlf-plugin.php`) — core의 plugins_loaded 패턴 참고, ACF 독립.
-- CPT: `leasing_flyer`(공개=false, UI=true, REST=true, publicly_queryable=false) +
-  `leasing_flyer_item`(비공개) + 커스텀 상태 `hlf_archived`.
+- CPT: `leasing_flyer`(공개=false, show_ui=false, show_in_rest=false, publicly_queryable=false) +
+  `leasing_flyer_item`(비공개) + 커스텀 상태 `hlf_archived`. 기본 워드프레스 관리자 화면/코어 REST는
+  쓰지 않는다 — 전부 이 플러그인 전용 REST 네임스페이스(`hlf/v1`, `class-hlf-rest-controller.php`)와
+  그 REST를 쓰는 관리자 UI(`class-hlf-admin-ui.php` + `assets/js/admin-listup.js`/`portal.js`)로만 다룬다.
 - Capability(1-F): administrator/editor/leasing_flyer_staff 부여.
 - 메타 스키마(1-B) 전체: `class-hlf-meta-schema.php`가 단일 진실원천.
 - 계산(1-C): `class-hlf-calculations.php` — HLF NOC = ((보증금×0.035÷12)+임대료+관리비)/전용평.
   core의 noc_per_exclusive_pyeong(보증금 미포함)과 **완전히 분리**.
-- 고유번호(1-D): Flyer = `LF-000123`(post ID 기반), Item = `I0001`(부모 flyer 시퀀스 원자 증가).
+- 고유번호(1-D): Flyer = `LF-000123`(post ID 기반, 옛 형식) 또는 날짜 6자리+일일 순번(신규 형식),
+  Item = `I0001`(부모 flyer 시퀀스 원자 증가, 옛 형식) 또는 순수 숫자(신규 형식).
   display_order(표시순)와 item_number(불변 URL 식별자) 분리.
-- URL(1-E): `/listup/{flyer}/`, `/listup/{flyer}/{item}/` rewrite + template_include 서버 렌더링.
-  버전비교 flush(permalinks.php 패턴). draft=권한필요, published=공개, archived=읽기전용.
+- URL(1-E): `/list/{flyer}/`, `/list/{flyer}/{item}/` rewrite + template_include 서버 렌더링(옛
+  `/listup/{flyer}/{item}?/` 규칙은 legacy alias로 함께 유지). 버전비교 flush(permalinks.php 패턴).
+  draft=권한필요, published=공개, archived=읽기전용.
 - REST(1-G): `hlf/v1` CRUD/reorder/publish. refresh-source는 아직 501 stub, images는 Phase 3에서 구현.
 
 ## Phase 2-1 구현 범위 — 관리자 CRUD UI

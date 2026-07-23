@@ -225,13 +225,13 @@ body.hlf-public {
 .hlf-gallery-watermark--lightbox { padding: 12px 30px; font-size: 20px; border-radius: 10px; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
 .hlf-gallery-main img { display: block; width: 100%; height: 100%; object-fit: cover; transition: opacity .12s ease; }
 /* min-width:0은 위 .hlf-gallery와 같은 이유(flex 아이템 기본값 min-width:auto가 스크롤을 무력화함).
-   scroll-snap은 요청서의 "슬라이드 형식" 요청에 맞춰 손가락을 떼면 썸네일 하나 단위로 딱 맞춰
-   멈추게 한다(터치 스크롤은 이미 overflow-x:auto로 가능했고, 이건 그 위에 얹는 다듬기). */
+   scroll-snap-type(과 아래 .hlf-photo-open의 scroll-snap-align)은 요청서의 "슬라이드 형식" 요청에
+   맞춰 손가락을 떼면 썸네일 하나 단위로 딱 맞춰 멈추게 한다(터치 스크롤은 이미 overflow-x:auto로
+   가능했고, 이건 그 위에 얹는 다듬기). */
 .hlf-gallery-thumbs { display: flex; gap: 8px; min-width: 0; margin-top: 8px; overflow-x: auto; padding-bottom: 2px; scroll-snap-type: x proximity; }
-.hlf-gallery-thumbs .hlf-photo-open { scroll-snap-align: start; }
 .hlf-gallery-thumbs img { flex: 0 0 auto; width: 84px; height: 60px; object-fit: cover; border-radius: 8px; transition: transform .12s ease; }
 .hlf-photo-open { display: block; width: 100%; height: 100%; padding: 0; border: 0; background: transparent; cursor: pointer; }
-.hlf-gallery-thumbs .hlf-photo-open { flex: 0 0 auto; width: 84px; }
+.hlf-gallery-thumbs .hlf-photo-open { flex: 0 0 auto; width: 84px; scroll-snap-align: start; }
 .hlf-photo-open:focus-visible { outline: 2px solid var(--hlf-primary); outline-offset: 2px; }
 /* 썸네일에 마우스오버하면 위 대표 사진 자리에 그 사진이 커져서 나타난다(assets/js/public-flyer.js
    bindGalleryHoverSwap) — 썸네일 자체도 살짝 커져서 지금 어떤 사진이 크게 보이는지 알려준다. */

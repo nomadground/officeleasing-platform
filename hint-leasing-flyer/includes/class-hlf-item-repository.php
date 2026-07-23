@@ -399,10 +399,19 @@ final class HLF_Item_Repository {
 		if ( ! $attachment_ids ) {
 			return;
 		}
-		if ( ! function_exists( 'wp_generate_attachment_metadata' ) ) {
-			require_once ABSPATH . 'wp-admin/includes/image.php';
-		}
 		foreach ( $attachment_ids as $attachment_id ) {
+			// 이미 두 사이즈가 다 있으면(전에 이 매물이든 다른 매물이든 한 번 붙었던 사진이면 흔함)
+			// 다시 인코딩할 필요가 없다 — wp_generate_attachment_metadata()는 이미지 파일을 열어
+			// 등록된 사이즈 전부를 다시 만드는 무거운 작업이라, 매번 새로 하면 사진마다 매번 이 비용이
+			// 들어 매물 저장이 느려진다.
+			$existing = wp_get_attachment_metadata( $attachment_id );
+			$sizes    = is_array( $existing ) ? ( $existing['sizes'] ?? array() ) : array();
+			if ( isset( $sizes['hlf-item-photo'] ) && isset( $sizes['hlf-item-thumb'] ) ) {
+				continue;
+			}
+			if ( ! function_exists( 'wp_generate_attachment_metadata' ) ) {
+				require_once ABSPATH . 'wp-admin/includes/image.php';
+			}
 			$file = get_attached_file( $attachment_id );
 			if ( ! $file ) {
 				continue;

@@ -3,8 +3,12 @@
  * CPT 등록: leasing_flyer(공개 발행 단위) + leasing_flyer_item(비공개 스냅샷 항목).
  *
  * 설계(요청서 1-A):
- * - leasing_flyer:      public=false, show_ui=true, show_in_rest=true, publicly_queryable=false.
- *                       공개 노출은 CPT 기본 rewrite가 아니라 /list/ 커스텀 rewrite + template_include로만 한다.
+ * - leasing_flyer:      public=false, show_ui=false, show_in_rest=false, publicly_queryable=false.
+ *                       기본 워드프레스 관리자 화면(post-new.php 등)도, 코어 REST(/wp-json/wp/v2/
+ *                       leasing_flyer)도 쓰지 않는다 — 이 플러그인 전용 REST 네임스페이스(hlf/v1,
+ *                       class-hlf-rest-controller.php)와 그 REST를 쓰는 관리자 UI(class-hlf-admin-ui.php
+ *                       + assets/js/admin-listup.js 등)로만 다룬다. 공개 노출은 CPT 기본 rewrite가
+ *                       아니라 /list/ 커스텀 rewrite + template_include로만 한다.
  * - leasing_flyer_item: public=false, show_ui=false, show_in_menu=false. 발행 시점 조건 snapshot.
  *                       개별 wp-admin 편집 화면을 열지 않고, 항상 부모 flyer 권한으로 REST를 통해서만 다룬다.
  * - 커스텀 상태 'archived': 기존 공유 링크는 읽기 전용으로 유지하되 신규 공유만 중단(요청서 1-I).

@@ -23,12 +23,25 @@
  */
 defined( 'ABSPATH' ) || exit;
 
+// mbstring은 대부분의 호스팅에 있지만 필수 확장은 아니다 — 없는 환경에서 mb_strlen() 직접 호출은
+// 치명적 오류(Fatal error: Call to undefined function)로 이어진다. strlen()은 한글 등 멀티바이트
+// 문자를 "글자 수"가 아니라 "바이트 수"로 세지만, 여기서 쓰는 곳은 "한 글자짜리 검색어 차단" 같은
+// 성능 가드라 폴백 시 정확도가 약간 떨어질 뿐 기능이 깨지지는 않는다(mbstring 없는 드문 환경의
+// 절충 — 정상 환경에서는 지금과 완전히 동일하게 동작한다).
+if ( ! function_exists( 'hlf_mb_strlen' ) ) {
+	function hlf_mb_strlen( string $s ) {
+		return function_exists( 'mb_strlen' ) ? mb_strlen( $s, 'UTF-8' ) : strlen( $s );
+	}
+}
+
 final class HLF_OfficeLeasing_Search {
 
 	const DEFAULT_PER_PAGE = 20;
 	const MAX_PER_PAGE     = 50;
 
-	/** 검색어 후보 id 집합의 상한 — posts_per_page => -1로 뽑는 후보 조회가 무제한으로 커지지 않게 한다. */
+	/** 검색어 후보 id 집합의 상한 — find_matching_listing_ids()/find_matching_building_ids()의
+	 *  posts_per_page 자체가 이 값으로 제한돼(no_found_rows도 함께 꺼짐) 후보 조회 쿼리 비용이
+	 *  무제한으로 커지지 않는다. */
 	const MAX_CANDIDATE_IDS = 800;
 
 	/**
@@ -70,7 +83,7 @@ final class HLF_OfficeLeasing_Search {
 			// 한 글자짜리 검색어는 LIKE/제목검색 후보가 사실상 전수조사에 가까워 posts_per_page => -1
 			// 조회 비용이 급격히 커진다 — 빈 검색어(전체 목록 보기, 위 분기)와 달리 이건 명시적으로
 			// 거부한다. 관리자 UI는 빈 결과를 이미 "일치하는 매물이 없습니다"로 자연스럽게 표시한다.
-			if ( mb_strlen( $search ) <= 1 ) {
+			if ( hlf_mb_strlen( $search ) <= 1 ) {
 				return array( 'items' => array(), 'page' => $page, 'per_page' => $per_page, 'total' => 0 );
 			}
 			$matched_ids = self::find_matching_listing_ids( $search, $meta_query );
@@ -102,11 +115,17 @@ final class HLF_OfficeLeasing_Search {
 	 * listing 제목 일치 ∪ (related_building이 제목/주소 일치 building에 속하는 listing).
 	 */
 	private static function find_matching_listing_ids( string $search, array $base_meta_query ): array {
+		// 요청서(성능 개선): posts_per_page => -1은 검색어와 일치하는 행 전부를 DB에서 끌어온 뒤에야
+		// array_slice로 MAX_CANDIDATE_IDS까지 자르는 것이라, 정작 무거운 조회 자체는 전혀 줄어들지
+		// 않았다(주석은 "무제한으로 커지지 않게 한다"고 돼 있었지만 실제로는 그 반대). 쿼리 자체를
+		// MAX_CANDIDATE_IDS로 제한하고, LIMIT만 필요하니 전체 개수 계산(found_rows)도 꺼서 그만큼
+		// 아낀다.
 		$by_title = get_posts( array(
 			'post_type'      => 'listing',
 			'post_status'    => 'publish',
 			's'              => $search,
-			'posts_per_page' => -1,
+			'posts_per_page' => self::MAX_CANDIDATE_IDS,
+			'no_found_rows'  => true,
 			'fields'         => 'ids',
 			'meta_query'     => $base_meta_query,
 		) );
@@ -121,7 +140,8 @@ final class HLF_OfficeLeasing_Search {
 			$by_building = get_posts( array(
 				'post_type'      => 'listing',
 				'post_status'    => 'publish',
-				'posts_per_page' => -1,
+				'posts_per_page' => self::MAX_CANDIDATE_IDS,
+				'no_found_rows'  => true,
 				'fields'         => 'ids',
 				'meta_query'     => $meta_query,
 			) );
@@ -137,14 +157,16 @@ final class HLF_OfficeLeasing_Search {
 			'post_type'      => 'building',
 			'post_status'    => 'publish',
 			's'              => $search,
-			'posts_per_page' => -1,
+			'posts_per_page' => self::MAX_CANDIDATE_IDS,
+			'no_found_rows'  => true,
 			'fields'         => 'ids',
 		) );
 
 		$by_address = get_posts( array(
 			'post_type'      => 'building',
 			'post_status'    => 'publish',
-			'posts_per_page' => -1,
+			'posts_per_page' => self::MAX_CANDIDATE_IDS,
+			'no_found_rows'  => true,
 			'fields'         => 'ids',
 			'meta_query'     => array(
 				'relation' => 'OR',
