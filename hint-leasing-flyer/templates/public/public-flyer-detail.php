@@ -173,7 +173,7 @@ $basic['주차']       = array( 'value' => $item['parking_available'] ? ( $item[
 			<?php if ( $has_coords ) : ?>
 				<section class="hlf-detail-map-panel" aria-labelledby="hlf-detail-map-title">
 					<div class="hlf-comparison-map-heading">
-						<h2 id="hlf-detail-map-title">위치</h2>
+						<h2 id="hlf-detail-map-title">Location</h2>
 					</div>
 					<div
 						class="hlf-comparison-map hlf-detail-map"
@@ -221,7 +221,7 @@ $basic['주차']       = array( 'value' => $item['parking_available'] ? ( $item[
 				<div class="hlf-lease-metric hlf-lease-metric--noc">
 					<span class="hlf-lease-metric-label">환산임대료</span>
 					<span class="hlf-lease-metric-value"><?php echo esc_html( number_format( $metrics['noc'], 1 ) ); ?>만원</span>
-					<span class="hlf-lease-metric-sub">NOC</span>
+					<span class="hlf-lease-metric-sub">전용평당</span>
 				</div>
 			</div>
 		</section>
@@ -262,7 +262,7 @@ $basic['주차']       = array( 'value' => $item['parking_available'] ? ( $item[
 		?>
 		<footer class="hlf-footer">
 			<div class="hlf-footer-row">
-				<p class="hlf-footer-copyright"><a class="hlf-footer-admin-link" href="<?php echo esc_url( wp_logout_url( wp_login_url() ) ); ?>">© HINT</a> Co., Ltd. All Rights Reserved. 무단 복제 및 재배포 금지</p>
+				<p class="hlf-footer-copyright"><a class="hlf-footer-admin-link" href="<?php echo esc_url( wp_logout_url( HLF_Portal::portal_url() ) ); ?>">© HINT</a> Co., Ltd. All Rights Reserved. 무단 복제 및 재배포 금지</p>
 				<span class="hlf-footer-contact">
 					<?php if ( $contact['name'] ) : ?>
 						<?php echo esc_html( $contact['name'] ); ?> ·

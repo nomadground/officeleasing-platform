@@ -79,7 +79,8 @@ officeleasing-core / ACF가 없어도 활성화·동작한다(데이터 접근�
 - **업로드 이미지 최적화(`class-hlf-image-pipeline.php`)**: 새 이미지 처리 코드를 짜지 않고 워드프레스
   코어 훅만 조합한다 — `big_image_size_threshold`(900px, EXIF 방향 보정도 이 코어 경로가 함께 처리),
   `wp_editor_set_quality`(JPEG 82%), `image_editor_output_format`(PNG로 올라온 사진의 파생 이미지는
-  JPEG로 출력), `wp_handle_upload_prefilter`(이미지 업로드 1MB/8000px 상한 — 직원 전용 업로드라는
+  JPEG로 출력), `wp_handle_upload_prefilter`(이미지 업로드 1MB/1000px 상한 — 900px 자동 리사이즈가
+  실제 최적화를 담당하고, 이 상한은 비정상적으로 큰 원본만 걸러내는 안전망. 직원 전용 업로드라는
   전제로 건 제한, 이미지가 아닌 업로드는 그대로 통과). WebP 생성은 Smush Pro 같은 전용 플러그인의
   영역이라 넣지 않았다(이 플러그인은 다른 플러그인에 의존하지 않는다는 기존 원칙과 같은 이유).
 

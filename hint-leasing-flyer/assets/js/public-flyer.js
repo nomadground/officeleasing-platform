@@ -37,11 +37,19 @@
 	// .is-active를 함께 토글한다.
 	var ListingSync = ( function () {
 		var groups = {};
+		// 요청서: 리스트 행/NOC 차트 막대/지도 마커 중 어느 하나에 마우스를 올려도, 그 매물의 지도
+		// 좌표가 등록돼 있으면(registerMapTarget) 지도를 그 위치로 이동시킨다(줌 레벨은 그대로 —
+		// panTo만 호출).
+		var mapTargets = {};
 		function setActive( key ) {
 			Object.keys( groups ).forEach( function ( k ) {
 				var isActive = ( k === key );
 				groups[ k ].forEach( function ( el ) { el.classList.toggle( 'is-active', isActive ); } );
 			} );
+			var target = mapTargets[ key ];
+			if ( target && window.kakao && window.kakao.maps ) {
+				target.map.panTo( new kakao.maps.LatLng( target.lat, target.lng ) );
+			}
 		}
 		function clearActive() {
 			Object.keys( groups ).forEach( function ( k ) {
@@ -56,7 +64,11 @@
 			el.addEventListener( 'focus', function () { setActive( key ); } );
 			el.addEventListener( 'blur', clearActive );
 		}
-		return { register: register };
+		function registerMapTarget( key, map, lat, lng ) {
+			if ( ! key ) { return; }
+			mapTargets[ key ] = { map: map, lat: lat, lng: lng };
+		}
+		return { register: register, registerMapTarget: registerMapTarget };
 	} )();
 
 	function registerListingRows() {
@@ -234,11 +246,26 @@
 	// (#hlf-print-panel, public-flyer-list.php가 렌더링)이 먼저 뜬다 — 1페이지(목록)/2페이지(비교
 	// 차트·지도)/매물별 상세 페이지 중 체크한 것만 실제로 인쇄된다. 그 패널이 없는 페이지(상세
 	// 페이지는 원래부터 1페이지뿐이라 고를 게 없다)에서는 이전과 동일하게 바로 인쇄한다.
+	// 인쇄 버튼을 눌러 실제로 window.print()를 부르기 직전 준비 단계 — (1) 체크한 매물별 인쇄 전용
+	// 지도를 그때 가서 만들고, (2) 인쇄 전용 사진을 채워 넣고, (3) 이미 화면에 떠 있던 지도(비교
+	// 지도·상세 페이지 자체 지도)는 인쇄 레이아웃 크기로 다시 맞춘다 — 이 세 가지가 전부 끝난(사진
+	// 로드 완료 + 지도 타일 로드 완료) 뒤에야 인쇄를 시작한다. 인쇄 선택 패널이 있는 목록 페이지와
+	// 패널이 없어 곧장 인쇄하는 상세 페이지 둘 다 이 함수 하나를 그대로 쓴다.
+	function prepareAndPrint() {
+		Promise.all( [
+			initLazyPrintMaps( document ),
+			loadPendingPrintPhotos( document ),
+			relayoutMapsForPrint(),
+		] ).then( function () {
+			window.print();
+		} );
+	}
+
 	function bindPrintButton() {
 		var panel = document.getElementById( 'hlf-print-panel' );
 		document.querySelectorAll( '[data-hlf-print]' ).forEach( function ( button ) {
 			button.addEventListener( 'click', function () {
-				if ( ! panel ) { window.print(); return; }
+				if ( ! panel ) { prepareAndPrint(); return; }
 				panel.hidden = false;
 			} );
 		} );
@@ -265,12 +292,7 @@
 				var included = sections.filter( function ( section ) { return ! section.classList.contains( 'hlf-print-section-excluded' ); } );
 				if ( included.length ) { included[ included.length - 1 ].classList.add( 'hlf-print-section-last' ); }
 				panel.hidden = true;
-				// 인쇄에는 실제 지도 대신 항상 순번-주소 텍스트 목록을 쓴다(print.css) — 지도 타일
-				// 비동기 로딩과 인쇄 스냅샷 시점이 경합하는 문제라 JS로 미리 만들어봐야 소용이 없다.
-				// 사진만 인쇄 확정 시점에 채워 넣고 로드 완료를 기다린 뒤 인쇄를 시작한다.
-				loadPendingPrintPhotos( document ).then( function () {
-					window.print();
-				} );
+				prepareAndPrint();
 			} );
 		}
 	}
@@ -352,6 +374,51 @@
 		return kakaoMapLoader;
 	}
 
+	// 인쇄 화면은 폭/높이가 화면과 전혀 다르다(A4 landscape, 2단 grid 폭 등) — 카카오 지도는 생성
+	// 시점의 컨테이너 크기로 내부 캔버스를 굳혀버리므로, 인쇄 시작 시점에 이미 만들어둔 지도마다
+	// relayout()+중심 재설정을 다시 걸어줘야 인쇄 레이아웃 크기에 맞게 다시 그려진다.
+	var initializedMaps = [];
+
+	function fitMapToItems( map, items ) {
+		if ( items.length === 1 ) {
+			map.setCenter( new kakao.maps.LatLng( items[ 0 ].lat, items[ 0 ].lng ) );
+			map.setLevel( 4 );
+		} else {
+			var bounds = new kakao.maps.LatLngBounds();
+			items.forEach( function ( it ) { bounds.extend( new kakao.maps.LatLng( it.lat, it.lng ) ); } );
+			map.setBounds( bounds );
+		}
+	}
+
+	// relayout() 직후에는 카카오 지도가 새 캔버스 크기에 맞는 타일을 다시 비동기로 받아온다 — 그 타일이
+	// 전부 도착해 실제로 그려졌다는 신호(tilesloaded)가 (다시) 한 번 더 뜰 때까지 기다린 뒤에야
+	// window.print()를 불러야 인쇄 스냅샷에 빈 지도가 찍히지 않는다. 네트워크 문제 등으로 이 이벤트가
+	// 영영 안 올 수도 있으니 인쇄가 무한정 멈추지 않도록 안전 타임아웃을 둔다.
+	function waitForTilesLoaded( map ) {
+		return new Promise( function ( resolve ) {
+			var done = false;
+			function finish() {
+				if ( done ) { return; }
+				done = true;
+				resolve();
+			}
+			kakao.maps.event.addListener( map, 'tilesloaded', finish );
+			setTimeout( finish, 2500 );
+		} );
+	}
+
+	// 인쇄 시작 직전에 호출된다 — 이미 만들어둔 지도 전부를 인쇄 레이아웃 크기로 다시 맞추고, 그
+	// 크기에 맞는 타일이 실제로 다 그려질 때까지 기다리는 Promise를 모아서 돌려준다.
+	function relayoutMapsForPrint() {
+		if ( ! ( window.kakao && window.kakao.maps ) ) { return Promise.resolve(); }
+		var waits = initializedMaps.map( function ( entry ) {
+			entry.map.relayout();
+			fitMapToItems( entry.map, entry.items );
+			return waitForTilesLoaded( entry.map );
+		} );
+		return Promise.all( waits );
+	}
+
 	// 비교 지도(여러 매물)와 상세 개별 지도(매물 1개)는 같은 렌더링 로직을 그대로 쓴다 — 좌표가 1개면
 	// bounds 계산 없이 그 지점으로 센터를 맞추고, 여러 개면 LatLngBounds로 전부 화면에 들어오게 맞춘다.
 	function initMapContainer( container ) {
@@ -377,6 +444,8 @@
 				map.setBounds( bounds );
 			}
 
+			var tilesPromise = waitForTilesLoaded( map );
+
 			items.forEach( function ( it ) {
 				var label = String( it.order + 1 );
 				if ( label.length < 2 ) { label = '0' + label; }
@@ -398,15 +467,38 @@
 					marker.style.cursor = 'pointer';
 					marker.addEventListener( 'click', function () { window.location.href = it.url; } );
 				}
-				if ( it.key ) { ListingSync.register( it.key, marker ); }
+				if ( it.key ) {
+					ListingSync.register( it.key, marker );
+					// 요청서: 리스트 행/차트 막대에 마우스를 올려도(마커 자신이 아니어도) 이 매물
+					// 위치로 지도가 이동한다 — 줌 레벨은 그대로 두고 중심만 옮긴다(panTo).
+					ListingSync.registerMapTarget( it.key, map, it.lat, it.lng );
+				}
 			} );
+
+			initializedMaps.push( { map: map, items: items } );
+			return tilesPromise;
 		} ).catch( function ( error ) {
 			container.innerHTML = '<p class="hlf-map-empty">카카오 지도를 불러오지 못했습니다. (' + escapeHtml( error.message ) + ')</p>';
 		} );
 	}
 
+	// data-hlf-lazy-map이 붙은 지도(리스트 인쇄물에 끼워 넣는 매물별 상세 지도)는 여기서 건너뛴다 —
+	// 목록 페이지를 열 때마다 매물 수만큼 카카오 지도를 미리 만들면 낭비다. 인쇄 버튼을 눌러 실제로
+	// 그 항목을 선택했을 때만(initLazyPrintMaps) 만든다.
 	function initMaps() {
-		document.querySelectorAll( '[data-hlf-map-items]' ).forEach( initMapContainer );
+		document.querySelectorAll( '[data-hlf-map-items]:not([data-hlf-lazy-map])' ).forEach( initMapContainer );
+	}
+
+	// 인쇄 선택 패널에서 "인쇄" 확정 시(또는 패널이 없는 상세 페이지에서 인쇄 버튼 클릭 시) 호출된다 —
+	// 지금 화면에 남아있는(=사용자가 체크한) 매물별 인쇄 전용 지도 중 아직 만들지 않은 것만 그때 가서
+	// 만든다. data-hlf-map-initialized로 한 번 만든 뒤 다시 만들지 않는다.
+	function initLazyPrintMaps( root ) {
+		var pending = [];
+		root.querySelectorAll( '[data-hlf-print-section]:not(.hlf-print-section-excluded) [data-hlf-map-items][data-hlf-lazy-map]:not([data-hlf-map-initialized])' ).forEach( function ( container ) {
+			container.setAttribute( 'data-hlf-map-initialized', '1' );
+			pending.push( initMapContainer( container ) );
+		} );
+		return Promise.all( pending );
 	}
 
 	// 매물 인쇄 상세(print-item-detail.php)의 대표사진은 항상 display:none 컨테이너 안에 있어(공개
@@ -429,6 +521,20 @@
 		return Promise.all( pending );
 	}
 
+	// 인쇄 버튼(bindPrintButton/prepareAndPrint)이 아니라 브라우저 자체 단축키(Ctrl+P 등)로 인쇄에
+	// 들어가는 경우를 위한 최소한의 보완 — window.print()를 우리가 가로챌 수 없으므로 로드 완료를
+	// 보장하진 못하지만, beforeprint에서라도 relayout을 걸어두면 완전히 빈 지도보다는 낫다.
+	function bindPrintMapRelayout() {
+		window.addEventListener( 'beforeprint', function () { relayoutMapsForPrint(); } );
+		window.addEventListener( 'afterprint', function () { relayoutMapsForPrint(); } );
+		if ( window.matchMedia ) {
+			var mql = window.matchMedia( 'print' );
+			var handler = function ( e ) { if ( e.matches ) { relayoutMapsForPrint(); } };
+			if ( mql.addEventListener ) { mql.addEventListener( 'change', handler ); }
+			else if ( mql.addListener ) { mql.addListener( handler ); }
+		}
+	}
+
 	document.addEventListener( 'DOMContentLoaded', function () {
 		registerListingRows();
 		renderNocChart();
@@ -437,5 +543,6 @@
 		bindLightbox();
 		bindGalleryHoverSwap();
 		initMaps();
+		bindPrintMapRelayout();
 	} );
 } )();

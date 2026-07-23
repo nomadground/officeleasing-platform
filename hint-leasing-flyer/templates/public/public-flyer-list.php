@@ -105,10 +105,6 @@ $kakao_js_key = defined( 'HLF_KAKAO_JS_KEY' ) ? HLF_KAKAO_JS_KEY : '';
 			</span>
 		</header>
 
-		<div class="hlf-title-row">
-			<p class="hlf-result-count"><?php echo esc_html( count( $items ) ); ?>개 매물</p>
-		</div>
-
 		<?php if ( empty( $items ) ) : ?>
 			<p class="hlf-empty">등록된 매물이 없습니다.</p>
 		<?php else : ?>
@@ -253,7 +249,7 @@ $kakao_js_key = defined( 'HLF_KAKAO_JS_KEY' ) ? HLF_KAKAO_JS_KEY : '';
 		<?php $contact = HLF_Flyer_Repository::public_contact( $flyer ); ?>
 		<footer class="hlf-footer">
 			<div class="hlf-footer-row">
-				<p class="hlf-footer-copyright"><a class="hlf-footer-admin-link" href="<?php echo esc_url( wp_logout_url( wp_login_url() ) ); ?>">© HINT</a> Co., Ltd. All Rights Reserved. 무단 복제 및 재배포 금지</p>
+				<p class="hlf-footer-copyright"><a class="hlf-footer-admin-link" href="<?php echo esc_url( wp_logout_url( HLF_Portal::portal_url() ) ); ?>">© HINT</a> Co., Ltd. All Rights Reserved. 무단 복제 및 재배포 금지</p>
 				<span class="hlf-footer-contact">
 					<?php if ( $contact['name'] ) : ?>
 						<?php echo esc_html( $contact['name'] ); ?> ·

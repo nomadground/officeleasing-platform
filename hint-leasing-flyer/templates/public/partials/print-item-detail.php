@@ -10,7 +10,8 @@
  * +문의처)뿐이다.
  *
  * 필요한 입력 변수(호출부 public-flyer-list.php가 이미 갖고 있는 값 그대로 넘긴다):
- *   $flyer (array), $item (array, HLF_Item_Repository::to_array 결과), $i (0-based 표시 순서)
+ *   $flyer (array), $item (array, HLF_Item_Repository::to_array 결과), $i (0-based 표시 순서),
+ *   $kakao_js_key (string)
  */
 defined( 'ABSPATH' ) || exit;
 
@@ -118,18 +119,22 @@ $print_contact = HLF_Flyer_Repository::public_contact( $flyer, $item );
 		<?php if ( $print_has_coords ) : ?>
 			<section class="hlf-detail-map-panel" aria-labelledby="hlf-print-map-title-<?php echo esc_attr( $item['item_number'] ); ?>">
 				<div class="hlf-comparison-map-heading">
-					<h2 id="hlf-print-map-title-<?php echo esc_attr( $item['item_number'] ); ?>">위치</h2>
+					<h2 id="hlf-print-map-title-<?php echo esc_attr( $item['item_number'] ); ?>">Location</h2>
 				</div>
 				<?php
-				/*
-				 * 실제 카카오 지도는 인쇄에서 쓰지 않는다 — 인쇄(특히 미리보기) 스냅샷이 찍히는 시점과
-				 * 지도 타일이 비동기로 다 불러와지는 시점이 서로 경합해(beforeprint에서 relayout()을
-				 * 걸어도 타일 자체는 그 뒤에 네트워크로 도착) 실사용 테스트에서 지도가 안 보이는 문제가
-				 * 확인됐다. 순번-주소 텍스트 목록(.hlf-map-print-fallback, public.css에서는 항상
-				 * display:none이지만 print.css가 인쇄에서만 보이게 뒤집는다)만으로 "어디에 있는지"는
-				 * 충분히 전달되고, 이 목록은 순수 텍스트라 로딩 경합이 생길 수 없다.
-				 */
+				// 인쇄에서 이 항목이 선택됐을 때만 지도를 실제로 그린다(data-hlf-lazy-map) — 매물이
+				// 많은 안내문에서 인쇄 버튼을 누르기도 전에 카카오 지도를 매물 수만큼 미리 만들어두면
+				// 낭비다. 인쇄 확정 시점에 새로 만든 지도는 tilesloaded 이벤트까지 기다린 뒤에야
+				// window.print()를 호출한다(assets/js/public-flyer.js initLazyPrintMaps).
 				?>
+				<div
+					class="hlf-comparison-map hlf-detail-map"
+					data-hlf-kakao-key="<?php echo esc_attr( $kakao_js_key ); ?>"
+					data-hlf-map-items="<?php echo esc_attr( wp_json_encode( $print_map_items ) ); ?>"
+					data-hlf-lazy-map="1"
+				>
+					<p class="hlf-map-empty">지도를 불러오는 중입니다…</p>
+				</div>
 				<div class="hlf-map-print-fallback">
 					<div class="hlf-map-print-fallback-item">
 						<span class="hlf-item-badge hlf-map-print-fallback-index" style="--hlf-item-accent:<?php echo esc_attr( hlf_item_accent_color( $i ) ); ?>"><?php echo esc_html( sprintf( '%02d', $i + 1 ) ); ?></span>
@@ -168,7 +173,7 @@ $print_contact = HLF_Flyer_Repository::public_contact( $flyer, $item );
 			<div class="hlf-lease-metric hlf-lease-metric--noc">
 				<span class="hlf-lease-metric-label">환산임대료</span>
 				<span class="hlf-lease-metric-value"><?php echo esc_html( number_format( $print_metrics['noc'], 1 ) ); ?>만원</span>
-				<span class="hlf-lease-metric-sub">NOC</span>
+				<span class="hlf-lease-metric-sub">전용평당</span>
 			</div>
 		</div>
 	</section>
@@ -193,7 +198,7 @@ $print_contact = HLF_Flyer_Repository::public_contact( $flyer, $item );
 
 	<footer class="hlf-footer">
 		<div class="hlf-footer-row">
-			<p class="hlf-footer-copyright"><a class="hlf-footer-admin-link" href="<?php echo esc_url( wp_logout_url( wp_login_url() ) ); ?>">© HINT</a> Co., Ltd. All Rights Reserved. 무단 복제 및 재배포 금지</p>
+			<p class="hlf-footer-copyright"><a class="hlf-footer-admin-link" href="<?php echo esc_url( wp_logout_url( HLF_Portal::portal_url() ) ); ?>">© HINT</a> Co., Ltd. All Rights Reserved. 무단 복제 및 재배포 금지</p>
 			<span class="hlf-footer-contact">
 				<?php if ( $print_contact['name'] ) : ?>
 					<?php echo esc_html( $print_contact['name'] ); ?> ·

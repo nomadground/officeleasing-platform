@@ -38,8 +38,8 @@ body.hlf-public {
 	border-radius: 10px;
 }
 .hlf-header-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
-/* 인쇄에서만 보이는 매물 수 문구(print.css) — 화면에서는 항상 숨겨 아래 .hlf-title-row의
-   .hlf-result-count만 보이게 한다(같은 값을 두 곳에 렌더링해 화면/인쇄가 서로 다른 위치를 쓴다). */
+/* 요청서 8: 화면에서는 매물 수 문구 자체를 완전히 없앤다 — 인쇄에서만 헤더 우측(공유/인쇄 버튼
+   빈자리)에 보이는 문구다(print.css). */
 .hlf-print-result-count { display: none; }
 .hlf-brand { display: flex; align-items: baseline; gap: 6px; color: #fff; }
 .hlf-brand-main { font-size: 20px; font-weight: 900; letter-spacing: .02em; }
@@ -62,27 +62,27 @@ body.hlf-public {
 .hlf-badge--draft { color: #8a6100; background: #fff4c9; }
 .hlf-badge--archived { color: #55705a; background: #edf2ea; }
 .hlf-title { margin: 20px 0 4px; color: var(--hlf-primary-strong); font-size: clamp(24px, 4vw, 34px); letter-spacing: -.04em; }
-.hlf-subaddress, .hlf-result-count { margin: 0; color: var(--hlf-muted); font-size: 13px; font-weight: 700; }
+.hlf-subaddress { margin: 0; color: var(--hlf-muted); font-size: 13px; font-weight: 700; }
 .hlf-empty { padding: 40px; text-align: center; color: var(--hlf-muted); border: 1px dashed var(--hlf-line); border-radius: 12px; }
 
-/* 목록 페이지 타이틀 줄 — "Leasing Flyer" 문구는 없애고 매물 개수만 우측에 남긴다. */
-.hlf-title-row { display: flex; align-items: baseline; justify-content: flex-end; gap: 12px; margin-top: 8px; }
 /* 헤더 안 공유/인쇄 버튼 — 기본은 화이트(색반전된 배경 위에서 잘 보임), 마우스 오버 시 색반전
    (배경↔글자색 반전)으로 강조한다(assets/js/public-flyer.js — 공유는 Clipboard API, 인쇄는
    window.print()). */
+/* 요청서 15: 리스트/상세 공통 헤더의 공유·인쇄 버튼을 전체적으로 한 단계 줄인다(높이/좌우 여백/글자
+   모두). */
 .hlf-share-button, .hlf-print-button {
 	display: inline-flex;
 	align-items: center;
 	gap: 0;
-	min-height: 32px;
-	padding: 0 12px;
+	min-height: 26px;
+	padding: 0 9px;
 	color: var(--hlf-primary);
 	background: #fff;
 	border: 1px solid #fff;
-	border-radius: 8px;
+	border-radius: 7px;
 	font: inherit;
 	font-weight: 700;
-	font-size: 13px;
+	font-size: 11px;
 	cursor: pointer;
 	white-space: nowrap;
 	transition: background .15s, color .15s;
@@ -98,7 +98,11 @@ body.hlf-public {
 .hlf-share-button:hover .hlf-share-status.is-success { color: #baf0c8; }
 .hlf-share-button:hover .hlf-share-status.is-error { color: #ffc7c2; }
 
-.hlf-listing-grid { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 8px; }
+/* 요청서 8: 매물 수 문구를 없앤 자리를 그대로 남겨두지 않고, 헤더 바로 아래 공백 없이 리스트가
+   시작하게 top margin을 없앤다. 리스트 페이지에서만 헤더 자체의 margin-bottom(공통 규칙 8px)도
+   0으로 줄인다(상세 페이지는 그대로 8px 유지). */
+.hlf-list .hlf-header { margin-bottom: 0; }
+.hlf-listing-grid { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .hlf-listing-card { background: var(--hlf-surface); border: 1px solid var(--hlf-line); border-radius: 10px; }
 .hlf-listing-link { display: flex; flex-direction: column; gap: 2px; padding: 5px 14px; color: inherit; text-decoration: none; }
 /* :hover와 .is-active(리스트·차트·지도 3자 연동, assets/js/public-flyer.js ListingSync)는 같은
@@ -108,9 +112,12 @@ body.hlf-public {
    .hlf-listing-idaddr(순번+주소)/.hlf-listing-meta(층/임대/전용)/.hlf-lease-metrics(보증금~NOC)는
    desktop에서 display:contents로 이 grid에 직접 합류시켜(따로 중첩 grid를 만들지 않음) 한 줄에
    정렬된다. 층부터 NOC까지 7칸은 폭을 맞추고(repeat(7, ...)) 세로 구분선으로 표를 보는 느낌을 준다. */
+/* 요청서 7: 지번/도로명주소 칸을 조금 더 넓히고, 바로 다음 칸인 층 칸을 그만큼 줄인다 — 나머지
+   6칸(임대면적~환산임대료)은 그대로 둬서 아래 임대료 등 값 행과 세로 구분선이 그대로 맞는다(칸
+   개수·순서는 그대로, 폭만 조정). */
 .hlf-listing-main {
 	display: grid;
-	grid-template-columns: 26px minmax(140px, 1.2fr) repeat(7, minmax(70px, .95fr));
+	grid-template-columns: 26px minmax(160px, 1.35fr) minmax(56px, .75fr) repeat(6, minmax(70px, .95fr));
 	align-items: center;
 	gap: 0;
 	column-gap: 8px;
@@ -204,15 +211,18 @@ body.hlf-public {
    올라와도 항상 같은 가로형 박스 크기를 유지한다. */
 .hlf-gallery-main { position: relative; aspect-ratio: 3 / 2; overflow: hidden; border-radius: 12px; background: var(--hlf-line); }
 /* 대표 사진 중앙에 워터마크(요청서) — 블러 처리한 알약 배경 위에 브랜드 색(반투명) 글자를 얹는다.
-   클릭/포커스를 가로채면 안 되므로(사진 확대 버튼이 바로 아래 겹쳐 있음) pointer-events:none. */
+   클릭/포커스를 가로채면 안 되므로(사진 확대 버튼이 바로 아래 겹쳐 있음) pointer-events:none.
+   요청서 1: top을 정확히 50%로 맞춰 사진 중앙에 오게 하고(기존 58%는 살짝 아래로 치우쳐 있었다),
+   블러 박스는 가로로 더 길게, 글자는 더 크게. 라이트박스에서도 같은 블러가 그대로 보인다(아래
+   --lightbox 변형은 크기만 확대할 뿐, top/left/transform은 이 기본 규칙을 그대로 물려받는다). */
 .hlf-gallery-watermark {
 	position: absolute;
-	top: 58%;
+	top: 50%;
 	left: 50%;
 	transform: translate(-50%, -50%);
-	padding: 8px 22px;
+	padding: 8px 34px;
 	color: rgba(53, 92, 115, .55);
-	font-size: 15px;
+	font-size: 18px;
 	font-weight: 800;
 	letter-spacing: .12em;
 	border-radius: 8px;
@@ -222,7 +232,7 @@ body.hlf-public {
 	user-select: none;
 }
 /* 라이트박스(확대 보기)는 캔버스가 훨씬 커서 같은 크기로는 잘 안 보인다 — 글자/블러 박스를 키운다. */
-.hlf-gallery-watermark--lightbox { padding: 12px 30px; font-size: 20px; border-radius: 10px; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.hlf-gallery-watermark--lightbox { padding: 12px 46px; font-size: 26px; border-radius: 10px; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
 .hlf-gallery-main img { display: block; width: 100%; height: 100%; object-fit: cover; transition: opacity .12s ease; }
 /* min-width:0은 위 .hlf-gallery와 같은 이유(flex 아이템 기본값 min-width:auto가 스크롤을 무력화함).
    scroll-snap-type(과 아래 .hlf-photo-open의 scroll-snap-align)은 요청서의 "슬라이드 형식" 요청에
@@ -276,20 +286,21 @@ body.hlf-public {
 .hlf-panel { margin: 22px 0; padding: 16px 18px 14px; background: var(--hlf-surface); border: 1px solid var(--hlf-line); border-radius: 10px; }
 /* Property Details 아래 목록 버튼(요청서) — 헤더의 "← 목록" 링크와 별개로, 상세 내용을 다 본 뒤
    다시 스크롤해 올라가지 않고도 목록으로 돌아갈 수 있게 페이지 하단에도 하나 더 둔다. */
-.hlf-detail-list-return { margin: 4px 0 22px; text-align: center; }
+/* 요청서 3: 왼쪽 정렬 + 지정 색상(#355c73)의 화이트 폰트 버튼으로. */
+.hlf-detail-list-return { margin: 4px 0 22px; text-align: left; }
 .hlf-detail-list-return-link {
 	display: inline-block;
 	padding: 9px 22px;
-	color: var(--hlf-primary);
+	color: #fff;
 	font-weight: 700;
 	font-size: 13px;
 	text-decoration: none;
-	background: var(--hlf-surface);
-	border: 1px solid var(--hlf-line);
+	background: #355c73;
+	border: 1px solid #355c73;
 	border-radius: 999px;
 	transition: background .15s, color .15s;
 }
-.hlf-detail-list-return-link:hover { color: #fff; background: var(--hlf-primary); }
+.hlf-detail-list-return-link:hover { color: #355c73; background: #fff; }
 .hlf-panel-heading { margin: 0 0 10px; color: var(--hlf-primary); font-size: 16px; letter-spacing: -.02em; }
 /* "Leasing Info" 옆에 매물특징(자유 텍스트)을 작은 글씨로 중앙 배치한다. */
 .hlf-panel-heading-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
@@ -336,9 +347,10 @@ body.hlf-public {
 /* 저작권/무단 재배포 금지 고지 — 모든 공개 화면(리스트/상세) 및 인쇄물(같은 템플릿을 print.css
    미디어쿼리로 재사용) 하단에 표시한다. */
 .hlf-footer-copyright { margin: 0; color: var(--hlf-muted); font-size: 11px; line-height: 1.6; }
-/* "© HINT"는 관리자 로그인 페이지로 가는 히든 버튼이다(요청서) — 평문과 구분되지 않도록 색/밑줄을
-   그대로 상속만 하고, 클릭 시 wp_logout_url()로 기존 로그인 세션을 먼저 정리해 항상 새로 로그인하게
-   한다(HLF_Routes/템플릿 쪽 PHP에서 wp_logout_url( wp_login_url() )로 생성). */
+/* "© HINT"는 /listup/ 직원 포털로 가는 히든 버튼이다(요청서 10 — 기존에는 워드프레스 관리자
+   로그인 페이지로 갔었다) — 평문과 구분되지 않도록 색/밑줄을 그대로 상속만 하고, 클릭 시
+   wp_logout_url()로 기존 로그인 세션을 먼저 정리해 항상 새로 로그인하게 한다(템플릿 쪽 PHP에서
+   wp_logout_url( HLF_Portal::portal_url() )로 생성). */
 .hlf-footer-admin-link { color: inherit; text-decoration: none; }
 
 /* NOC(환산임대료) 비교 차트 — 서버가 계산한 값(hlf_calculate_item_metrics)을 그대로 막대로만
@@ -351,7 +363,11 @@ body.hlf-public {
 /* 위치 비교 지도의 "LOCATION REVIEW" 표기와 같은 스타일(자간을 준 영문 대문자 라벨). */
 .hlf-noc-chart-eyebrow { color: var(--hlf-muted); font-size: 10px; letter-spacing: .06em; }
 .hlf-noc-chart-unit { margin: 0; color: var(--hlf-muted); font-size: 11px; }
-.hlf-noc-chart { display: flex; align-items: end; justify-content: center; gap: 14px; min-height: 168px; padding: 14px 4px 0; overflow-x: auto; flex-wrap: wrap; border-bottom: 1px solid var(--hlf-line); }
+/* 요청서 5: 위아래 스크롤은 필요 없다 — overflow-x만 auto로 두면(overflow-y는 기본값 visible)
+   CSS 스펙상 브라우저가 overflow-y도 강제로 auto로 승격시켜(두 축 중 하나만 visible로 둘 수 없음)
+   실제 콘텐츠 높이가 min-height보다 몇 px만 더 커도 세로 스크롤바가 생겼다 — overflow-y:hidden을
+   명시해 그 강제 승격을 막는다. */
+.hlf-noc-chart { display: flex; align-items: end; justify-content: center; gap: 14px; min-height: 168px; padding: 14px 4px 0; overflow-x: auto; overflow-y: hidden; flex-wrap: wrap; border-bottom: 1px solid var(--hlf-line); }
 /* 값 표시줄과 막대 사이에 여유 공간을 둔다 — 막대가 호버 시 scale(1.15)로 커질 때 위 숫자와
    겹치지 않도록. */
 .hlf-noc-chart-item { display: grid; flex: 0 0 52px; grid-template-rows: 18px 1fr 30px; align-items: end; height: 158px; color: inherit; text-align: center; text-decoration: none; }
@@ -380,7 +396,8 @@ body.hlf-public {
 .hlf-comparison-map-heading { display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px; }
 .hlf-comparison-map-heading h2 { margin: 0; color: var(--hlf-primary); font-size: 16px; letter-spacing: -.02em; }
 .hlf-comparison-map-unit { color: var(--hlf-muted); font-size: 10px; letter-spacing: .06em; }
-.hlf-comparison-map { min-height: 360px; background: var(--hlf-line); border-radius: 8px; overflow: hidden; }
+/* 요청서 12: 위치 확인 지도 세로폭을 기존보다 늘린다(360px -> 440px). */
+.hlf-comparison-map { min-height: 440px; background: var(--hlf-line); border-radius: 8px; overflow: hidden; }
 .hlf-detail-map { min-height: 260px; }
 .hlf-map-empty { display: grid; place-items: center; min-height: 260px; margin: 0; padding: 24px; color: var(--hlf-muted); font-size: 13px; text-align: center; }
 .hlf-map-marker {
@@ -462,7 +479,9 @@ body.hlf-public {
 	.hlf-listing-main .hlf-lease-metric { padding: 2px; }
 	.hlf-listing-main .hlf-lease-metric-label { font-size: 9px; line-height: 1.15; }
 	.hlf-listing-main .hlf-lease-metric-value { margin-top: 1px; font-size: 12px; line-height: 1.15; }
-	.hlf-listing-main .hlf-lease-metric-sub { margin-top: 0; font-size: 9px; line-height: 1.15; }
+	/* 요청서 6: 좁은 화면에서는 "평당 X만원"/"(NOC)" 보조 문구까지 두면 글자가 너무 많아 어지럽다 —
+	   리스트 페이지 모바일에서만 숨긴다(상세 페이지 .hlf-detail-metrics는 그대로 노출). */
+	.hlf-listing-main .hlf-lease-metric-sub { display: none; }
 	/* 환산임대료는 모바일에서도 임대면적/전용면적 데이터값(11px)과 같은 크기로 — 상위 규칙(12px)만
 	   두면 데스크톱과 달리 모바일에서 NOC만 1px 더 크게 보인다. */
 	.hlf-listing-main .hlf-lease-metric--noc .hlf-lease-metric-value { font-size: 11px; }
