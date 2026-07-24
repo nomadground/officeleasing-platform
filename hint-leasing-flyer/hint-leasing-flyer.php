@@ -2,7 +2,7 @@
 /**
  * Plugin Name: HINT Leasing Flyer
  * Description: 임대매물 전달용 Leasing Flyer. 발행 시점 조건을 스냅샷으로 저장하고 /list/ 공개 URL로 공유한다. officeleasing-core에 의존하지 않고 단독 동작한다.
- * Version: 0.4.0-beta.10
+ * Version: 0.4.0-beta.11
  * Requires at least: 6.0
  * Requires PHP: 8.0
  * Author: HINT
@@ -24,7 +24,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'HLF_VERSION', '0.4.0-beta.10' );
+define( 'HLF_VERSION', '0.4.0-beta.11' );
 define( 'HLF_FILE', __FILE__ );
 define( 'HLF_DIR', plugin_dir_path( __FILE__ ) );
 define( 'HLF_URL', plugin_dir_url( __FILE__ ) );
@@ -49,6 +49,7 @@ require_once HLF_DIR . 'includes/class-hlf-officeleasing-mapper.php';
 require_once HLF_DIR . 'includes/class-hlf-officeleasing-search.php';
 require_once HLF_DIR . 'includes/class-hlf-officeleasing-import-service.php';
 require_once HLF_DIR . 'includes/class-hlf-image-pipeline.php';
+require_once HLF_DIR . 'includes/class-hlf-cache-purge.php';
 require_once HLF_DIR . 'includes/class-hlf-routes.php';
 require_once HLF_DIR . 'includes/class-hlf-rest-controller.php';
 require_once HLF_DIR . 'includes/class-hlf-admin-ui.php';

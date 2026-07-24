@@ -205,6 +205,16 @@ Item 편집 폼 상단에 "네이버부동산 캡처로 자동 입력" 섹션(`r
 - **리스트페이지 위치 확인 지도 줌아웃**: 데스크톱 화면에서도 기본보다 1단계 줌아웃(모바일은 기존
   2단계 유지).
 
+## 요청서 반영 — v0.4.0-beta.11
+- **캐시 자동 비우기**: 매물/임대안내문을 저장·삭제해도 공개 화면에 바로 반영되지 않아 매번
+  워드프레스 관리자 화면에서 수동으로 캐시를 지워야 했던 문제 — 흔한 캐시 플러그인(LiteSpeed
+  Cache, WP Super Cache, W3 Total Cache, WP Rocket, WP Fastest Cache, Cache Enabler, SG
+  Optimizer, WP Engine)의 "전체 캐시 비우기" API가 설치돼 있으면 자동으로 호출하도록
+  `HLF_Cache_Purge`를 추가했다(설치돼 있지 않은 플러그인의 함수는 안전하게 건너뛴다). 저장이
+  postmeta만 바꾸는 경우(예: 사진 목록 저장)까지 빠짐없이 잡도록 `save_post`뿐 아니라
+  `updated_post_meta`/`deleted_post` 등 postmeta 훅에도 걸었고, 한 요청 안에서 여러 번 저장돼도
+  캐시 비우기는 요청 종료 시점에 한 번만 실행된다.
+
 ## 후속 단계에서 제외
 AI 이미지 적합성 판별, 워터마크 제거/자동 보정, 얼굴·번호판 블러, 이미지 Drag & Drop/크롭 편집기,
 이미지 순서 변경(위/아래) UI, officeleasing 원본 이미지 자동 동기화, PDF 생성, 인쇄 밀도별 레이아웃,
