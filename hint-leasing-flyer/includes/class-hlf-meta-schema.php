@@ -295,7 +295,7 @@ final class HLF_Meta_Schema {
 			return (float) $value > 0;
 		}
 		$v = strtolower( trim( (string) $value ) );
-		return in_array( $v, array( 'true', '1', 'yes', 'y', 'on', '가능', 'true' ), true );
+		return in_array( $v, array( 'true', '1', 'yes', 'y', 'on', '가능' ), true );
 	}
 
 	/** item 전체 필드를 정규화된 배열로 읽는다(공개 템플릿/REST 응답 공용). */

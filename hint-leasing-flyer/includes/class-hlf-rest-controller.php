@@ -104,7 +104,10 @@ final class HLF_REST_Controller {
 			'callback'            => array( __CLASS__, 'search_officeleasing_listings' ),
 			'permission_callback' => array( __CLASS__, 'can_edit_flyers' ),
 			'args'                => array(
-				'search'   => array( 'type' => 'string' ),
+				// 검색어는 주소·건물명 수준이라 정상 입력이 이 길이를 넘을 일이 없다 — 비정상적으로 긴
+				// 입력만 400으로 거른다(카카오 주소검색 q의 maxLength와 같은 방어). WP 코어가
+				// register_rest_route args의 maxLength를 자동 검증한다.
+				'search'   => array( 'type' => 'string', 'maxLength' => 200 ),
 				'status'   => array(
 					'type' => 'string',
 					'enum' => array( '', 'available', 'reserved', 'contract_pending', 'leased', 'temporarily_hidden', 'expired' ),
@@ -171,13 +174,15 @@ final class HLF_REST_Controller {
 				'callback'            => array( __CLASS__, 'list_source_listings' ),
 				'permission_callback' => array( __CLASS__, 'can_edit_flyers' ),
 				'args'                => array(
-					'search'   => array( 'type' => 'string' ),
+					// 검색어/담당자명은 짧은 텍스트라 정상 입력이 이 길이를 넘지 않는다 — 비정상적으로
+					// 긴 입력만 400으로 거른다(officeleasing 검색·카카오 주소검색과 같은 방어).
+					'search'   => array( 'type' => 'string', 'maxLength' => 200 ),
 					// Dashboard의 "연결된 매물"/"미연결 매물" 카드 클릭 시 이 목록으로 넘어와 필터링하는 데 쓴다.
 					'linked'   => array( 'type' => 'string', 'enum' => array( '', 'linked', 'unlinked' ) ),
 					// 요청서: 목록이 커지면 로딩이 느려지므로, 기본값으로 "내 매물"만 먼저 보여주고
 					// "전체 보기"를 눌러야 전부 나오게 한다 — contact_name 정확히 일치(담당자 디렉터리에
 					// 저장된 이름 그대로) 필터.
-					'contact'  => array( 'type' => 'string' ),
+					'contact'  => array( 'type' => 'string', 'maxLength' => 100 ),
 					'page'     => array( 'type' => 'integer', 'minimum' => 1 ),
 					'per_page' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 100 ),
 				),
