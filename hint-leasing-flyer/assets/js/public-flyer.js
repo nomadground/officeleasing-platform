@@ -139,6 +139,14 @@
 
 		el.querySelectorAll( '[data-hlf-listing-key]' ).forEach( function ( barEl ) {
 			ListingSync.register( barEl.getAttribute( 'data-hlf-listing-key' ), barEl );
+			// 요청서: 모바일에서 막대를 탭하면(진짜 마우스 hover가 없어 mouseenter 없이 곧장 클릭
+			// 내비게이션만 발생) 지도 이동 없이 바로 상세페이지로 넘어가 버린다 — 모바일에서는
+			// 링크 이동 대신 hover와 같은 지도 이동만 하고 그 자리에 머문다.
+			barEl.addEventListener( 'click', function ( event ) {
+				if ( ! window.matchMedia( '(max-width: 700px)' ).matches ) { return; }
+				event.preventDefault();
+				barEl.dispatchEvent( new Event( 'mouseenter' ) );
+			} );
 		} );
 	}
 
@@ -245,28 +253,37 @@
 			thumbButtons.forEach( function ( b ) { b.classList.remove( 'hlf-gallery-thumb-active' ); } );
 		}
 
+		// 대표 사진 <img>가 반응형 사이즈가 여러 개 등록된 첨부(예: 원본 해상도가 hlf-item-photo
+		// 크롭 기준보다 작아 코어가 medium/medium_large 등 다른 사이즈들로 srcset을 채운 경우)면
+		// 워드프레스가 srcset/sizes를 함께 렌더링해 둔다 — srcset이 남아 있으면 브라우저는 src를
+		// 바꿔도 그 srcset 후보(이전 사진 것) 중에서 계속 골라 그리므로, 실제 화면은 안 바뀐 채로
+		// src 속성값만 바뀐 것처럼 보인다(실사용 버그, 매물마다 사진 원본 해상도가 달라 srcset
+		// 유무가 갈려 "어떤 매물은 되고 어떤 매물은 안 된다"로 나타났다). src를 바꿀 때마다
+		// srcset/sizes를 지워 브라우저가 반드시 지금 지정한 src만 쓰게 한다.
+		function swapTo( index, url, thumbButton ) {
+			mainImg.removeAttribute( 'srcset' );
+			mainImg.removeAttribute( 'sizes' );
+			mainImg.setAttribute( 'src', url );
+			mainButton.setAttribute( 'data-hlf-lightbox-index', String( index ) );
+			if ( watermark ) { watermark.hidden = ! blurFlags[ index ]; }
+			clearActiveThumb();
+			if ( thumbButton ) { thumbButton.classList.add( 'hlf-gallery-thumb-active' ); }
+		}
+
 		thumbButtons.forEach( function ( thumbButton ) {
 			var index = Number( thumbButton.getAttribute( 'data-hlf-lightbox-index' ) );
 			var url = photos[ index ];
 			if ( ! url ) { return; }
-			thumbButton.addEventListener( 'mouseenter', function () {
-				// 대표 사진 <img>가 반응형 사이즈가 여러 개 등록된 첨부(예: 원본 해상도가 hlf-item-photo
-				// 크롭 기준보다 작아 코어가 medium/medium_large 등 다른 사이즈들로 srcset을 채운
-				// 경우)면 워드프레스가 srcset/sizes를 함께 렌더링해 둔다 — srcset이 남아 있으면
-				// 브라우저는 src를 바꿔도 그 srcset 후보(이전 사진 것) 중에서 계속 골라 그리므로,
-				// 실제 화면은 안 바뀌는 채로 src 속성값만 바뀐 것처럼 보인다(실사용 버그, 매물마다
-				// 사진 원본 해상도가 달라 srcset 유무가 갈려 "어떤 매물은 되고 어떤 매물은 안 된다"로
-				// 나타났다). src를 바꿀 때마다 srcset/sizes를 지워 브라우저가 반드시 지금 지정한
-				// src만 쓰게 한다.
-				mainImg.removeAttribute( 'srcset' );
-				mainImg.removeAttribute( 'sizes' );
-				mainImg.setAttribute( 'src', url );
-				mainButton.setAttribute( 'data-hlf-lightbox-index', String( index ) );
-				if ( watermark ) { watermark.hidden = ! blurFlags[ index ]; }
-				clearActiveThumb();
-				thumbButton.classList.add( 'hlf-gallery-thumb-active' );
-			} );
+			thumbButton.addEventListener( 'mouseenter', function () { swapTo( index, url, thumbButton ); } );
 			thumbButton.addEventListener( 'focus', function () { thumbButton.dispatchEvent( new Event( 'mouseenter' ) ); } );
+			// 요청서: 모바일은 진짜 "계속 hover 상태 유지"가 없다 — 라이트박스를 여는 대신, 탭하면
+			// 데스크톱 호버와 같은 대표 사진 전환만 하고 그대로 유지한다(마우스가 없으니 되돌아갈
+			// mouseleave도 없음 — 다른 썸네일을 탭하기 전까지 계속 그 사진을 보여준다).
+			thumbButton.addEventListener( 'click', function ( event ) {
+				if ( ! window.matchMedia( '(max-width: 700px)' ).matches ) { return; }
+				event.preventDefault();
+				swapTo( index, url, thumbButton );
+			} );
 		} );
 
 		thumbsWrap.addEventListener( 'mouseleave', function () {
@@ -339,6 +356,15 @@
 				// 섹션에서만 그 break를 꺼서 없앤다(print.css .hlf-print-section-last).
 				var included = sections.filter( function ( section ) { return ! section.classList.contains( 'hlf-print-section-excluded' ); } );
 				if ( included.length ) { included[ included.length - 1 ].classList.add( 'hlf-print-section-last' ); }
+				// 매물 상세(item-*)는 그 안에 이미 문의처 푸터를 자체적으로 담고 있다 — 그중 하나라도
+				// 인쇄에 포함되면(항상 문서 맨 뒤에 온다) 문서 끝의 전역 푸터(public-flyer-list.php,
+				// .hlf-shell 바로 아래)가 그 바로 뒤에 이어 붙어 마지막 페이지에 푸터가 두 번
+				// 찍힌다(실사용 버그). 전역 푸터는 매물 상세가 하나도 없을 때(목록/비교 차트만 인쇄)만
+				// 필요하므로 그 경우에만 보이게 한다.
+				var includesItemDetail = included.some( function ( section ) {
+					return 0 === section.getAttribute( 'data-hlf-print-section' ).indexOf( 'item-' );
+				} );
+				document.body.classList.toggle( 'hlf-print-hide-global-footer', includesItemDetail );
 				panel.hidden = true;
 				prepareAndPrint();
 			} );
@@ -394,6 +420,10 @@
 
 		gallery.querySelectorAll( '[data-hlf-lightbox-open]' ).forEach( function ( button ) {
 			button.addEventListener( 'click', function () {
+				// 요청서: 모바일에서는 확대해도 대표 사진 크기와 별 차이가 없어 라이트박스를 열
+				// 필요가 없다 — 썸네일 탭은 bindGalleryHoverSwap의 클릭 핸들러가 대표 사진 전환만
+				// 대신한다(이 핸들러는 그 경우 그냥 아무 것도 하지 않고 넘어간다).
+				if ( window.matchMedia( '(max-width: 700px)' ).matches ) { return; }
 				lastFocused = button;
 				show( Number( button.getAttribute( 'data-hlf-lightbox-index' ) ) );
 				// hidden 해제 직후에 포커스를 옮겨야 스크린리더가 "대화상자 열림"을 인식한다.

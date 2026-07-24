@@ -9,8 +9,15 @@
  *   10개 제한/item_number 발급/display_order 계산/archive 가드는 전부 create_item()이 이미 하므로
  *   여기서 다시 구현하지 않는다.
  * - "포함 해제" = 그 Flyer 안에서 이 원본을 출처로 갖는 Item만 삭제한다(기존 delete_item 로직).
- *   스냅샷 구조이므로 원본 매물과 다른 Flyer에 포함된 동일 원본의 별도 Item은 영향받지 않는다.
  * - 별도 관계 테이블을 만들지 않는다 — 부모-자식(post_parent) + source_listing_id 메타만 쓴다.
+ * - 요청서(실사용): 처음 포함될 때만 값을 복사하고 그 뒤로는 서로 무관한 완전한 스냅샷이었다 —
+ *   원본을 나중에 수정해도 이미 포함된 Item에는 반영되지 않아, 반영하려면 매번 빼고 다시 넣어야
+ *   했다. 이제 update()가 텍스트 필드를 저장할 때마다 이 원본을 출처로 둔 모든 Item(여러 Flyer에
+ *   걸쳐 있을 수 있다)에도 같은 값을 다시 써서 자동으로 맞춘다(sync_included_items()). 보관
+ *   (archived) 상태인 Flyer의 Item만 예외로 그대로 얼어붙는다(update_item()의 기존 보관 가드를
+ *   그대로 활용). 사진(exterior_image_id/interior_image_ids)은 이 동기화 대상이 아니다 — 사진은
+ *   Item 화면에서 그대로 개별 관리한다(대표 지정이 Item마다 다를 수 있어 원본과 항상 같을 필요가
+ *   없다).
  */
 defined( 'ABSPATH' ) || exit;
 
@@ -186,7 +193,38 @@ final class HLF_Source_Listing_Repository {
 		// 주소가 바뀌면 제목(목록 검색·표시용)도 최신 주소로 맞춰 준다.
 		$title = self::title_from_fields( HLF_Meta_Schema::read_source( $source_id ) );
 		wp_update_post( array( 'ID' => $source_id, 'post_title' => $title ) );
+		self::sync_included_items( $source_id );
 		return $source_id;
+	}
+
+	/**
+	 * 요청서: 이 원본을 출처로 이미 포함된 모든 Item(여러 Flyer에 걸쳐 있을 수 있다)에 방금 저장한
+	 * 값을 그대로 다시 써서, "빼고 다시 넣기" 없이도 수정 내용이 바로 반영되게 한다. 위에서 저장한
+	 * 값을 그대로 다시 읽어(부분 수정으로 호출됐어도 항상 완전한 최신 값 기준) 쓰기 가능 필드만
+	 * 넘긴다 — include_in_flyer()가 최초 포함 시 복사하는 필드 집합과 완전히 같은 규칙이다.
+	 */
+	private static function sync_included_items( int $source_id ): void {
+		$source_data = HLF_Meta_Schema::read_source( $source_id );
+		$fields      = array();
+		foreach ( HLF_Meta_Schema::source_writable_fields() as $key ) {
+			if ( array_key_exists( $key, $source_data ) ) {
+				$fields[ $key ] = $source_data[ $key ];
+			}
+		}
+
+		$items = get_posts( array(
+			'post_type'      => HLF_Post_Types::ITEM,
+			'post_status'    => array( 'publish', 'inherit', 'draft' ),
+			'posts_per_page' => -1,
+			'no_found_rows'  => true,
+			'meta_key'       => 'source_listing_id',
+			'meta_value'     => $source_id,
+		) );
+		foreach ( $items as $item ) {
+			// 보관된 Flyer의 Item은 update_item()의 기존 보관 가드(assert_not_archived)가 WP_Error로
+			// 거부한다 — 원본 저장 자체를 실패시킬 이유는 아니므로 그 Item만 조용히 건너뛴다.
+			HLF_Item_Repository::update_item( (int) $item->post_parent, $item->ID, $fields );
+		}
 	}
 
 

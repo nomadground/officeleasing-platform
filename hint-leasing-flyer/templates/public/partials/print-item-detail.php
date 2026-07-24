@@ -42,7 +42,7 @@ $print_map_items  = $print_has_coords ? array( array(
 
 $print_basic = array();
 if ( $item['floor_current'] || $item['floor_total'] ) {
-	$print_basic['해당층'] = array( 'value' => trim( ( $item['floor_current'] ?: '-' ) . ' / ' . ( $item['floor_total'] ?: '-' ) . '층' ) );
+	$print_basic['기준층'] = array( 'value' => trim( ( $item['floor_current'] ?: '-' ) . ' / ' . ( $item['floor_total'] ?: '-' ) . '층' ) );
 }
 if ( $item['available_date_text'] ) {
 	$print_basic['입주가능일'] = array( 'value' => $item['available_date_text'] );

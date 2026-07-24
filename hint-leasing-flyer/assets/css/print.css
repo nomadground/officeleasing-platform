@@ -123,4 +123,8 @@
 	.hlf-basic-item dd { font-size: 11px; }
 	.hlf-basic-value-sub { font-size: 9px; }
 	.hlf-footer { margin-top: 4px; padding-top: 4px; }
+	/* 매물 상세(item-*)가 인쇄에 하나라도 포함되면 그 안의 자체 푸터가 이미 있으므로, 문서 맨 끝의
+	   전역 푸터(.hlf-shell 바로 아래)는 JS가 붙여주는 body 클래스로 숨긴다(assets/js/public-flyer.js
+	   bindPrintButton) — 안 그러면 마지막 페이지에 같은 푸터가 두 번 찍힌다. */
+	body.hlf-print-hide-global-footer .hlf-shell > .hlf-footer { display: none !important; }
 }

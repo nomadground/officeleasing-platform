@@ -139,7 +139,7 @@ $kakao_js_key = defined( 'HLF_KAKAO_JS_KEY' ) ? HLF_KAKAO_JS_KEY : '';
 								</span>
 								<span class="hlf-listing-meta">
 									<span class="hlf-listing-floor">
-										<span class="hlf-lease-metric-label<?php echo $item['building_name'] ? ' hlf-lease-metric-label--has-building' : ''; ?>">층</span>
+										<span class="hlf-lease-metric-label<?php echo $item['building_name'] ? ' hlf-lease-metric-label--has-building' : ''; ?>">층수</span>
 										<?php if ( $item['building_name'] ) : ?>
 											<span class="hlf-lease-metric-label hlf-listing-floor-building"><?php echo esc_html( $item['building_name'] ); ?></span>
 										<?php endif; ?>

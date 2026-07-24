@@ -69,7 +69,7 @@ $map_items    = $has_coords ? array( array(
 // 2단 표기가 필요한 경우) 형태로 담는다.
 $basic = array();
 if ( $item['floor_current'] || $item['floor_total'] ) {
-	$basic['해당층'] = array( 'value' => trim( ( $item['floor_current'] ?: '-' ) . ' / ' . ( $item['floor_total'] ?: '-' ) . '층' ) );
+	$basic['기준층'] = array( 'value' => trim( ( $item['floor_current'] ?: '-' ) . ' / ' . ( $item['floor_total'] ?: '-' ) . '층' ) );
 }
 if ( $item['available_date_text'] ) {
 	$basic['입주가능일'] = array( 'value' => $item['available_date_text'] );
@@ -131,7 +131,7 @@ $basic['주차']       = array( 'value' => $item['parking_available'] ? ( $item[
 <body class="hlf-public hlf-detail">
 	<div class="hlf-shell">
 		<header class="hlf-header">
-			<a class="hlf-back" href="<?php echo esc_url( $flyer['url'] ); ?>">← 목록</a>
+			<a class="hlf-back hlf-brand-main" href="<?php echo esc_url( $flyer['url'] ); ?>">HINT</a>
 			<span class="hlf-item-badge hlf-detail-badge" style="--hlf-item-accent:<?php echo esc_attr( hlf_item_accent_color( $item_order ) ); ?>"><?php echo esc_html( sprintf( '%02d', $item_order + 1 ) ); ?></span>
 			<span class="hlf-header-address">
 				<h1 class="hlf-header-address-main"><?php echo esc_html( $address ); ?></h1>
@@ -183,7 +183,7 @@ $basic['주차']       = array( 'value' => $item['parking_available'] ? ( $item[
 				<section class="hlf-detail-map-panel" aria-labelledby="hlf-detail-map-title">
 					<div class="hlf-comparison-map-heading">
 						<h2 id="hlf-detail-map-title">Location</h2>
-						<button type="button" class="hlf-map-recenter" data-hlf-map-recenter aria-label="지도를 매물 위치로 다시 이동">⊙ 중심 이동</button>
+						<button type="button" class="hlf-map-recenter" data-hlf-map-recenter aria-label="지도를 매물 위치로 다시 이동">← 매물 위치</button>
 					</div>
 					<div
 						class="hlf-comparison-map hlf-detail-map"
