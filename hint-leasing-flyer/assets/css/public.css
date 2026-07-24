@@ -254,7 +254,10 @@ body.hlf-public {
 /* 사진 라이트박스(이전/다음) — JS(assets/js/public-flyer.js)가 hidden 속성만 토글한다. */
 .hlf-lightbox[hidden] { display: none; }
 .hlf-lightbox { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 24px; background: rgba(20, 33, 42, .9); }
-.hlf-lightbox-content { position: relative; display: grid; place-items: center; width: min(1400px, 96vw); height: 92vh; }
+/* 이전엔 width가 96vw로 고정돼 있어, .hlf-lightbox 자신의 좌우 padding(24px씩, 총 48px)을 빼지 않고
+   계산했다 — 화면이 좁을수록 96vw가 실제로 남는 폭(100vw-48px)보다 커져 오른쪽으로 삐져나갔다
+   (모바일에서 특히 눈에 띔). 항상 실제로 남는 공간을 넘지 않도록 calc로 직접 뺀다. */
+.hlf-lightbox-content { position: relative; display: grid; place-items: center; width: min(1400px, calc(100vw - 48px)); height: min(92vh, calc(100vh - 48px)); }
 .hlf-lightbox-image { width: auto; height: auto; max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px; }
 .hlf-lightbox-button { position: absolute; display: grid; width: 40px; height: 40px; place-items: center; color: #fff; background: rgba(53, 92, 115, .9); border: 0; border-radius: 50%; font-size: 20px; line-height: 1; cursor: pointer; }
 .hlf-lightbox-button:hover { background: var(--hlf-primary-strong); }
@@ -554,4 +557,8 @@ body.hlf-public {
 	   콘텐츠 없이 0으로 무너져 지도가 보이지 않게 된다(실측: 390px 뷰포트에서 260px -> 0px로
 	   붕괴 확인). 모바일에서는 콘텐츠에 의존하지 않는 자체 min-height를 되살려 이 붕괴를 막는다. */
 	.hlf-detail-hero .hlf-detail-map { min-height: 260px; }
+	/* 요청서: 모바일에서 갤러리 사진을 클릭해 확대해도 카드보다 훨씬 커져 화면 오른쪽으로 삐져나갔다
+	   — 확대 크기를 갤러리 카드 폭(.hlf-shell 폭, 100vw-32px) 정도로만 제한한다. */
+	.hlf-lightbox { padding: 12px; }
+	.hlf-lightbox-content { width: min(600px, calc(100vw - 24px)); height: min(80vh, calc(100vh - 24px)); }
 }

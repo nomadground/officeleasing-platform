@@ -533,9 +533,13 @@
 			// 요청서: 리스트페이지의 "위치 확인" 비교 지도만(id로 구분 — 상세페이지 지도는 클래스는
 			// 같아도 이 id를 갖지 않는다) 기본보다 더 줌아웃한다 — 모바일은 2단계, 데스크톱은 1단계
 			// (요청서: "데스크탑화면에서도... 줌아웃 1단계"). 인쇄 시(relayoutMapsForPrint) 다시
-			// fitMapToItems()로 맞춰지므로 이 조정은 화면 표시에만 남는다.
+			// fitMapToItems()로 맞춰지므로 이 조정은 화면 표시에만 남는다. getLevel()이 유효한 값을
+			// 안 돌려주는 경우(방어적) setLevel(NaN) 같은 잘못된 호출로 지도 전체가 깨지지 않게 건너뛴다.
 			if ( 'hlf-comparison-map' === container.id ) {
-				map.setLevel( map.getLevel() + ( window.matchMedia( '(max-width: 700px)' ).matches ? 2 : 1 ) );
+				var baseLevel = map.getLevel();
+				if ( isFinite( baseLevel ) ) {
+					map.setLevel( baseLevel + ( window.matchMedia( '(max-width: 700px)' ).matches ? 2 : 1 ) );
+				}
 			}
 
 			var tilesPromise = waitForTilesLoaded( map );
