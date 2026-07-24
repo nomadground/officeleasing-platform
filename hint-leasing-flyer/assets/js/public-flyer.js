@@ -213,10 +213,31 @@
 		} catch ( e ) {
 			return;
 		}
+		// 요청서: 워터마크(블러)는 사진마다 켜고 끌 수 있다 — 대표 사진이 바뀔 때마다 그 사진의 설정을
+		// 따라간다. data-hlf-photos와 순서가 같은 배열(HLF_Meta_Schema::PHOTO_BLUR, attachment 메타).
+		var blurFlags;
+		try {
+			blurFlags = JSON.parse( gallery.getAttribute( 'data-hlf-photo-blur' ) || '[]' );
+		} catch ( e ) {
+			blurFlags = [];
+		}
+		var watermark = gallery.querySelector( '.hlf-gallery-main .hlf-gallery-watermark' );
 
 		var originalSrc = mainImg.getAttribute( 'src' );
 		var originalIndex = mainButton.getAttribute( 'data-hlf-lightbox-index' );
 		var thumbButtons = thumbsWrap.querySelectorAll( '.hlf-photo-open' );
+
+		// 실사용 환경(실제 서버 네트워크 지연)에서는 썸네일에 마우스를 잠깐 스쳐 지나가듯 올리면,
+		// 대표 사진 자리의 큰 이미지(썸네일 자체보다 해상도가 큰 'hlf-item-photo' 사이즈라 아직 브라우저
+		// 캐시에 없음)가 다운로드되기 전에 마우스가 이미 떠나 mouseleave가 원래 사진으로 되돌려버려,
+		// 마치 "호버 효과는 있는데 사진은 안 바뀐다"처럼 보일 수 있다 — 페이지를 열자마자 갤러리
+		// 사진을 전부 미리 받아 브라우저 캐시에 데워 두면, 실제로 마우스를 올렸을 때 src만 바꿔도
+		// 이미 캐시된 이미지라 즉시 나타난다.
+		photos.forEach( function ( url ) {
+			if ( ! url ) { return; }
+			var preload = new Image();
+			preload.src = url;
+		} );
 
 		function clearActiveThumb() {
 			thumbButtons.forEach( function ( b ) { b.classList.remove( 'hlf-gallery-thumb-active' ); } );
@@ -229,6 +250,7 @@
 			thumbButton.addEventListener( 'mouseenter', function () {
 				mainImg.setAttribute( 'src', url );
 				mainButton.setAttribute( 'data-hlf-lightbox-index', String( index ) );
+				if ( watermark ) { watermark.hidden = ! blurFlags[ index ]; }
 				clearActiveThumb();
 				thumbButton.classList.add( 'hlf-gallery-thumb-active' );
 			} );
@@ -238,6 +260,7 @@
 		thumbsWrap.addEventListener( 'mouseleave', function () {
 			mainImg.setAttribute( 'src', originalSrc );
 			mainButton.setAttribute( 'data-hlf-lightbox-index', originalIndex );
+			if ( watermark ) { watermark.hidden = ! blurFlags[ Number( originalIndex ) ]; }
 			clearActiveThumb();
 		} );
 	}
@@ -259,10 +282,12 @@
 			loadPendingPrintPhotos( document ),
 			relayoutMapsForPrint(),
 		] ).then( function () {
-			// 지도 준비를 위해 잠깐 visibility:hidden으로 켜뒀던 .hlf-print-item-detail을 여기서
-			// 뗀다 — 화면(display:none)으로 잠깐 돌아가지만 바로 이어지는 window.print()가 스스로
-			// @media print 규칙(display:block !important)을 적용하므로 인쇄 결과에는 영향이 없다.
-			unprimePrintDetails();
+			// 지도 준비를 위해 잠깐 visibility:hidden으로 켜둔 .hlf-print-item-detail은 여기서 떼지
+			// 않는다 — window.print() 바로 직전에 큰 레이아웃 변화(여러 블록이 한꺼번에 다시
+			// display:none으로 접힘)를 일으키면, 일부 모바일 브라우저의 인쇄 파이프라인이 그 순간의
+			// 콘텐츠 형태로 페이지 방향을 잘못 판단해 세로로 인쇄되는 회귀가 있었다(요청서). 이
+			// 클래스는 어차피 실제 인쇄에서는 @media print 규칙(display:block !important)이 항상
+			// 이기므로 켜져 있어도 무해하다 — 인쇄가 끝난 뒤(afterprint)에만 정리한다.
 			window.print();
 		} );
 	}
@@ -317,6 +342,15 @@
 			return;
 		}
 		if ( ! photos.length ) { return; }
+		// 요청서: 워터마크(블러)는 사진마다 켜고 끌 수 있다 — 라이트박스에서 이전/다음으로 넘길 때도
+		// 그 사진의 설정을 따라간다(data-hlf-photos와 같은 순서).
+		var blurFlags;
+		try {
+			blurFlags = JSON.parse( gallery.getAttribute( 'data-hlf-photo-blur' ) || '[]' );
+		} catch ( e ) {
+			blurFlags = [];
+		}
+		var lightboxWatermark = document.getElementById( 'hlf-lightbox-watermark' );
 
 		var imageEl = document.getElementById( 'hlf-lightbox-image' );
 		var currentIndex = 0;
@@ -331,6 +365,7 @@
 		function show( index ) {
 			currentIndex = ( index % photos.length + photos.length ) % photos.length;
 			imageEl.src = photos[ currentIndex ];
+			if ( lightboxWatermark ) { lightboxWatermark.hidden = ! blurFlags[ currentIndex ]; }
 			lightbox.hidden = false;
 		}
 		function close() {
@@ -478,6 +513,14 @@
 				map.setBounds( bounds );
 			}
 
+			// 요청서: 리스트페이지의 "위치 확인" 비교 지도만(id로 구분 — 상세페이지 지도는 클래스는
+			// 같아도 이 id를 갖지 않는다), 모바일 화면 폭에서 기본보다 2단계 더 줌아웃한다. 인쇄
+			// 시(relayoutMapsForPrint) 다시 fitMapToItems()로 맞춰지므로 이 조정은 화면 표시에만
+			// 남는다.
+			if ( 'hlf-comparison-map' === container.id && window.matchMedia( '(max-width: 700px)' ).matches ) {
+				map.setLevel( map.getLevel() + 2 );
+			}
+
 			var tilesPromise = waitForTilesLoaded( map );
 
 			items.forEach( function ( it ) {
@@ -522,7 +565,7 @@
 				}
 			} );
 
-			initializedMaps.push( { map: map, items: items } );
+			initializedMaps.push( { map: map, items: items, container: container } );
 			return tilesPromise;
 		} ).catch( function ( error ) {
 			container.innerHTML = '<p class="hlf-map-empty">카카오 지도를 불러오지 못했습니다. (' + escapeHtml( error.message ) + ')</p>';
@@ -534,6 +577,21 @@
 	// 그 항목을 선택했을 때만(initLazyPrintMaps) 만든다.
 	function initMaps() {
 		document.querySelectorAll( '[data-hlf-map-items]:not([data-hlf-lazy-map])' ).forEach( initMapContainer );
+	}
+
+	// 요청서: 드래그/줌으로 지도를 옮겨본 뒤 다시 매물 위치로 되돌리는 버튼 — 지도를 처음 만들 때 쓴
+	// 것과 같은 계산(fitMapToItems, 좌표 1개면 그 지점+레벨4, 여러 개면 전부 보이게 bounds)을 그대로
+	// 재사용한다.
+	function bindMapRecenterButtons() {
+		document.querySelectorAll( '[data-hlf-map-recenter]' ).forEach( function ( button ) {
+			button.addEventListener( 'click', function () {
+				var section = button.closest( '.hlf-detail-map-panel, .hlf-comparison-map-panel' );
+				var container = section && section.querySelector( '[data-hlf-map-items]' );
+				if ( ! container ) { return; }
+				var entry = initializedMaps.filter( function ( e ) { return e.container === container; } )[ 0 ];
+				if ( entry ) { fitMapToItems( entry.map, entry.items ); }
+			} );
+		} );
 	}
 
 	// initLazyPrintMaps()가 지도를 만들기 전 잠깐 보이게 해둔 .hlf-print-item-detail들 — 인쇄가
@@ -609,6 +667,7 @@
 		bindLightbox();
 		bindGalleryHoverSwap();
 		initMaps();
+		bindMapRecenterButtons();
 		bindPrintMapRelayout();
 	} );
 } )();

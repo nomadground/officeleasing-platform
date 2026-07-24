@@ -24,6 +24,16 @@ final class HLF_Meta_Schema {
 	const FLYER_NUMBER = '_hlf_flyer_number';
 
 	/**
+	 * 요청서: 대표 사진의 HINT 워터마크(블러 처리)를 사진마다 켜고 끌 수 있게 한다 — Item/Source
+	 * 게시물이 아니라 첨부파일(attachment) 자체에 붙는 메타다. 사진이 어느 Item/Source에
+	 * 연결되든(같은 첨부파일을 다른 곳에서 재사용해도) 이 값이 그대로 따라가고, 워터마크 표시
+	 * 여부를 결정하는 templates/public/*.php 쪽은 Item/Source 메타가 아니라 이 attachment 메타를
+	 * 직접 읽는다(HLF_Item_Repository::to_array() 등을 거치지 않음 — 사진 자체의 속성이라 Item
+	 * 스냅샷 필드로 옮길 이유가 없다).
+	 */
+	const PHOTO_BLUR = '_hlf_photo_blur';
+
+	/**
 	 * item 필드 정의. key => [ 'type' => string|int|float|bool|int_array, 'default' => mixed ].
 	 * 'source_*'는 원본 listing/building 연결(선택). 나머지는 발행 시점 snapshot 값.
 	 */
@@ -219,6 +229,21 @@ final class HLF_Meta_Schema {
 			'type'          => 'string',
 			'show_in_rest'  => false,
 			'auth_callback' => $auth,
+		) );
+
+		// 요청서: 대표 사진 워터마크(블러) on/off. attachment 메타라 워드프레스 코어 REST(/wp/v2/media/
+		// {id})로 노출한다 — 이렇게 하면 관리자 화면 JS가 이 값을 저장할 때 새 hlf/v1 라우트 없이
+		// wp.media의 Attachment 모델(save())을 그대로 재사용할 수 있다. 값을 못 정하고 올린 옛 사진은
+		// 기본값 false(요청서: "필요한 경우에 체크" — 기본은 블러 없음).
+		register_post_meta( 'attachment', self::PHOTO_BLUR, array(
+			'single'            => true,
+			'type'              => 'boolean',
+			'show_in_rest'      => true,
+			'default'           => false,
+			'sanitize_callback' => 'rest_sanitize_boolean',
+			'auth_callback'     => static function () {
+				return current_user_can( 'upload_files' );
+			},
 		) );
 	}
 

@@ -164,6 +164,7 @@
 	font-weight: 700;
 }
 .hlf-admin .hlf-saved-image-radio { display: flex; align-items: center; justify-content: center; gap: 4px; margin-top: 6px; font-size: 11px; }
+.hlf-admin .hlf-saved-image-blur { display: flex; align-items: center; justify-content: center; gap: 4px; margin-top: 2px; font-size: 11px; color: #787c82; }
 .hlf-admin .hlf-saved-image-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; margin-top: 4px; }
 .hlf-admin .hlf-saved-image-actions .button { padding: 0 6px; min-height: 24px; line-height: 22px; font-size: 11px; }
 
@@ -224,6 +225,7 @@
 .hlf-admin .hlf-img-missing { display: grid; place-items: center; width: 120px; height: 88px; background: #f0f0f1; border-radius: 5px; color: #7c868d; font-size: 11px; }
 .hlf-admin .hlf-img-badge { position: absolute; top: 4px; left: 4px; background: #2271b1; color: #fff; font-size: 10px; padding: 1px 6px; border-radius: 3px; }
 .hlf-admin .hlf-img-promote { display: block; width: 100%; margin-top: 4px; font-size: 11px; cursor: pointer; }
+.hlf-admin .hlf-img-blur { display: flex; align-items: center; justify-content: center; gap: 4px; width: 100%; margin-top: 4px; font-size: 11px; color: #646970; cursor: pointer; }
 .hlf-admin .hlf-img-remove { position: absolute; top: 4px; right: 4px; width: 20px; height: 20px; border: 0; border-radius: 50%; background: rgba(0,0,0,.6); color: #fff; cursor: pointer; line-height: 20px; }
 
 .hlf-admin .hlf-included-summary { margin: 10px 0; }

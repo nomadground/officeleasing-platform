@@ -164,6 +164,9 @@ final class HLF_Admin_UI {
 
 		$shared = array(
 			'restUrl'              => esc_url_raw( rest_url( HLF_REST_Controller::NS . '/' ) ),
+			// 사진 블러 체크박스(요청서)는 attachment 메타라 hlf/v1이 아니라 워드프레스 코어 REST
+			// (/wp/v2/media/{id})로 직접 저장한다 — 같은 nonce(wp_rest)를 그대로 쓸 수 있다.
+			'restRootUrl'          => esc_url_raw( rest_url() ),
 			'nonce'                => wp_create_nonce( 'wp_rest' ),
 			'listUrl'              => admin_url( 'admin.php?page=' . self::LIST_SLUG ),
 			'editUrlBase'          => admin_url( 'admin.php?page=' . self::EDIT_SLUG . '&flyer_id=' ),

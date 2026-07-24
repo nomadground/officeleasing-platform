@@ -41,6 +41,13 @@ $photo_urls = array_map( static function ( $id ) {
 	return wp_get_attachment_image_url( $id, 'hlf-item-photo' );
 }, $photo_ids );
 
+// 요청서: HINT 워터마크(블러 처리)는 사진마다 켜고 끌 수 있다(관리자 화면에서 업로드/선택 시
+// 체크박스로 설정, 기본값은 꺼짐) — photo_urls와 같은 순서의 배열로 내려보내 JS가 대표 사진
+// 교체(hover)·라이트박스 이전/다음 넘길 때마다 그 사진의 설정을 따라가게 한다.
+$photo_blur = array_map( static function ( $id ) {
+	return (bool) get_post_meta( $id, HLF_Meta_Schema::PHOTO_BLUR, true );
+}, $photo_ids );
+
 $kakao_js_key = defined( 'HLF_KAKAO_JS_KEY' ) ? HLF_KAKAO_JS_KEY : '';
 $has_coords   = $item['latitude'] && $item['longitude'];
 $map_items    = $has_coords ? array( array(
@@ -153,12 +160,12 @@ $basic['주차']       = array( 'value' => $item['parking_available'] ? ( $item[
 		?>
 		<div class="hlf-detail-hero<?php echo empty( $photo_ids ) ? ' hlf-detail-hero--map-only' : ''; ?>">
 			<?php if ( ! empty( $photo_ids ) ) : ?>
-				<section class="hlf-gallery" data-hlf-photos="<?php echo esc_attr( wp_json_encode( $photo_urls ) ); ?>">
+				<section class="hlf-gallery" data-hlf-photos="<?php echo esc_attr( wp_json_encode( $photo_urls ) ); ?>" data-hlf-photo-blur="<?php echo esc_attr( wp_json_encode( $photo_blur ) ); ?>">
 					<div class="hlf-gallery-main">
 						<button type="button" class="hlf-photo-open" data-hlf-lightbox-open data-hlf-lightbox-index="0" aria-label="사진 크게 보기">
 							<?php echo wp_get_attachment_image( $photo_ids[0], 'hlf-item-photo', false, array( 'alt' => esc_attr( $address ), 'loading' => 'eager', 'fetchpriority' => 'high' ) ); ?>
 						</button>
-						<span class="hlf-gallery-watermark" aria-hidden="true">HINT</span>
+						<span class="hlf-gallery-watermark" aria-hidden="true"<?php echo $photo_blur[0] ? '' : ' hidden'; ?>>HINT</span>
 					</div>
 					<?php if ( count( $photo_ids ) > 1 ) : ?>
 						<div class="hlf-gallery-thumbs">
@@ -176,6 +183,7 @@ $basic['주차']       = array( 'value' => $item['parking_available'] ? ( $item[
 				<section class="hlf-detail-map-panel" aria-labelledby="hlf-detail-map-title">
 					<div class="hlf-comparison-map-heading">
 						<h2 id="hlf-detail-map-title">Location</h2>
+						<button type="button" class="hlf-map-recenter" data-hlf-map-recenter aria-label="지도를 매물 위치로 다시 이동">⊙ 중심 이동</button>
 					</div>
 					<div
 						class="hlf-comparison-map hlf-detail-map"
@@ -278,7 +286,7 @@ $basic['주차']       = array( 'value' => $item['parking_available'] ? ( $item[
 	<div class="hlf-lightbox" id="hlf-lightbox" role="dialog" aria-modal="true" aria-label="사진 크게 보기" hidden>
 		<div class="hlf-lightbox-content">
 			<img class="hlf-lightbox-image" id="hlf-lightbox-image" src="" alt="">
-			<span class="hlf-gallery-watermark hlf-gallery-watermark--lightbox" aria-hidden="true">HINT</span>
+			<span class="hlf-gallery-watermark hlf-gallery-watermark--lightbox" id="hlf-lightbox-watermark" aria-hidden="true"<?php echo ! empty( $photo_blur[0] ) ? '' : ' hidden'; ?>>HINT</span>
 			<button type="button" class="hlf-lightbox-button hlf-lightbox-close" data-hlf-lightbox-close aria-label="닫기">✕</button>
 			<?php if ( count( $photo_ids ) > 1 ) : ?>
 				<button type="button" class="hlf-lightbox-button hlf-lightbox-prev" data-hlf-lightbox-prev aria-label="이전 사진">‹</button>

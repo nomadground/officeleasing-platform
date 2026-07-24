@@ -31,6 +31,7 @@ final class HLF_Source_Listing_Repository {
 		$data['metrics']             = hlf_calculate_item_metrics( $data );
 		if ( $include_previews ) {
 			$data['image_previews'] = self::image_previews( $data );
+			$data['image_blur']     = self::image_blur( $data );
 		}
 		$data['included_flyer_count'] = null === $included_count ? self::included_flyer_count( $source->ID ) : $included_count;
 		// "링크 복사" 버튼(전체 매물 목록)용 — 이 원본이 포함된 각 Flyer의 개별 매물 공개 URL.
@@ -55,6 +56,22 @@ final class HLF_Source_Listing_Repository {
 			}
 		}
 		return $previews;
+	}
+
+	/** { attachment_id: bool } 맵(관리자 편집 화면의 블러 체크박스 초기 상태, HLF_Item_Repository::image_blur와 동일 규칙). */
+	private static function image_blur( array $data ): array {
+		$ids = array();
+		if ( ! empty( $data['exterior_image_id'] ) ) {
+			$ids[] = (int) $data['exterior_image_id'];
+		}
+		foreach ( $data['interior_image_ids'] as $id ) {
+			$ids[] = (int) $id;
+		}
+		$blur = array();
+		foreach ( array_unique( $ids ) as $id ) {
+			$blur[ $id ] = (bool) get_post_meta( $id, HLF_Meta_Schema::PHOTO_BLUR, true );
+		}
+		return $blur;
 	}
 
 	public static function get( int $source_id ): ?WP_Post {

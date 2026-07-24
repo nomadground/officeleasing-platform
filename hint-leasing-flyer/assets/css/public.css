@@ -239,14 +239,12 @@ body.hlf-public {
 /* 라이트박스(확대 보기)는 캔버스가 훨씬 커서 같은 크기로는 잘 안 보인다 — 글자/블러 박스를 키운다. */
 .hlf-gallery-watermark--lightbox { transform: translate(-50%, calc(-50% + 6px)); padding: 12px 46px 24px; font-size: 26px; border-radius: 10px; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
 .hlf-gallery-main img { display: block; width: 100%; height: 100%; object-fit: cover; transition: opacity .12s ease; }
-/* min-width:0은 위 .hlf-gallery와 같은 이유(flex 아이템 기본값 min-width:auto가 스크롤을 무력화함).
-   scroll-snap-type(과 아래 .hlf-photo-open의 scroll-snap-align)은 요청서의 "슬라이드 형식" 요청에
-   맞춰 손가락을 떼면 썸네일 하나 단위로 딱 맞춰 멈추게 한다(터치 스크롤은 이미 overflow-x:auto로
-   가능했고, 이건 그 위에 얹는 다듬기). */
-.hlf-gallery-thumbs { display: flex; gap: 8px; min-width: 0; margin-top: 8px; overflow-x: auto; padding-bottom: 2px; scroll-snap-type: x proximity; }
-.hlf-gallery-thumbs img { flex: 0 0 auto; width: 84px; height: 60px; object-fit: cover; border-radius: 8px; transition: transform .12s ease; }
+/* 요청서: 매물당 사진이 최대 4장(대표 1 + 슬라이드 최대 3, HLF_MAX_IMAGES)뿐이라 스크롤 슬라이드가
+   필요 없다 — 가로 스크롤 대신 남은 칸에 똑같이 나눠(25%씩) 항상 한 줄에 다 보이게 한다. */
+.hlf-gallery-thumbs { display: flex; gap: 8px; min-width: 0; margin-top: 8px; }
+.hlf-gallery-thumbs img { display: block; width: 100%; height: 60px; object-fit: cover; border-radius: 8px; transition: transform .12s ease; }
 .hlf-photo-open { display: block; width: 100%; height: 100%; padding: 0; border: 0; background: transparent; cursor: pointer; }
-.hlf-gallery-thumbs .hlf-photo-open { flex: 0 0 auto; width: 84px; scroll-snap-align: start; }
+.hlf-gallery-thumbs .hlf-photo-open { flex: 1 1 0; min-width: 0; }
 .hlf-photo-open:focus-visible { outline: 2px solid var(--hlf-primary); outline-offset: 2px; }
 /* 썸네일에 마우스오버하면 위 대표 사진 자리에 그 사진이 커져서 나타난다(assets/js/public-flyer.js
    bindGalleryHoverSwap) — 썸네일 자체도 살짝 커져서 지금 어떤 사진이 크게 보이는지 알려준다. */
@@ -303,16 +301,18 @@ body.hlf-public {
    한 줄)로 옮겨온다. */
 /* 요청서 3: 목록 버튼은 왼쪽 정렬 + 지정 색상(#355c73)의 화이트 폰트 버튼으로. */
 .hlf-detail-footer-note { margin: 4px 0 22px; }
+/* 요청서: 옆의 전화번호 버튼(.hlf-footer-contact a)과 같은 느낌(살짝 둥근 사각형)으로 통일한다 —
+   완전한 알약 모양(border-radius:999px) 대신 8px로. */
 .hlf-detail-list-return-link {
 	display: inline-block;
-	padding: 9px 22px;
+	padding: 8px 14px;
 	color: #fff;
 	font-weight: 700;
 	font-size: 13px;
 	text-decoration: none;
 	background: #355c73;
 	border: 1px solid #355c73;
-	border-radius: 999px;
+	border-radius: 8px;
 	transition: background .15s, color .15s;
 }
 .hlf-detail-list-return-link:hover { color: #355c73; background: #fff; }
@@ -408,8 +408,28 @@ body.hlf-public {
    채운다(.hlf-detail-hero의 align-items:stretch가 카드 자체의 높이를 갤러리와 맞춰준다). */
 .hlf-detail-hero .hlf-detail-map-panel { display: flex; flex-direction: column; }
 .hlf-detail-hero .hlf-detail-map { flex: 1 1 auto; min-height: 0; }
+/* 사진이 없어 지도 패널 혼자 이 grid의 한 칸을 채우는 경우(요청서 — 인쇄에서 지도가 아예 안 보이던
+   버그의 실제 원인 중 하나) — 위 min-height:0은 align-items:stretch로 옆 갤러리 카드의 높이를
+   물려받는 걸 전제로 하는데, 사진이 없으면 물려받을 대상 자체가 없어 콘텐츠 높이(0)로 찌그러진다.
+   이 규칙은 위 규칙과 명시도가 같아(클래스 2개) 소스 순서상 반드시 그 아래에 와야 이긴다. */
+.hlf-detail-hero--map-only .hlf-detail-map { min-height: 360px; }
 .hlf-comparison-map-heading { display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px; }
 .hlf-comparison-map-heading h2 { margin: 0; color: var(--hlf-primary); font-size: 16px; letter-spacing: -.02em; }
+/* 요청서: 드래그/줌으로 지도를 옮겨봤다가 다시 매물 위치로 되돌리는 버튼 — 제목과 같은 줄, 우측 정렬. */
+.hlf-map-recenter {
+	margin-left: auto;
+	padding: 4px 10px;
+	color: var(--hlf-primary);
+	font-size: 11px;
+	font-weight: 700;
+	background: var(--hlf-surface);
+	border: 1px solid var(--hlf-line);
+	border-radius: 999px;
+	cursor: pointer;
+	transition: background .15s, color .15s;
+}
+.hlf-map-recenter:hover { color: #fff; background: var(--hlf-primary); }
+.hlf-map-recenter:focus-visible { outline: 2px solid var(--hlf-primary); outline-offset: 2px; }
 .hlf-comparison-map-unit { color: var(--hlf-muted); font-size: 10px; letter-spacing: .06em; }
 /* 요청서 12: 위치 확인 지도 세로폭을 기존보다 늘린다(360px -> 440px). */
 .hlf-comparison-map { min-height: 440px; background: var(--hlf-line); border-radius: 8px; overflow: hidden; }
@@ -524,7 +544,7 @@ body.hlf-public {
 	/* 기본정보(방향/주차/사용승인일 등)도 임대조건과 마찬가지로 모바일에서 1행 2열을 유지한다. */
 	.hlf-basic-item { padding: 8px 4px; }
 	.hlf-gallery-main { aspect-ratio: 4 / 3; border-radius: 8px; }
-	.hlf-gallery-thumbs img { width: 68px; height: 50px; }
+	.hlf-gallery-thumbs img { height: 50px; }
 	/* 데스크톱에서는 .hlf-detail-hero가 2열 grid라 지도 패널이 갤러리 카드와 같은 행에서
 	   align-items:stretch로 높이를 물려받는다(그래서 .hlf-detail-map은 min-height:0으로 둬도
 	   된다). 모바일은 hero가 1열로 쌓여 지도 패널이 그 stretch 대상을 잃는다 — 카카오 지도 JS가

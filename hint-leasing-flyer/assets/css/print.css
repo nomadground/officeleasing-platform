@@ -13,7 +13,7 @@
 	body.hlf-public { background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 	/* 화면 전용 인터랙션 요소는 인쇄물에 의미가 없다 — 공유/인쇄 버튼(클립보드 복사·인쇄 다이얼로그는
 	   인쇄물에서 할 수 없음)과 라이트박스(열려 있더라도 인쇄 시점엔 닫혀 있어야 함)도 함께 숨긴다. */
-	.hlf-back, .hlf-badge, .hlf-share-button, .hlf-print-button, .hlf-lightbox, .hlf-print-panel, .hlf-detail-list-return-link { display: none !important; }
+	.hlf-back, .hlf-badge, .hlf-share-button, .hlf-print-button, .hlf-lightbox, .hlf-print-panel, .hlf-detail-list-return-link, .hlf-map-recenter { display: none !important; }
 	/* 요청서 8: 매물 수 문구는 화면에서는 아예 렌더링하지 않는다 — 인쇄에서는 공유/인쇄 버튼이 숨어
 	   비는 헤더 우측 자리에 이 문구만 별도로 보여준다. */
 	.hlf-print-result-count { display: inline-block !important; color: #fff; font-weight: 700; }
@@ -86,6 +86,13 @@
 	   같은 2단 grid로 유지한다 — 지도 패널이 데스크톱과 동일하게 이 grid의 align-items:stretch로
 	   갤러리 카드와 같은 높이를 물려받아 인쇄에서도 실제 지도가 표시될 공간을 확보한다. */
 	.hlf-detail-hero { display: grid !important; grid-template-columns: 1fr 1fr; gap: 10px; margin: 0 0 6px; }
+	/* 요청서 2(실사용 버그): 사진이 없어 지도 혼자 이 grid를 차지하는 매물(.hlf-detail-hero--map-only)
+	   에서는 위 2단 강제 규칙과 이 규칙이 클래스 하나 차이로 동률 명시도라 뒤에 오는 이 규칙이
+	   이겨야 하는데, 그동안 이 예외를 별도로 두지 않아 사진 없는 매물은 인쇄에서도 계속 2단으로
+	   강제돼 지도가 반쪽 폭에 눌리거나(때로는 옆 빈 칸 때문에 높이 기준을 잃어) 아예 비어 보였다.
+	   또한 align-items:stretch로 물려받을 사진 카드가 없으므로 지도 자체에 최소 높이를 직접 준다. */
+	.hlf-detail-hero--map-only { grid-template-columns: 1fr !important; }
+	.hlf-detail-hero--map-only .hlf-detail-map { min-height: 85mm; }
 	/* Leasing Info/Property Details를 포함한 본문 전체를 세로로 압축해 매물 1개 상세를 한 페이지
 	   안에 우겨넣는다 — 카드 여백/줄간격/글자 크기를 화면보다 크게 줄인다. */
 	/* 요청서: 인쇄 시 갤러리/지도 세로폭을 조금 더 키운다(68mm -> 85mm). 위에서 되찾은 .hlf-shell

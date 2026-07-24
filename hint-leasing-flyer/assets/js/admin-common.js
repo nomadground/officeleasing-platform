@@ -35,6 +35,24 @@
 			} );
 	}
 
+	// 사진 블러 체크박스(요청서) 전용 — attachment 메타(_hlf_photo_blur)는 hlf/v1 라우트가 아니라
+	// 워드프레스 코어 REST(/wp/v2/media/{id})로 직접 저장한다(HLF_Meta_Schema::PHOTO_BLUR가
+	// show_in_rest로 이미 노출돼 있다). apiFetch()는 restUrl(hlf/v1/)에 고정돼 있어 재사용할 수
+	// 없으므로 별도 함수로 둔다.
+	function saveAttachmentMeta( attachmentId, meta ) {
+		return fetch( HLF_ADMIN.restRootUrl + 'wp/v2/media/' + attachmentId, {
+			method: 'POST',
+			credentials: 'same-origin',
+			headers: { 'X-WP-Nonce': HLF_ADMIN.nonce, 'Content-Type': 'application/json' },
+			body: JSON.stringify( { meta: meta } ),
+		} ).then( function ( response ) {
+			if ( ! response.ok ) {
+				throw new Error( '사진 설정을 저장하지 못했습니다(오류 코드 ' + response.status + ').' );
+			}
+			return response.json();
+		} );
+	}
+
 	// DOM 엘리먼트를 만들어 textContent→innerHTML 왕복으로 이스케이프하던 이전 방식은 렌더링마다
 	// (필드 수 × 항목 수만큼) 불필요한 <div>를 생성했다 — 순수 문자열 치환으로도 결과가 동일하므로
 	// 이렇게 바꾼다. 순서가 중요하다: 치환으로 새로 생긴 "&"를 다시 이스케이프하지 않도록 반드시 "&"를
@@ -77,6 +95,7 @@
 
 	window.HLFAdmin = {
 		apiFetch: apiFetch,
+		saveAttachmentMeta: saveAttachmentMeta,
 		escapeHtml: escapeHtml,
 		escapeAttr: escapeAttr,
 		statusLabel: statusLabel,

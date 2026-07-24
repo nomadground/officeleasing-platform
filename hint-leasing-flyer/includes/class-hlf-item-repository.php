@@ -483,6 +483,7 @@ final class HLF_Item_Repository {
 		$data['metrics'] = hlf_calculate_item_metrics( $data );
 		if ( $include_image_previews ) {
 			$data['image_previews'] = self::image_previews( $data );
+			$data['image_blur']     = self::image_blur( $data );
 		}
 		return $data;
 	}
@@ -509,5 +510,25 @@ final class HLF_Item_Repository {
 			}
 		}
 		return $previews;
+	}
+
+	/**
+	 * { attachment_id: bool } 맵(관리자 편집 화면의 블러 체크박스 초기 상태 표시 전용, 요청서).
+	 * 실제 저장은 관리자 JS가 REST 코어 미디어 엔드포인트(/wp/v2/media/{id})로 직접 하므로
+	 * 여기서는 읽기만 한다 — HLF_Meta_Schema::PHOTO_BLUR 참고.
+	 */
+	private static function image_blur( array $data ): array {
+		$ids = array();
+		if ( ! empty( $data['exterior_image_id'] ) ) {
+			$ids[] = (int) $data['exterior_image_id'];
+		}
+		foreach ( $data['interior_image_ids'] as $id ) {
+			$ids[] = (int) $id;
+		}
+		$blur = array();
+		foreach ( array_unique( $ids ) as $id ) {
+			$blur[ $id ] = (bool) get_post_meta( $id, HLF_Meta_Schema::PHOTO_BLUR, true );
+		}
+		return $blur;
 	}
 }

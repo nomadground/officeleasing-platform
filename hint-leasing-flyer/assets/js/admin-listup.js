@@ -847,6 +847,7 @@
 		var box = document.getElementById( 'hlf-src-images' );
 		if ( ! box ) { return; }
 		var previews = src.image_previews || {};
+		var blurMap = src.image_blur || {};
 		var ext = Number( src.exterior_image_id || 0 );
 		var interior = ( src.interior_image_ids || [] ).map( Number );
 		var ordered = ( ext ? [ ext ] : [] ).concat( interior );
@@ -861,9 +862,11 @@
 			'<div class="hlf-img-strip">' +
 				( ordered.length ? ordered.map( function ( id, i ) {
 					var url = previews[ id ];
+					var isBlurred = !! ( blurMap[ id ] || blurMap[ String( id ) ] );
 					return '<div class="hlf-img-thumb' + ( 0 === i ? ' is-primary' : '' ) + '">' +
 						( url ? '<img src="' + escAttr( url ) + '" alt="">' : '<span class="hlf-img-missing">이미지</span>' ) +
 						( 0 === i ? '<span class="hlf-img-badge">대표</span>' : '<button type="button" class="hlf-img-promote" data-id="' + id + '">대표로</button>' ) +
+						'<label class="hlf-img-blur"><input type="checkbox" data-hlf-img-blur="' + id + '"' + ( isBlurred ? ' checked' : '' ) + '> 블러</label>' +
 						'<button type="button" class="hlf-img-remove" data-id="' + id + '">×</button>' +
 					'</div>';
 				} ).join( '' ) : '<p class="hlf-empty">등록된 사진이 없습니다.</p>' ) +
@@ -871,6 +874,16 @@
 
 		document.getElementById( 'hlf-src-img-pick' ).addEventListener( 'click', function () { openImagePicker( src ); } );
 		box.querySelectorAll( '.hlf-img-promote' ).forEach( function ( b ) { b.addEventListener( 'click', function () { promoteImage( src, Number( b.getAttribute( 'data-id' ) ) ); } ); } );
+		box.querySelectorAll( '[data-hlf-img-blur]' ).forEach( function ( cb ) {
+			cb.addEventListener( 'change', function () {
+				var id = Number( cb.getAttribute( 'data-hlf-img-blur' ) );
+				A.saveAttachmentMeta( id, { _hlf_photo_blur: cb.checked } )
+					.catch( function ( err ) {
+						window.alert( '블러 설정을 저장하지 못했습니다: ' + err.message );
+						cb.checked = ! cb.checked;
+					} );
+			} );
+		} );
 		box.querySelectorAll( '.hlf-img-remove' ).forEach( function ( b ) {
 			b.addEventListener( 'click', function () {
 				if ( ! window.confirm( '이 사진을 매물에서 뗄까요? (파일 자체는 삭제되지 않습니다)' ) ) { return; }

@@ -756,6 +756,7 @@
 
 	function renderSavedImages( item ) {
 		var previews = item.image_previews || {};
+		var blurMap = item.image_blur || {};
 		var exteriorId = item.exterior_image_id;
 		var interiorIds = item.interior_image_ids || [];
 
@@ -766,12 +767,17 @@
 		function renderThumb( id, isExterior ) {
 			var url = previews[ id ] || previews[ String( id ) ] || '';
 			var radioId = 'hlf-image-primary-' + id;
+			var blurId = 'hlf-image-blur-' + id;
+			var isBlurred = !! ( blurMap[ id ] || blurMap[ String( id ) ] );
 			return (
 				'<div class="hlf-saved-image' + ( isExterior ? ' is-primary' : '' ) + '">' +
 					( url ? '<img src="' + HLFAdmin.escapeAttr( url ) + '" alt="">' : '<div class="hlf-saved-image-missing">미리보기 없음</div>' ) +
 					( isExterior ? '<span class="hlf-saved-image-badge">대표</span>' : '' ) +
 					'<label class="hlf-saved-image-radio" for="' + radioId + '">' +
 						'<input type="radio" id="' + radioId + '" name="hlf-primary-image" data-hlf-image-primary="' + id + '"' + ( isExterior ? ' checked' : '' ) + '> 대표사진' +
+					'</label>' +
+					'<label class="hlf-saved-image-blur" for="' + blurId + '">' +
+						'<input type="checkbox" id="' + blurId + '" data-hlf-image-blur="' + id + '"' + ( isBlurred ? ' checked' : '' ) + '> 블러 처리' +
 					'</label>' +
 					'<div class="hlf-saved-image-actions">' +
 						'<button type="button" class="button button-small hlf-danger" data-hlf-image-delete="' + id + '">삭제</button>' +
@@ -806,6 +812,15 @@
 				var radio = event.target.closest( '[data-hlf-image-primary]' );
 				if ( radio && radio.checked ) {
 					promoteImage( item, Number( radio.getAttribute( 'data-hlf-image-primary' ) ) );
+				}
+				var blurCheckbox = event.target.closest( '[data-hlf-image-blur]' );
+				if ( blurCheckbox ) {
+					var blurId = Number( blurCheckbox.getAttribute( 'data-hlf-image-blur' ) );
+					HLFAdmin.saveAttachmentMeta( blurId, { _hlf_photo_blur: blurCheckbox.checked } )
+						.catch( function ( err ) {
+							window.alert( '블러 설정을 저장하지 못했습니다: ' + err.message );
+							blurCheckbox.checked = ! blurCheckbox.checked;
+						} );
 				}
 			} );
 			savedWrap.addEventListener( 'click', function ( event ) {
