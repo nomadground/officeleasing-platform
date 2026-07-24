@@ -496,16 +496,6 @@ final class HLF_Source_Listing_Repository {
 		$interior_image_ids = array_values( array_unique( array_map( 'intval', $interior_image_ids ) ) );
 		$requested          = $exterior_image_id > 0 ? array_merge( array( $exterior_image_id ), $interior_image_ids ) : $interior_image_ids;
 
-		// 요청서: 대표 1장 + 아래 슬라이드 3장(대표 포함 4장)으로 제한한다 — HLF_Item_Repository와
-		// 같은 상한(MAX_IMAGES), 이 저장소는 Item과 별개 클래스라 상수도 그대로 다시 둔다.
-		if ( count( $requested ) > HLF_Item_Repository::MAX_IMAGES ) {
-			return new WP_Error(
-				'hlf_image_limit',
-				'사진은 대표 이미지를 포함해 최대 ' . HLF_Item_Repository::MAX_IMAGES . '장까지 등록할 수 있습니다.',
-				array( 'status' => 400 )
-			);
-		}
-
 		// delete_image()가 "이미 저장된 목록에서 하나 뺀 나머지"를 그대로 이 메서드에 다시 넘기므로,
 		// 이미 붙어 있던 나머지까지 매번 재확인하면 그중 하나를 다른 사람이 붙였다는 이유만으로
 		// "빼기" 자체가 막혀버린다 — 권한 확인은 이번 요청에서 새로 추가되는 ID에만 적용한다.
@@ -513,6 +503,19 @@ final class HLF_Source_Listing_Repository {
 		$current_ids = array();
 		if ( ! empty( $existing['exterior_image_id'] ) ) { $current_ids[] = (int) $existing['exterior_image_id']; }
 		foreach ( $existing['interior_image_ids'] as $existing_id ) { $current_ids[] = (int) $existing_id; }
+
+		// 요청서: 대표 1장 + 아래 슬라이드 3장(대표 포함 4장)으로 제한한다 — HLF_Item_Repository와
+		// 같은 상한(MAX_IMAGES). 단, HLF_Item_Repository::set_images와 같은 이유로 "이미 갖고 있던
+		// 개수보다 늘리지만 않으면" 통과시킨다 — 그렇지 않으면 상한이 생기기 전에 이미 4장을 넘게
+		// 등록된 원본 매물은 delete_image()로 한 장씩 빼도 계속 이 검사에 걸려 사진을 하나도 못 뗀다.
+		$ceiling = max( HLF_Item_Repository::MAX_IMAGES, count( $current_ids ) );
+		if ( count( $requested ) > $ceiling ) {
+			return new WP_Error(
+				'hlf_image_limit',
+				'사진은 대표 이미지를 포함해 최대 ' . HLF_Item_Repository::MAX_IMAGES . '장까지 등록할 수 있습니다.',
+				array( 'status' => 400 )
+			);
+		}
 
 		foreach ( $requested as $id ) {
 			$attachment = get_post( $id );

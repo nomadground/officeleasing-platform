@@ -192,7 +192,6 @@ $kakao_js_key = defined( 'HLF_KAKAO_JS_KEY' ) ? HLF_KAKAO_JS_KEY : '';
 							<h2 id="hlf-noc-chart-title">환산임대료 비교</h2>
 							<span class="hlf-noc-chart-eyebrow">NOC COMPARISON</span>
 						</div>
-						<p class="hlf-noc-chart-unit">단위:만원/전용면적(평)</p>
 					</div>
 					<div
 						class="hlf-noc-chart"
@@ -201,6 +200,7 @@ $kakao_js_key = defined( 'HLF_KAKAO_JS_KEY' ) ? HLF_KAKAO_JS_KEY : '';
 						aria-label="현재 리스트 매물의 NOC(환산임대료) 비교 차트"
 						data-hlf-noc-items="<?php echo esc_attr( wp_json_encode( $chart_items ) ); ?>"
 					></div>
+					<p class="hlf-noc-chart-unit">단위:만원/전용면적(평)</p>
 				</section>
 			<?php endif; ?>
 

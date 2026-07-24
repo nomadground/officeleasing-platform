@@ -377,7 +377,9 @@ body.hlf-public {
 .hlf-noc-chart-title-row { display: flex; align-items: baseline; gap: 8px; }
 /* 위치 비교 지도의 "LOCATION REVIEW" 표기와 같은 스타일(자간을 준 영문 대문자 라벨). */
 .hlf-noc-chart-eyebrow { color: var(--hlf-muted); font-size: 10px; letter-spacing: .06em; }
-.hlf-noc-chart-unit { margin: 0; color: var(--hlf-muted); font-size: 11px; }
+/* 요청서: "단위:..." 표기는 제목 옆이 아니라 차트 하단 밑줄(.hlf-noc-chart의 border-bottom) 아래,
+   우측 정렬로 옮긴다 — 그래서 .hlf-noc-chart-heading이 아니라 .hlf-noc-chart 뒤에 형제로 둔다. */
+.hlf-noc-chart-unit { margin: 6px 0 0; text-align: right; color: var(--hlf-muted); font-size: 11px; }
 /* 요청서 5: 위아래 스크롤은 필요 없다 — overflow-x만 auto로 두면(overflow-y는 기본값 visible)
    CSS 스펙상 브라우저가 overflow-y도 강제로 auto로 승격시켜(두 축 중 하나만 visible로 둘 수 없음)
    실제 콘텐츠 높이가 min-height보다 몇 px만 더 커도 세로 스크롤바가 생겼다 — overflow-y:hidden을

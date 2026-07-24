@@ -514,11 +514,11 @@
 			}
 
 			// 요청서: 리스트페이지의 "위치 확인" 비교 지도만(id로 구분 — 상세페이지 지도는 클래스는
-			// 같아도 이 id를 갖지 않는다), 모바일 화면 폭에서 기본보다 2단계 더 줌아웃한다. 인쇄
-			// 시(relayoutMapsForPrint) 다시 fitMapToItems()로 맞춰지므로 이 조정은 화면 표시에만
-			// 남는다.
-			if ( 'hlf-comparison-map' === container.id && window.matchMedia( '(max-width: 700px)' ).matches ) {
-				map.setLevel( map.getLevel() + 2 );
+			// 같아도 이 id를 갖지 않는다) 기본보다 더 줌아웃한다 — 모바일은 2단계, 데스크톱은 1단계
+			// (요청서: "데스크탑화면에서도... 줌아웃 1단계"). 인쇄 시(relayoutMapsForPrint) 다시
+			// fitMapToItems()로 맞춰지므로 이 조정은 화면 표시에만 남는다.
+			if ( 'hlf-comparison-map' === container.id ) {
+				map.setLevel( map.getLevel() + ( window.matchMedia( '(max-width: 700px)' ).matches ? 2 : 1 ) );
 			}
 
 			var tilesPromise = waitForTilesLoaded( map );

@@ -325,16 +325,6 @@ final class HLF_Item_Repository {
 		$interior_image_ids = array_values( array_unique( array_map( 'intval', $interior_image_ids ) ) );
 		$requested          = $exterior_image_id > 0 ? array_merge( array( $exterior_image_id ), $interior_image_ids ) : $interior_image_ids;
 
-		// 요청서: 대표 1장 + 아래 슬라이드 3장(대표 포함 4장)으로 제한한다 — 갤러리 카드/슬라이드 폭을
-		// 그 이상 스크롤 없이 고정 크기로 보여주기 위한 전제(assets/css/public.css).
-		if ( count( $requested ) > self::MAX_IMAGES ) {
-			return new WP_Error(
-				'hlf_image_limit',
-				'사진은 대표 이미지를 포함해 최대 ' . self::MAX_IMAGES . '장까지 등록할 수 있습니다.',
-				array( 'status' => 400 )
-			);
-		}
-
 		// delete_image()는 "지금 이미 저장된 목록에서 하나 뺀 나머지"를 그대로 이 메서드에 다시
 		// 넘긴다 — 그 이미 저장돼 있던 나머지까지 매번 읽기 권한을 재확인하면, 다른 사람이 원래
 		// 정상적으로 붙여 둔 이미지가 하나 섞여 있다는 이유만으로 "빼기" 작업 자체가 막혀버린다.
@@ -344,6 +334,21 @@ final class HLF_Item_Repository {
 		$current_ids = array();
 		if ( ! empty( $existing['exterior_image_id'] ) ) { $current_ids[] = (int) $existing['exterior_image_id']; }
 		foreach ( $existing['interior_image_ids'] as $existing_id ) { $current_ids[] = (int) $existing_id; }
+
+		// 요청서: 대표 1장 + 아래 슬라이드 3장(대표 포함 4장)으로 제한한다 — 갤러리 카드/슬라이드 폭을
+		// 그 이상 스크롤 없이 고정 크기로 보여주기 위한 전제(assets/css/public.css). 단, 이 상한이
+		// 생기기 전에 이미 4장을 넘게 등록해 둔 매물(예: 6장)은 delete_image()가 한 장씩 빼도 여전히
+		// 4장을 넘어(6→5→...) 매번 이 검사에 걸려 사진을 하나도 뗄 수 없는 채로 갇히는 실사용 버그가
+		// 있었다 — "이미 갖고 있던 개수보다 늘리지만 않으면" 통과시켜, 기존 매물은 점진적으로 4장
+		// 이하로 줄일 수 있게 하고, 신규/저사이즈 매물은 여전히 4장에서 막는다.
+		$ceiling = max( self::MAX_IMAGES, count( $current_ids ) );
+		if ( count( $requested ) > $ceiling ) {
+			return new WP_Error(
+				'hlf_image_limit',
+				'사진은 대표 이미지를 포함해 최대 ' . self::MAX_IMAGES . '장까지 등록할 수 있습니다.',
+				array( 'status' => 400 )
+			);
+		}
 
 		foreach ( $requested as $id ) {
 			$attachment = get_post( $id );
