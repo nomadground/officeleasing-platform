@@ -49,6 +49,7 @@
 .hlf-admin .hlf-field label { font-weight: 600; font-size: 13px; }
 .hlf-admin .hlf-field input[type="text"],
 .hlf-admin .hlf-field input[type="number"],
+.hlf-admin .hlf-field select,
 .hlf-admin .hlf-field textarea {
 	width: 100%;
 	max-width: 100%;

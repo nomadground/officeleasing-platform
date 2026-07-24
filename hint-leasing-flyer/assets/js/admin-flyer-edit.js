@@ -20,6 +20,16 @@
 	// 서버(HLF_Item_Repository::MAX_IMAGES)와 같은 상한 — 대표 1장 + 슬라이드 3장(대표 포함 4장).
 	var HLF_MAX_IMAGES = 4;
 
+	// 요청서: 방향/건축물용도는 실무상 정해진 값만 쓰이므로 드롭다운으로 입력 정확도를 높인다(OCR
+	// 추출 정규화 목록과 같은 값 — assets/js/admin-ocr.js OCR_BUILDING_USE_LIST 참고). 기존 값이 이
+	// 목록에 없어도(옛 데이터, OCR이 "제1종 근린생활시설"처럼 세부 종별을 뽑아낸 경우) renderField가
+	// 그 값을 선택지에 추가로 끼워 넣어 절대 조용히 사라지지 않게 한다.
+	var HLF_DIRECTION_CHOICES = [ '동향', '서향', '남향', '북향', '남동향', '남서향', '북동향', '북서향' ];
+	var HLF_BUILDING_USE_CHOICES = [ '근린생활시설', '업무시설', '교육연구시설', '의료시설', '오피스텔' ];
+	// 입주가능일은 구체적인 날짜도 실제로 쓰이므로(요청서 3, "정규화 입주가능일 단일 값") 자유 입력을
+	// 그대로 두고, 자주 쓰는 문구만 datalist로 제안한다 — select로 바꾸면 실제 날짜를 입력할 수 없어진다.
+	var HLF_AVAILABLE_DATE_SUGGESTIONS = [ '즉시입주', '빠른협의', '협의 가능' ];
+
 	// key: 스키마 필드명(HLF_Meta_Schema::writable_fields()와 동일해야 함) / type: 입력 위젯.
 	var ITEM_FIELDS = [
 		{ key: 'road_address', label: '도로명주소', type: 'text' },
@@ -37,10 +47,10 @@
 		{ key: 'parking_available', label: '주차 가능', type: 'checkbox' },
 		{ key: 'elevator_available', label: '엘리베이터 있음', type: 'checkbox' },
 		{ key: 'total_parking', label: '총주차대수', type: 'text', placeholder: '예: 자주식 10대' },
-		{ key: 'direction', label: '방향', type: 'text' },
-		{ key: 'available_date_text', label: '입주가능일', type: 'text', placeholder: '예: 즉시입주 협의가능' },
+		{ key: 'direction', label: '방향', type: 'select', choices: HLF_DIRECTION_CHOICES },
+		{ key: 'available_date_text', label: '입주가능일', type: 'text', placeholder: '예: 즉시입주 협의가능', list: 'hlf-available-date-choices' },
 		{ key: 'approval_date', label: '사용승인일', type: 'text', placeholder: '예: 2018.06.21' },
-		{ key: 'building_use', label: '건축물용도', type: 'text' },
+		{ key: 'building_use', label: '건축물용도', type: 'select', choices: HLF_BUILDING_USE_CHOICES },
 		{ key: 'illegal_building', label: '위반건축물 여부', type: 'checkbox' },
 		{ key: 'features', label: '매물특징', type: 'textarea', wide: true },
 		{ key: 'contact_name', label: '담당자명 (선택 — 이 매물만 다르면 입력)', type: 'text' },
@@ -546,11 +556,26 @@
 					'<textarea id="' + fieldId + '" name="' + def.key + '">' + HLFAdmin.escapeHtml( value || '' ) + '</textarea></div>'
 				);
 			}
+			if ( def.type === 'select' ) {
+				// 옛 데이터/OCR이 뽑은 값이 선택지 목록에 없어도(예: "제1종 근린생활시설") 조용히
+				// 사라지지 않게, 목록에 없는 현재 값은 그대로 추가 옵션으로 끼워 넣는다.
+				var selectChoices = def.choices.slice();
+				if ( value && selectChoices.indexOf( value ) === -1 ) { selectChoices.push( value ); }
+				var optionsHtml = '<option value="">선택 안 함</option>' + selectChoices.map( function ( choice ) {
+					return '<option value="' + HLFAdmin.escapeAttr( choice ) + '"' + ( choice === value ? ' selected' : '' ) + '>' + HLFAdmin.escapeHtml( choice ) + '</option>';
+				} ).join( '' );
+				return (
+					'<div class="hlf-field' + wideClass + '"><label for="' + fieldId + '">' + HLFAdmin.escapeHtml( def.label ) + '</label>' +
+					'<select id="' + fieldId + '" name="' + def.key + '">' + optionsHtml + '</select></div>'
+				);
+			}
 			var stepAttr = def.step ? ' step="' + def.step + '"' : '';
 			var placeholderAttr = def.placeholder ? ' placeholder="' + HLFAdmin.escapeAttr( def.placeholder ) + '"' : '';
+			var listAttr = def.list ? ' list="' + def.list + '"' : '';
 			return (
 				'<div class="hlf-field' + wideClass + '"><label for="' + fieldId + '">' + HLFAdmin.escapeHtml( def.label ) + '</label>' +
-				'<input id="' + fieldId + '" type="' + def.type + '" name="' + def.key + '" value="' + HLFAdmin.escapeAttr( value === null || value === undefined ? '' : value ) + '"' + stepAttr + placeholderAttr + '>' +
+				'<input id="' + fieldId + '" type="' + def.type + '" name="' + def.key + '" value="' + HLFAdmin.escapeAttr( value === null || value === undefined ? '' : value ) + '"' + stepAttr + placeholderAttr + listAttr + '>' +
+				( def.list ? '<datalist id="' + def.list + '">' + HLF_AVAILABLE_DATE_SUGGESTIONS.map( function ( s ) { return '<option value="' + HLFAdmin.escapeAttr( s ) + '">'; } ).join( '' ) + '</datalist>' : '' ) +
 				'</div>'
 			);
 		} ).join( '' );

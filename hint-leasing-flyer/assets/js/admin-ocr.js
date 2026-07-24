@@ -102,7 +102,10 @@
 		if ( ! numberMatch ) { return ''; }
 		var number = Number( numberMatch[ 0 ] );
 		if ( ! isFinite( number ) ) { return ''; }
-		return Math.min( OCR_MAX_AREA_SQM, raw.indexOf( '평' ) !== -1 ? number / 0.3025 : number );
+		var sqm = Math.min( OCR_MAX_AREA_SQM, raw.indexOf( '평' ) !== -1 ? number / 0.3025 : number );
+		// 요청서: 공급/전용면적은 소수점 둘째자리가 최대다 — 평→㎡ 변환(÷0.3025)이나 OCR 원문 자체의
+		// 셋째 자리 이상 숫자가 그대로 남으면 실제 면적 표기와 어긋나므로 둘째 자리에서 반올림한다.
+		return Math.round( sqm * 100 ) / 100;
 	}
 
 	function ocrNormalizeText( text ) {
@@ -176,12 +179,21 @@
 		};
 	}
 
+	// 요청서: 지하층("B1" 등)이 OCR에서 "B"를 숫자 8 또는 6으로 잘못 인식해 "81", "61"처럼 나오는
+	// 경우가 있다 — 실제 건물에 60층/80층대는 있을 수 없으므로, 2자리 이상 숫자의 맨 앞이 6이나 8이면
+	// 지하층 오인식으로 보고 그 자리를 B로 되돌린다(1자리 "6", "8"층은 정상적으로 있을 수 있으니
+	// 그대로 둔다).
+	function ocrFixBasementFloor( value ) {
+		var m = String( value || '' ).match( /^[68](\d+)$/ );
+		return m ? 'B' + m[ 1 ] : value;
+	}
+
 	function ocrParseFloor( text ) {
 		// 끝의 "층"을 필수로 요구해야 한다(이전에는 선택이라 "8,000/710" 같은 보증금/월세 숫자쌍이
 		// 먼저 매치되어 층수 대신 그 값을 잘못 채우는 버그가 있었다 — 실제 캡처로 확인됨). 층수
 		// 표기는 항상 "4/6층"처럼 마지막 숫자 뒤에만 "층"이 붙으므로 이걸로 금액 쌍과 구분한다.
 		var pair = text.match( /(?:해당층\s*\/\s*총층\s*[:：]?\s*)?(B?\d+(?:~\d+)?)\s*층?\s*\/\s*(\d+)\s*층/i );
-		return { floor_current: ( pair && pair[ 1 ] ) || '', floor_total: ( pair && pair[ 2 ] ) || '' };
+		return { floor_current: ocrFixBasementFloor( ( pair && pair[ 1 ] ) || '' ), floor_total: ( pair && pair[ 2 ] ) || '' };
 	}
 
 	// 네이버부동산 캡처는 "계약/전용면적"처럼 두 면적이 라벨까지 한 줄에 합쳐 나오는 경우가 있다(실제
@@ -237,7 +249,7 @@
 	// 건축물 용도는 실무상 몇 가지 정해진 값만 쓰인다 — 닫힌 목록과 대조해 검증/정규화한다("제2증
 	// 근린생활시설"처럼 숫자 뒤 "종"이 "증"으로 오인식되는 경우가 실제로 있었다). 목록에 없는
 	// 값은 오인식으로 보고 버린다(방향 필드와 같은 원칙).
-	var OCR_BUILDING_USE_LIST = [ '제1종 근린생활시설', '제2종 근린생활시설', '근린생활시설', '업무시설', '교육연구시설', '의료시설' ];
+	var OCR_BUILDING_USE_LIST = [ '제1종 근린생활시설', '제2종 근린생활시설', '근린생활시설', '업무시설', '교육연구시설', '의료시설', '오피스텔' ];
 	function ocrExtractBuildingUse( text ) {
 		var normalized = String( text || '' ).replace( /제(\d)\s*증/g, '제$1종' );
 		var sorted = OCR_BUILDING_USE_LIST.slice().sort( function ( a, b ) { return b.length - a.length; } );
@@ -264,6 +276,17 @@
 		return raw;
 	}
 
+	// 사용승인일은 "2003.06.10" 형식만 유효하다 — 라벨 주변에 붙는 OCR 잡음(실제 캡처로 확인:
+	// "사용승인일 2003.06.10 확인" 등)은 숫자가 아니므로 무시하고, 연/월/일 숫자 3덩어리만 순서대로
+	// 뽑아 항상 이 형식으로 재조합한다. 못 찾으면 원문을 억지로 채우지 않고 빈 값으로 둔다(방향 필드와
+	// 같은 원칙 — 틀린 날짜를 채우는 것이 아예 안 채우는 것보다 나쁘다).
+	function ocrNormalizeApprovalDate( value ) {
+		var raw = ocrFixDigitConfusion( String( value || '' ) );
+		var m = raw.match( /(\d{4})\D*(\d{1,2})\D*(\d{1,2})/ );
+		if ( ! m ) { return ''; }
+		return m[ 1 ] + '.' + ( '0' + m[ 2 ] ).slice( -2 ) + '.' + ( '0' + m[ 3 ] ).slice( -2 );
+	}
+
 	// 난방/사무실 수/화장실 수는 HLF Item 스키마에 없는 필드라 의도적으로 추출하지 않는다(요청서
 	// 확인 결과 불필요 — 실제로 표시할 곳이 없는 값을 폼에 채우면 혼란만 준다).
 	function ocrParsePropertyTable( text ) {
@@ -281,7 +304,7 @@
 			total_parking: ocrLabeledValue( text, [ '총주차대수', '주차대수' ] ),
 			// 준공인가일: 실제 캡처로 확인된 경우 이 라벨로 나온다(같은 의미로 쓰는 출처가 있음) — "사용승인일"
 			// 라벨만 찾으면 이 표기가 통째로 안 잡혀서 필드가 비어 있었다.
-			approval_date: ocrLabeledValue( text, [ '사용승인일', '준공인가일' ] ),
+			approval_date: ocrNormalizeApprovalDate( ocrLabeledValue( text, [ '사용승인일', '준공인가일' ] ) ),
 			building_use: ocrExtractBuildingUse( ocrLabeledValue( text, [ '건축물 용도', '건축물용도' ] ) ),
 		};
 	}
@@ -596,5 +619,8 @@
 		ocrExtractDirection: ocrExtractDirection,
 		ocrExtractBuildingUse: ocrExtractBuildingUse,
 		ocrExtractAvailableDate: ocrExtractAvailableDate,
+		ocrNormalizeApprovalDate: ocrNormalizeApprovalDate,
+		ocrFixBasementFloor: ocrFixBasementFloor,
+		ocrNormalizeAreaSqm: ocrNormalizeAreaSqm,
 	};
 } )();

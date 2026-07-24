@@ -70,7 +70,7 @@
 			if ( ! key ) { return; }
 			mapTargets[ key ] = { map: map, lat: lat, lng: lng };
 		}
-		return { register: register, registerMapTarget: registerMapTarget };
+		return { register: register, registerMapTarget: registerMapTarget, clearActive: clearActive };
 	} )();
 
 	function registerListingRows() {
@@ -119,19 +119,37 @@
 		// 최댓값 막대도 100%가 아니라 여유가 남게, 살짝만(10%) 위로 띄운 값을 기준선으로 쓴다.
 		var chartMax = Math.max( dataMax * 1.1, 1 );
 
-		el.innerHTML = items.map( function ( it ) {
+		// 요청서: 막대에 호버하면 그 매물이 전체 중 NOC 몇 위인지 보여준다 — 화면상 막대 배열 순서(order,
+		// 리스트 표시 순서)와 NOC 순위는 별개라 여기서 값 기준으로 따로 매긴다(동순위는 배열 순서대로).
+		var rankByPosition = values
+			.map( function ( noc, pos ) { return { pos: pos, noc: noc }; } )
+			.sort( function ( a, b ) { return b.noc - a.noc; } )
+			.reduce( function ( acc, entry, i ) { acc[ entry.pos ] = i + 1; return acc; }, {} );
+		function ordinalLabel( n ) {
+			var mod100 = n % 100;
+			if ( mod100 >= 11 && mod100 <= 13 ) { return n + 'th'; }
+			switch ( n % 10 ) {
+				case 1: return n + 'st';
+				case 2: return n + 'nd';
+				case 3: return n + 'rd';
+				default: return n + 'th';
+			}
+		}
+
+		el.innerHTML = items.map( function ( it, pos ) {
 			var noc = Number( it.noc );
 			var height = barHeightPercent( noc, chartMax );
 			var addr = splitAddressLabel( it.address );
 			var labelText = addr.line1 + ( addr.line2 ? ' ' + addr.line2 : '' );
-			var title = it.address + ' NOC ' + noc.toFixed( 1 ) + '만원';
+			var rank = ordinalLabel( rankByPosition[ pos ] );
+			var title = it.address + ' NOC ' + noc.toFixed( 1 ) + '만원 (' + rank + ')';
 			// 다른 순번 배지(리스트/지도/상세)와 같은 형식 — 1자리면 앞에 0을 채운다.
 			var index = String( it.order + 1 );
 			if ( index.length < 2 ) { index = '0' + index; }
 			return (
-				'<a class="hlf-noc-chart-item" href="' + escapeAttr( it.url ) + '" data-hlf-listing-key="' + escapeAttr( it.key ) + '" title="' + escapeAttr( title ) + '" aria-label="' + escapeAttr( labelText + ' 매물 상세보기' ) + '" style="--hlf-item-accent:' + accentColor( it.order ) + '">' +
+				'<a class="hlf-noc-chart-item" href="' + escapeAttr( it.url ) + '" data-hlf-listing-key="' + escapeAttr( it.key ) + '" title="' + escapeAttr( title ) + '" aria-label="' + escapeAttr( labelText + ' NOC ' + rank + ' 매물 상세보기' ) + '" style="--hlf-item-accent:' + accentColor( it.order ) + '">' +
 					'<span class="hlf-noc-chart-value">' + noc.toFixed( 1 ) + '</span>' +
-					'<span class="hlf-noc-chart-bar-wrap"><span class="hlf-noc-chart-bar" style="height:' + height + '%"><span class="hlf-noc-chart-bar-index">' + index + '</span></span></span>' +
+					'<span class="hlf-noc-chart-bar-wrap"><span class="hlf-noc-chart-bar" style="height:' + height + '%"><span class="hlf-noc-chart-bar-rank">' + rank + '</span><span class="hlf-noc-chart-bar-index">' + index + '</span></span></span>' +
 					'<span class="hlf-noc-chart-label">' + escapeHtml( addr.line1 ) + '<br>' + escapeHtml( addr.line2 ) + '</span>' +
 				'</a>'
 			);
@@ -311,6 +329,12 @@
 	// 로드 완료 + 지도 타일 로드 완료) 뒤에야 인쇄를 시작한다. 인쇄 선택 패널이 있는 목록 페이지와
 	// 패널이 없어 곧장 인쇄하는 상세 페이지 둘 다 이 함수 하나를 그대로 쓴다.
 	function prepareAndPrint() {
+		// 요청서(실사용 버그): 인쇄 버튼을 누르기 전에 리스트 행/NOC 막대/지도 마커 중 하나에라도
+		// 마우스가 지나간 적이 있으면, 그 매물의 하이라이트(.is-active — 리스트 베이지 줄, 막대,
+		// 마커)와 지도 panTo 이동이 인쇄 스냅샷에도 그대로 남아 있었다(다른 매물이 눌린 것처럼 보이고
+		// 지도도 그쪽으로 치우쳐 찍힘). 인쇄 직전엔 처음 진입했을 때와 동일하게 전부 해제한다 —
+		// 지도는 바로 아래 relayoutMapsForPrint()가 다시 전체 매물이 보이도록 맞춘다.
+		ListingSync.clearActive();
 		Promise.all( [
 			initLazyPrintMaps( document ),
 			loadPendingPrintPhotos( document ),
@@ -698,7 +722,7 @@
 	// 들어가는 경우를 위한 최소한의 보완 — window.print()를 우리가 가로챌 수 없으므로 로드 완료를
 	// 보장하진 못하지만, beforeprint에서라도 relayout을 걸어두면 완전히 빈 지도보다는 낫다.
 	function bindPrintMapRelayout() {
-		window.addEventListener( 'beforeprint', function () { relayoutMapsForPrint(); } );
+		window.addEventListener( 'beforeprint', function () { ListingSync.clearActive(); relayoutMapsForPrint(); } );
 		// 인쇄(또는 인쇄 다이얼로그 취소)가 끝나면 initLazyPrintMaps()가 지도를 만들려고 잠깐 보이게
 		// 해뒀던 .hlf-print-item-detail을 다시 화면 전용(display:none) 상태로 되돌린다.
 		window.addEventListener( 'afterprint', function () { relayoutMapsForPrint(); unprimePrintDetails(); } );

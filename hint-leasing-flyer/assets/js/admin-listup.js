@@ -13,6 +13,12 @@
 	var A = window.HLFAdmin;
 	var CONF = window.HLF_ADMIN;
 
+	// 요청서: 방향/건축물용도 드롭다운 — admin-flyer-edit.js의 ITEM_FIELDS와 완전히 같은 선택지를
+	// 쓴다(OCR 정규화 목록과도 일치, assets/js/admin-ocr.js OCR_BUILDING_USE_LIST 참고).
+	var HLF_DIRECTION_CHOICES = [ '동향', '서향', '남향', '북향', '남동향', '남서향', '북동향', '북서향' ];
+	var HLF_BUILDING_USE_CHOICES = [ '근린생활시설', '업무시설', '교육연구시설', '의료시설', '오피스텔' ];
+	var HLF_AVAILABLE_DATE_SUGGESTIONS = [ '즉시입주', '빠른협의', '협의 가능' ];
+
 	// 원본 매물 폼의 조건 필드(주소/좌표는 별도 주소 블록에서 처리, article_no는 폼에 노출하지 않음).
 	var SOURCE_FIELDS = [
 		{ key: 'floor_current', label: '해당층', type: 'text', placeholder: '예: 3 또는 B1' },
@@ -25,11 +31,11 @@
 		{ key: 'parking_available', label: '주차 가능', type: 'checkbox' },
 		{ key: 'elevator_available', label: '엘리베이터 있음', type: 'checkbox' },
 		{ key: 'total_parking', label: '총주차대수', type: 'text', placeholder: '예: 자주식 10대' },
-		{ key: 'direction', label: '방향', type: 'text' },
+		{ key: 'direction', label: '방향', type: 'select', choices: HLF_DIRECTION_CHOICES },
 		{ key: 'approval_date', label: '사용승인일', type: 'text', placeholder: '예: 2018.06.21' },
-		{ key: 'building_use', label: '건축물용도', type: 'text' },
+		{ key: 'building_use', label: '건축물용도', type: 'select', choices: HLF_BUILDING_USE_CHOICES },
 		{ key: 'illegal_building', label: '위반건축물 여부', type: 'checkbox' },
-		{ key: 'available_date_text', label: '입주가능일', type: 'text', placeholder: '예: 즉시입주 협의가능' },
+		{ key: 'available_date_text', label: '입주가능일', type: 'text', placeholder: '예: 즉시입주 협의가능', list: 'hlf-src-available-date-choices' },
 		{ key: 'features', label: '매물특징', type: 'textarea', wide: true },
 		{ key: 'contact_name', label: '담당자명', type: 'text' },
 		{ key: 'contact_phone', label: '담당자 연락처', type: 'text' }
@@ -441,10 +447,24 @@
 			return '<div class="hlf-field hlf-field-wide"><label for="' + id + '">' + esc( def.label ) + '</label>' +
 				'<textarea id="' + id + '" name="' + def.key + '">' + esc( v ) + '</textarea></div>';
 		}
+		if ( def.type === 'select' ) {
+			// 옛 데이터/OCR이 뽑은 값이 선택지 목록에 없어도(예: "제1종 근린생활시설") 조용히 사라지지
+			// 않게, 목록에 없는 현재 값은 그대로 추가 옵션으로 끼워 넣는다.
+			var choices = def.choices.slice();
+			if ( v && choices.indexOf( v ) === -1 ) { choices.push( v ); }
+			var optionsHtml = '<option value="">선택 안 함</option>' + choices.map( function ( choice ) {
+				return '<option value="' + escAttr( choice ) + '"' + ( choice === v ? ' selected' : '' ) + '>' + esc( choice ) + '</option>';
+			} ).join( '' );
+			return '<div class="hlf-field"><label for="' + id + '">' + esc( def.label ) + '</label>' +
+				'<select id="' + id + '" name="' + def.key + '">' + optionsHtml + '</select></div>';
+		}
 		var step = def.step ? ' step="' + def.step + '"' : '';
 		var ph = def.placeholder ? ' placeholder="' + escAttr( def.placeholder ) + '"' : '';
+		var listAttr = def.list ? ' list="' + def.list + '"' : '';
 		return '<div class="hlf-field"><label for="' + id + '">' + esc( def.label ) + '</label>' +
-			'<input id="' + id + '" type="' + def.type + '" name="' + def.key + '" value="' + escAttr( v ) + '"' + step + ph + '></div>';
+			'<input id="' + id + '" type="' + def.type + '" name="' + def.key + '" value="' + escAttr( v ) + '"' + step + ph + listAttr + '>' +
+			( def.list ? '<datalist id="' + def.list + '">' + HLF_AVAILABLE_DATE_SUGGESTIONS.map( function ( s ) { return '<option value="' + escAttr( s ) + '">'; } ).join( '' ) + '</datalist>' : '' ) +
+			'</div>';
 	}
 
 	function drawSourceForm( src, returnFlyerId ) {
