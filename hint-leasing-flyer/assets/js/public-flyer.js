@@ -224,6 +224,8 @@
 		var watermark = gallery.querySelector( '.hlf-gallery-main .hlf-gallery-watermark' );
 
 		var originalSrc = mainImg.getAttribute( 'src' );
+		var originalSrcset = mainImg.getAttribute( 'srcset' );
+		var originalSizes = mainImg.getAttribute( 'sizes' );
 		var originalIndex = mainButton.getAttribute( 'data-hlf-lightbox-index' );
 		var thumbButtons = thumbsWrap.querySelectorAll( '.hlf-photo-open' );
 
@@ -248,6 +250,16 @@
 			var url = photos[ index ];
 			if ( ! url ) { return; }
 			thumbButton.addEventListener( 'mouseenter', function () {
+				// 대표 사진 <img>가 반응형 사이즈가 여러 개 등록된 첨부(예: 원본 해상도가 hlf-item-photo
+				// 크롭 기준보다 작아 코어가 medium/medium_large 등 다른 사이즈들로 srcset을 채운
+				// 경우)면 워드프레스가 srcset/sizes를 함께 렌더링해 둔다 — srcset이 남아 있으면
+				// 브라우저는 src를 바꿔도 그 srcset 후보(이전 사진 것) 중에서 계속 골라 그리므로,
+				// 실제 화면은 안 바뀌는 채로 src 속성값만 바뀐 것처럼 보인다(실사용 버그, 매물마다
+				// 사진 원본 해상도가 달라 srcset 유무가 갈려 "어떤 매물은 되고 어떤 매물은 안 된다"로
+				// 나타났다). src를 바꿀 때마다 srcset/sizes를 지워 브라우저가 반드시 지금 지정한
+				// src만 쓰게 한다.
+				mainImg.removeAttribute( 'srcset' );
+				mainImg.removeAttribute( 'sizes' );
 				mainImg.setAttribute( 'src', url );
 				mainButton.setAttribute( 'data-hlf-lightbox-index', String( index ) );
 				if ( watermark ) { watermark.hidden = ! blurFlags[ index ]; }
@@ -258,7 +270,12 @@
 		} );
 
 		thumbsWrap.addEventListener( 'mouseleave', function () {
+			// 대표 사진으로 되돌아갈 때는 원래 갖고 있던 srcset/sizes도 그대로 복원한다(그 사진은
+			// 반응형 후보를 계속 누릴 자격이 있다 — 지운 채로 두면 이 사진만 계속 원본 한 장짜리로
+			// 고정된다).
 			mainImg.setAttribute( 'src', originalSrc );
+			if ( originalSrcset ) { mainImg.setAttribute( 'srcset', originalSrcset ); } else { mainImg.removeAttribute( 'srcset' ); }
+			if ( originalSizes ) { mainImg.setAttribute( 'sizes', originalSizes ); } else { mainImg.removeAttribute( 'sizes' ); }
 			mainButton.setAttribute( 'data-hlf-lightbox-index', originalIndex );
 			if ( watermark ) { watermark.hidden = ! blurFlags[ Number( originalIndex ) ]; }
 			clearActiveThumb();
