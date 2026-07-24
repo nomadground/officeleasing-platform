@@ -98,14 +98,18 @@
 		if ( value === null || value === undefined ) { return ''; }
 		var raw = ocrFixDigitConfusion( String( value ).replace( /,/g, '' ).trim() );
 		if ( ! raw || raw === '-' ) { return ''; }
-		var numberMatch = raw.match( /\d+(?:\.\d+)?/ );
+		// 요청서(정정): 공급/전용면적은 원본 표기 자체가 소수점 둘째 자리까지만 나온다 — 셋째 자리
+		// 이상이 OCR 텍스트에 붙어 있으면 그건 실제 값이 아니라 오인식 잡음이다. 반올림하면 그 잡음이
+		// 둘째 자리 숫자까지 밀어올려(예: "132.256" -> 132.26, 실제 값은 132.25인데 오염됨) 값 자체가
+		// 달라지므로, 반올림이 아니라 애초에 둘째 자리까지만 숫자로 인식하고 그 뒤는 아예 버린다.
+		var numberMatch = raw.match( /\d+(?:\.\d{1,2})?/ );
 		if ( ! numberMatch ) { return ''; }
 		var number = Number( numberMatch[ 0 ] );
 		if ( ! isFinite( number ) ) { return ''; }
 		var sqm = Math.min( OCR_MAX_AREA_SQM, raw.indexOf( '평' ) !== -1 ? number / 0.3025 : number );
-		// 요청서: 공급/전용면적은 소수점 둘째자리가 최대다 — 평→㎡ 변환(÷0.3025)이나 OCR 원문 자체의
-		// 셋째 자리 이상 숫자가 그대로 남으면 실제 면적 표기와 어긋나므로 둘째 자리에서 반올림한다.
-		return Math.round( sqm * 100 ) / 100;
+		// 평→㎡ 변환(÷0.3025)은 나눗셈이라 소수점이 한없이 늘어난다 — 여기도 반올림 대신 잘라서
+		// 둘째 자리까지만 남긴다(같은 이유: 존재하지도 않는 정밀도를 반올림으로 만들어내지 않는다).
+		return Math.trunc( sqm * 100 ) / 100;
 	}
 
 	function ocrNormalizeText( text ) {
