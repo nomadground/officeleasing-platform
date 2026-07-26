@@ -3,6 +3,28 @@
  * .hlf- 네임스페이스로 테마의 .olx-* 와 완전히 격리. 실제 디자인 시스템은 Phase 4+에서
  * MVP 최종 규칙만 골라 컴포넌트별로 재작성한다(중복 오버라이드 금지).
  */
+/*
+ * 용지 방향(가로) 선언 — 인쇄 전용 규칙이지만 일부러 이 파일(미디어 조건 없이 항상 로드되는
+ * public.css)의 맨 위에 둔다.
+ *
+ * 요청서 3(모바일 인쇄가 항상 세로로 나오는 문제)의 원인 두 가지를 함께 없앤다.
+ * (1) 위치: @page는 원래 print.css에 있었는데, print.css는 <link media="print">로 붙는다 =
+ *     @media print { @page { ... } }와 같다. 데스크톱 크로미움은 이 중첩을 잘 해석하지만, 조건부
+ *     그룹 규칙 안의 @page를 아예 무시하는 엔진이 있다(모바일 크로미움/삼성 인터넷 계열에서 실제로
+ *     세로로 떨어졌다). @page는 어차피 인쇄에만 의미가 있으므로 미디어 조건 밖으로 꺼내면 어떤
+ *     엔진이든 확실히 보게 된다.
+ * (2) 값: 기존 값은 사용자 정의 크기(297mm 210mm)였다. 안드로이드 인쇄 프레임워크는 "알려진 용지
+ *     (ISO A4 등) + 방향 플래그" 조합으로 인쇄 작업을 만든다 — 어떤 표준 용지와도 이름이 맞지 않는
+ *     사용자 정의 크기는 매칭에 실패해 기본값(A4 세로)으로 되돌아간다(실제 인쇄 대화상자에도
+ *     "용지 크기: ISO A4"로 뜬다). A4 + landscape 키워드로 주면 그대로 ISO A4 가로로 매핑된다.
+ *     데스크톱에서는 A4 landscape == 297mm x 210mm라 지금까지의 출력과 완전히 동일하다.
+ *
+ * 참고: 이래도 방향을 무시하는 모바일 인쇄 서비스가 있다(안드로이드 프린트 서비스/드라이버가
+ * 자체적으로 "용지에 맞춤"으로 회전시키는 경우). 그때는 인쇄 대화상자에서 방향을 가로로 직접
+ * 바꿔야 한다 — 브라우저가 아니라 OS 인쇄 서비스 단계의 제약이라 CSS로 더 강제할 수단이 없다.
+ */
+@page { size: A4 landscape; margin: 8mm; }
+
 :root {
 	--hlf-primary: #355c73;
 	--hlf-primary-strong: #29485c;
@@ -287,6 +309,22 @@ body.hlf-public {
    범위를 좁힌다. */
 @media screen {
 	.hlf-print-priming { display: block !important; visibility: hidden !important; }
+	/* 요청서 4: 인쇄 직전에 지도 컨테이너를 인쇄 크기(mm, 인라인 스타일 — assets/js/public-flyer.js
+	   applyPrintMapSizing)로 못박는 짧은 구간에만 붙는 클래스. 그 크기는 모바일 뷰포트보다 훨씬
+	   넓어서 그대로 두면 인쇄 대화상자가 뜨기 전 1초 남짓 동안 지도가 화면 밖으로 삐져나온다 —
+	   화면에서만 흐름 밖으로 빼서 안 보이게 한다(카카오 지도는 offsetWidth/Height로 크기를 재므로
+	   opacity:0이어도 인쇄 크기를 정확히 읽는다. display:none이면 크기가 0이 되어 못 쓴다).
+	   인쇄에는 이 규칙이 전혀 적용되지 않고(@media screen), 인쇄가 끝나면 JS가 클래스와 인라인
+	   크기를 함께 떼어낸다(restoreAfterPrint). */
+	body.hlf-print-map-sizing { overflow: hidden; }
+	body.hlf-print-map-sizing .hlf-comparison-map {
+		position: fixed;
+		top: 0;
+		left: 0;
+		z-index: -1;
+		opacity: 0;
+		pointer-events: none;
+	}
 }
 
 /* 인쇄할 페이지 선택 패널 — 라이트박스와 같은 모달 톤. */
@@ -495,15 +533,36 @@ body.hlf-public {
 	.hlf-noc-chart-bar-index { bottom: 3px; font-size: 9px; }
 	.hlf-noc-chart-value { font-size: 10px; margin-bottom: 4px; }
 	.hlf-noc-chart-label { font-size: 9px; }
-	/* 좁은 화면: 4열+4열, 두 줄의 열이 서로 정확히 맞춰진다 — 첫째 줄은 [연번+주소 25%][층 25%]
-	   [임대면적 25%][전용면적 25%], 둘째 줄은 [보증금 25%][임대료 25%][관리비 25%][환산임대료
-	   25%]. 위아래 열 경계가 같은 자리에 오도록 두 줄 모두 동일한 4열 grid를 쓴다. */
+	/* 요청서 2: 막대가 5개 이상이면(assets/js/public-flyer.js renderNocChart가 .is-dense를 붙인다)
+	   고정폭 44px + 간격 10px으로는 한 줄에 다 못 들어가 두 줄로 접혔다 — 이 경우에는 줄바꿈을 끄고
+	   (flex-wrap:nowrap) 고정폭 대신 남는 폭을 균등 분할해(flex:1 1 0) 몇 개가 오든 항상 한 줄에
+	   담는다. 막대 폭·간격·글자도 함께 한 단계씩 줄여 칸이 좁아져도 값과 주소가 읽히게 한다.
+	   min-width:0이 없으면 flex 아이템의 기본 min-width:auto 때문에 안쪽 nowrap 텍스트(주소 라벨)
+	   길이만큼 칸이 다시 벌어져 결국 넘친다. 막대 폭은 칸이 아주 좁아지면 칸 폭을 따라 더 줄어들게
+	   min()으로 상한만 둔다. */
+	.hlf-noc-chart.is-dense { flex-wrap: nowrap; gap: 3px; padding-left: 0; padding-right: 0; }
+	.hlf-noc-chart.is-dense .hlf-noc-chart-item { flex: 1 1 0; min-width: 0; }
+	.hlf-noc-chart.is-dense .hlf-noc-chart-bar { width: min(18px, 80%); }
+	.hlf-noc-chart.is-dense .hlf-noc-chart-value { font-size: 9px; }
+	/* 주소 라벨은 nowrap 두 줄(동 / 번지)이라 칸보다 길어질 수 있다 — grid 아이템이라 블록으로
+	   승격되므로 줄마다 말줄임(...)이 걸린다. */
+	.hlf-noc-chart.is-dense .hlf-noc-chart-label { font-size: 8px; overflow: hidden; text-overflow: ellipsis; }
+	/* 좁은 화면: 4열+4열 — 첫째 줄 [연번+주소][층수][임대면적][전용면적], 둘째 줄 [보증금][임대료]
+	   [관리비][환산임대료]. 두 줄의 열 경계가 같은 자리에 오도록 아래 --hlf-mobile-cols 하나를 두
+	   줄이 공유한다. */
 	.hlf-listing-link { padding: 6px 8px; gap: 3px; }
-	/* 요청서: 지번주소 칸을 넓히고 층 칸을 그만큼 줄인다 — 합친 폭(주소+층)은 그대로 유지해 임대/전용
-	   면적 칸의 경계는 움직이지 않는다(층의 오른쪽 경계 고정, 왼쪽 경계만 오른쪽으로 이동 = "층 왼쪽
-	   가로폭만 줄임"). */
+	/* 요청서 1: 두 줄(위 = 순번+주소/층수/임대면적/전용면적, 아래 = 보증금/임대료/관리비/환산임대료)이
+	   서로 다른 열 비율을 쓰고 있어서 층수 칸이 아래 임대료 칸보다 오른쪽으로 밀려 보였다(위 1.55fr
+	   .45fr 1fr 1fr → 층수 칸 시작점 38.75%, 아래 1fr×4 → 임대료 칸 시작점 25%). 이제 두 줄이
+	   --hlf-mobile-cols 하나를 공유한다 — 층수가 임대료 바로 위로 내려앉고 두 줄의 세로 구분선도
+	   같은 자리에 온다(앞으로 한쪽만 고쳐서 다시 어긋나는 일이 없도록 변수 하나로 묶었다).
+	   비율은 세 제약을 동시에 만족하는 값으로 잡았다 — (1) 첫 칸은 순번 배지 + "논현동 184-38" 급
+	   지번주소가 한 줄에 들어가야 하고, (2) 둘째 칸은 "B1/5층"과 네 자리 임대료("1,200만원")가 잘리지
+	   않아야 하며, (3) 셋째·넷째 칸은 면적/관리비·환산임대료 값을 담아야 한다. minmax(0, ...)은
+	   nowrap인 숫자 값이 트랙 자체를 밀어 넓히는 것을 막는다. */
 	.hlf-listing-main {
-		grid-template-columns: 1.55fr .45fr 1fr 1fr;
+		--hlf-mobile-cols: minmax(0, 1.3fr) minmax(0, .9fr) minmax(0, .9fr) minmax(0, .9fr);
+		grid-template-columns: var(--hlf-mobile-cols);
 		grid-template-areas:
 			"idaddr floor leasearea exclarea"
 			"metrics metrics metrics metrics";
@@ -525,7 +584,10 @@ body.hlf-public {
 	.hlf-listing-index { flex-shrink: 0; width: 13px; height: 13px; font-size: 7px; }
 	.hlf-listing-main .hlf-listing-address-block { gap: 0; }
 	.hlf-listing-address { font-size: 12px; line-height: 1.25; }
-	.hlf-listing-subaddress { line-height: 1.2; }
+	/* 요청서 1로 주소 칸이 아래 보증금 칸과 같은 폭이 되면서, 둘째 줄 도로명주소가 끝에서 한두 글자씩
+	   말줄임되기 시작했다("강남대로114길 11" -> "강남대로114길 …") — 지번주소(윗줄, 형광펜)와 달리
+	   여긴 보조 정보라 폭을 더 주는 대신 글자만 1px 줄여 원래대로 끝까지 보이게 한다. */
+	.hlf-listing-subaddress { font-size: 10px; line-height: 1.2; }
 	/* 요청서: 모바일은 자리가 좁아 도로명주소 옆 건물명을 또 두지 않고, 층 칸의 "층" 라벨을 건물명으로
 	   대체한다. */
 	.hlf-listing-address-block .hlf-building-name,
@@ -534,9 +596,11 @@ body.hlf-public {
 	.hlf-listing-floor .hlf-lease-metric-label--has-building { display: none; }
 	/* 층/임대면적/전용면적은 위 4열 grid에 각각 한 칸씩 직접 합류한다(아래 보증금 등과 열이 맞도록)
 	   — .hlf-listing-meta 자체는 데스크톱과 마찬가지로 display:contents. */
-	/* 칸이 좁아진 만큼 가운데 정렬 글씨가 오른쪽으로 쏠려 보이므로, 오른쪽 여백을 살짝 더 줘 원래
-	   보이던 글씨 위치에 가깝게 되돌린다. */
-	.hlf-listing-floor { grid-area: floor; padding: 2px 6px 2px 2px; }
+	/* 요청서 1: 예전에는 층수 칸이 아래 임대료 칸보다 오른쪽에 있어서, 좌우 padding을 비대칭으로 줘
+	   (2px 6px 2px 2px) 글씨만 왼쪽으로 당겨 놓았다 — 이제 두 칸이 같은 열이라 그 보정이 오히려
+	   가운데를 어긋나게 만든다. 아래 임대료 칸(.hlf-lease-metric, padding:2px)과 똑같이 대칭으로
+	   되돌려야 두 값의 중심선이 정확히 맞는다. */
+	.hlf-listing-floor { grid-area: floor; padding: 2px; }
 	.hlf-listing-lease-area { grid-area: leasearea; padding: 2px; }
 	.hlf-listing-area { grid-area: exclarea; padding: 2px; }
 	.hlf-listing-meta .hlf-lease-metric-label { font-size: 9px; line-height: 1.15; }
@@ -544,9 +608,9 @@ body.hlf-public {
 	.hlf-listing-meta .hlf-listing-area-value { margin-top: 1px; font-size: 11px; line-height: 1.15; }
 	.hlf-listing-meta .hlf-listing-area-sub { margin-top: 0; font-size: 9px; line-height: 1.15; }
 	/* 이 너비에서는 보증금~NOC를 main grid에 합류(display:contents)시키지 않고 자체 4열 grid로
-	   되돌린다(같은 column-gap을 써서 4칸 간격만 위 줄과 통일한다 — 요청서 3 이후로는 위 줄
-	   지번주소/층 비율을 따로 조정해 두 줄의 열 경계가 완전히 일치하지는 않는다). */
-	.hlf-listing-main .hlf-lease-metrics { grid-area: metrics; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); column-gap: 4px; }
+	   되돌린다 — 열 비율(--hlf-mobile-cols)과 간격(4px)을 위 줄과 똑같이 써서 두 줄의 칸 경계와
+	   세로 구분선이 정확히 같은 자리에 오게 한다(요청서 1). */
+	.hlf-listing-main .hlf-lease-metrics { grid-area: metrics; display: grid; grid-template-columns: var(--hlf-mobile-cols); column-gap: 4px; }
 	/* 요청서 4: 보증금 칸은 이 줄의 첫 칸이라 왼쪽에 구분할 대상이 없다 — 세로선을 없앤다(기본
 	   .hlf-lease-metric에는 항상 border-left가 있는데, 데스크톱에서는 전용면적 다음 칸이라 필요하지만
 	   모바일에서는 독립된 줄의 첫 칸이라 불필요). */
@@ -586,4 +650,13 @@ body.hlf-public {
 	   — 확대 크기를 갤러리 카드 폭(.hlf-shell 폭, 100vw-32px) 정도로만 제한한다. */
 	.hlf-lightbox { padding: 12px; }
 	.hlf-lightbox-content { width: min(600px, calc(100vw - 24px)); height: min(80vh, calc(100vh - 24px)); }
+}
+
+/* 아주 좁은 화면(360px 안팎의 구형 안드로이드/아이폰 SE 등) — 요청서 1로 리스트 첫 줄의 주소 칸이
+   아래 보증금 칸과 같은 폭이 되면서, 이 폭대에서만 "논현동 184-38" 같은 지번주소가 아슬아슬하게
+   두 줄로 넘어간다(Playwright 실측: 360px에서 7건 중 4건). 열 비율을 다시 흔들면 두 줄의 칸 경계가
+   어긋나므로(요청서 1의 핵심), 폭이 아니라 글자 크기만 1px 줄여 한 줄에 되돌린다 — 같은 실측에서
+   360/390/412px 모두 한 줄, 값 잘림 없음. */
+@media (max-width: 380px) {
+	.hlf-listing-address { font-size: 11px; }
 }

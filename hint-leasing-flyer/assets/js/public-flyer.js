@@ -155,6 +155,12 @@
 			);
 		} ).join( '' );
 
+		// 요청서 2: 모바일에서 막대가 5개를 넘어가면 고정폭(44px) + 고정 간격(10px)으로는 한 줄에 다
+		// 들어가지 않아 두 줄로 접혔다 — 개수가 많을 때는 막대 폭·간격·글자 크기를 남는 폭에 맞춰
+		// 줄여서 항상 한 줄에 담는다(public.css의 .hlf-noc-chart.is-dense, 모바일 전용 규칙).
+		// 개수는 렌더 시점에 한 번만 정해지고 이후 바뀌지 않으므로 클래스 하나로 충분하다.
+		el.classList.toggle( 'is-dense', items.length >= 5 );
+
 		el.querySelectorAll( '[data-hlf-listing-key]' ).forEach( function ( barEl ) {
 			ListingSync.register( barEl.getAttribute( 'data-hlf-listing-key' ), barEl );
 			// 요청서: 모바일에서 막대를 탭하면(진짜 마우스 hover가 없어 mouseenter 없이 곧장 클릭
@@ -340,6 +346,72 @@
 
 	/* ---------------- 인쇄 버튼 ---------------- */
 
+	// 요청서 4(모바일 인쇄에서 지도가 이상한 크기로 나오거나 일부만 그려지는 문제).
+	//
+	// 원인: 카카오 지도는 "만들어질 때 / relayout()이 불릴 때" 컨테이너 크기를 재서 내부 캔버스·타일
+	// 배치를 그 크기로 굳힌다. 그런데 인쇄 레이아웃의 컨테이너 크기는 화면 레이아웃과 전혀 다르다
+	// (예: 모바일 화면에서 상세 지도는 1단 290px 폭, 인쇄에서는 2단 grid의 490px 폭). 데스크톱은
+	// 인쇄 스타일이 적용된 뒤 matchMedia('print') 변화로 relayout이 한 번 더 돌고, 그 뒤 미리보기가
+	// 다시 그려지기 때문에 결과적으로 맞는 크기가 찍힌다 — 모바일 인쇄 파이프라인은 그 시점에 이미
+	// 스냅샷을 떠버려서 화면 크기 그대로의 지도가 인쇄 크기 상자 안에 들어간다(작게/치우쳐/일부만).
+	//
+	// 해결: 인쇄 직전에 지도 컨테이너 크기를 mm 단위로 못박는다. mm는 화면과 인쇄에서 같은 물리
+	// 길이이므로, 이 크기로 relayout해 타일까지 다 받아두면 실제 인쇄물에서도 정확히 같은 크기다
+	// (인라인 스타일이라 인쇄에서도 그대로 적용되고, print.css의 min-height보다 우선한다).
+	// 값은 A4 가로(사용 폭 281mm)뿐 아니라 A4 세로(사용 폭 194mm)에서도 넘치지 않는 크기로 잡았다 —
+	// 모바일은 인쇄 서비스가 방향을 세로로 되돌릴 수 있어(요청서 3 주석) 둘 다에서 안전해야 한다.
+	var PRINT_MAP_SIZES = {
+		// 목록 페이지 2페이지의 "위치 확인" 비교 지도(패널 하나가 페이지 폭을 다 쓴다).
+		comparison: { width: '178mm', height: '78mm' },
+		// 매물 상세의 개별 지도(대표사진과 2단으로 나눠 쓰는 칸).
+		detail: { width: '85mm', height: '62mm' },
+	};
+	var printSizedMaps = [];
+
+	function isNarrowScreen() {
+		return !! ( window.matchMedia && window.matchMedia( '(max-width: 700px)' ).matches );
+	}
+
+	function applyPrintMapSizing() {
+		if ( ! isNarrowScreen() || printSizedMaps.length ) { return; }
+		document.querySelectorAll( '[data-hlf-map-items]' ).forEach( function ( container ) {
+			var size = 'hlf-comparison-map' === container.id ? PRINT_MAP_SIZES.comparison : PRINT_MAP_SIZES.detail;
+			container.style.width = size.width;
+			container.style.height = size.height;
+			// print.css/public.css의 min-height(비교 지도 320px, 사진 없는 상세 76mm)가 위 height보다
+			// 크면 상자만 더 커지고 캔버스는 그대로라 또 "일부만" 나온다 — 같은 값으로 눌러둔다.
+			container.style.minHeight = size.height;
+			// max-width:100% 같은 상대 제약은 절대로 걸지 않는다 — 아래에서 이 컨테이너를
+			// position:fixed로 빼는 순간 %가 뷰포트 기준으로 풀려서(모바일 390px) 못박아둔 mm 크기가
+			// 그 값으로 다시 줄어들고, 결국 인쇄 크기가 아니라 화면 크기를 재는 원래 문제로 돌아간다
+			// (Playwright 실측으로 확인). 대신 값 자체를 A4 세로(사용 폭 194mm, 안쪽 컨텐츠 폭
+			// 약 180mm)에도 넘치지 않는 크기로 고른다.
+			container.style.marginLeft = 'auto';
+			container.style.marginRight = 'auto';
+			// 상세 지도는 인쇄에서 flex column 패널의 flex:1 아이템이라(public.css .hlf-detail-hero
+			// .hlf-detail-map) 옆 대표사진 높이에 맞춰 위 height 너머로 늘어난다 — 늘어난 상자만큼
+			// 캔버스가 따라오지 않아 다시 "일부만" 나온다. 이 구간에서만 늘어나지 않게 고정한다.
+			container.style.flexGrow = '0';
+			printSizedMaps.push( container );
+		} );
+		// 화면상으로는 뷰포트보다 훨씬 큰 상자가 되므로, 준비하는 짧은 동안 화면 밖으로 빼서 감춘다
+		// (public.css @media screen — 인쇄에는 전혀 영향이 없다).
+		if ( printSizedMaps.length ) { document.body.classList.add( 'hlf-print-map-sizing' ); }
+	}
+
+	function clearPrintMapSizing() {
+		printSizedMaps.forEach( function ( container ) {
+			container.style.width = '';
+			container.style.height = '';
+			container.style.minHeight = '';
+			container.style.marginLeft = '';
+			container.style.marginRight = '';
+			container.style.flexGrow = '';
+		} );
+		printSizedMaps = [];
+		document.body.classList.remove( 'hlf-print-map-sizing' );
+	}
+
 	// 요청서 6: 목록 페이지는 인쇄 버튼을 누르면 바로 인쇄하지 않고 "인쇄할 페이지 선택" 패널
 	// (#hlf-print-panel, public-flyer-list.php가 렌더링)이 먼저 뜬다 — 1페이지(목록)/2페이지(비교
 	// 차트·지도)/매물별 상세 페이지 중 체크한 것만 실제로 인쇄된다. 그 패널이 없는 페이지(상세
@@ -356,11 +428,18 @@
 		// 지도도 그쪽으로 치우쳐 찍힘). 인쇄 직전엔 처음 진입했을 때와 동일하게 전부 해제한다 —
 		// 지도는 바로 아래 relayoutMapsForPrint()가 다시 전체 매물이 보이도록 맞춘다.
 		ListingSync.clearActive();
+		// 지도 크기를 먼저 못박아야, 바로 아래에서 "그때 가서" 만들어지는 매물별 인쇄 지도도 처음부터
+		// 인쇄 크기로 만들어진다(요청서 4).
+		applyPrintMapSizing();
+		// 이전에는 relayout을 위 두 작업과 동시에(Promise.all에 나란히) 걸어서, 이 시점에 아직 만들어지지
+		// 않은 인쇄 전용 지도들은 relayout 대상에서 통째로 빠졌다 — 지도 생성이 끝난 뒤에 돌려야
+		// initializedMaps에 갓 들어온 지도까지 함께 인쇄 크기로 맞춰지고 타일 로드도 기다릴 수 있다.
 		Promise.all( [
 			initLazyPrintMaps( document ),
 			loadPendingPrintPhotos( document ),
-			relayoutMapsForPrint(),
 		] ).then( function () {
+			return relayoutMapsForPrint();
+		} ).then( function () {
 			// 지도 준비를 위해 잠깐 visibility:hidden으로 켜둔 .hlf-print-item-detail은 여기서 떼지
 			// 않는다 — window.print() 바로 직전에 큰 레이아웃 변화(여러 블록이 한꺼번에 다시
 			// display:none으로 접힘)를 일으키면, 일부 모바일 브라우저의 인쇄 파이프라인이 그 순간의
@@ -739,14 +818,31 @@
 		return Promise.all( pending );
 	}
 
+	// 인쇄(또는 인쇄 다이얼로그 취소)가 끝난 뒤의 원상복구 — initLazyPrintMaps()가 지도를 만들려고
+	// 잠깐 보이게 해뒀던 .hlf-print-item-detail을 다시 화면 전용(display:none)으로 되돌리고,
+	// applyPrintMapSizing()이 못박아둔 지도 크기도 화면용으로 풀어준 뒤 다시 relayout한다.
+	function restoreAfterPrint() {
+		clearPrintMapSizing();
+		unprimePrintDetails();
+		relayoutMapsForPrint();
+	}
+
 	// 인쇄 버튼(bindPrintButton/prepareAndPrint)이 아니라 브라우저 자체 단축키(Ctrl+P 등)로 인쇄에
 	// 들어가는 경우를 위한 최소한의 보완 — window.print()를 우리가 가로챌 수 없으므로 로드 완료를
 	// 보장하진 못하지만, beforeprint에서라도 relayout을 걸어두면 완전히 빈 지도보다는 낫다.
 	function bindPrintMapRelayout() {
 		window.addEventListener( 'beforeprint', function () { ListingSync.clearActive(); relayoutMapsForPrint(); } );
-		// 인쇄(또는 인쇄 다이얼로그 취소)가 끝나면 initLazyPrintMaps()가 지도를 만들려고 잠깐 보이게
-		// 해뒀던 .hlf-print-item-detail을 다시 화면 전용(display:none) 상태로 되돌린다.
-		window.addEventListener( 'afterprint', function () { relayoutMapsForPrint(); unprimePrintDetails(); } );
+		window.addEventListener( 'afterprint', restoreAfterPrint );
+		// 안전망: 안드로이드는 인쇄 대화상자가 별도 화면으로 뜨기 때문에, 브라우저에 따라 afterprint가
+		// 오지 않을 수 있다. 그대로 두면 크기를 못박고 화면 밖으로 빼둔 지도가 영영 안 돌아온다 —
+		// 인쇄 화면에서 페이지로 돌아온 시점(visibilitychange → visible)에도 한 번 더 복구한다.
+		// 복구할 게 남아 있을 때만 움직인다 — 그냥 탭을 바꿨다 돌아온 것뿐인데 relayout+fitMapToItems가
+		// 돌면 사용자가 드래그/줌으로 옮겨둔 지도 위치가 멋대로 초기화된다.
+		document.addEventListener( 'visibilitychange', function () {
+			if ( document.hidden ) { return; }
+			if ( ! printSizedMaps.length && ! primedPrintDetails.length ) { return; }
+			restoreAfterPrint();
+		} );
 		if ( window.matchMedia ) {
 			var mql = window.matchMedia( 'print' );
 			var handler = function ( e ) { if ( e.matches ) { relayoutMapsForPrint(); } };

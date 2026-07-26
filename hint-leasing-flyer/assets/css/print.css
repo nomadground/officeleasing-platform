@@ -2,12 +2,11 @@
  * HLF 인쇄 스타일 (Phase 1 골격). 요청서 2: @page는 단순하게 유지하고, 실제 인쇄 레이아웃/밀도
  * 클래스(.hlf-print-count-1-5/6-8/9-10)와 .print-page-one/.print-page-two wrapper는 Phase 5에서.
  *
- * 모바일 인쇄 요청서: size 키워드(A4 landscape)는 데스크톱 브라우저는 잘 따르지만, 모바일(특히
- * iOS Safari의 AirPrint 시트)에서는 이 키워드를 무시하고 기기 기본값(세로)으로 인쇄되는 경우가
- * 실제로 있다 — width height를 가로:세로 순서로 직접 명시하면(297mm 210mm, 폭이 높이보다 큼) 모바일
- * 인쇄 파이프라인이 더 안정적으로 가로를 인식한다.
+ * 용지 방향 선언(@page)은 이 파일에 두지 않는다 — 이 파일은 <link media="print">로 붙어서
+ * 그 안의 @page가 조건부 그룹 규칙 안에 있는 것과 같아지는데, 그런 @page를 무시하는 모바일
+ * 엔진이 있다(요청서 3: 모바일 인쇄가 항상 세로로 나오던 원인). 미디어 조건 없이 항상 로드되는
+ * assets/css/public.css 맨 위로 옮겼다(자세한 이유는 그쪽 주석 참고).
  */
-@page { size: 297mm 210mm; margin: 8mm; }
 
 @media print {
 	body.hlf-public { background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
