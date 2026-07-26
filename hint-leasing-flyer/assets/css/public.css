@@ -594,7 +594,9 @@ body.hlf-public {
 	.hlf-listing-main .hlf-listing-idaddr {
 		grid-area: idaddr;
 		display: flex;
-		align-items: flex-start;
+		/* 요청서: flex-start면 배지가 윗줄(지번주소)에 붙어 살짝 위로 떠 보인다 — 지번주소+도로명주소
+		   두 줄 전체 높이 기준 가운데로 오게 한다. */
+		align-items: center;
 		gap: 2px;
 	}
 	/* 요청서: 좁은 화면에서는 연번 배지보다 지번주소 판독성이 더 중요하다 — 배지는 살짝 줄이고
