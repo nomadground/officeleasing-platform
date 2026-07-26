@@ -358,18 +358,55 @@
 	// 해결: 인쇄 직전에 지도 컨테이너 크기를 mm 단위로 못박는다. mm는 화면과 인쇄에서 같은 물리
 	// 길이이므로, 이 크기로 relayout해 타일까지 다 받아두면 실제 인쇄물에서도 정확히 같은 크기다
 	// (인라인 스타일이라 인쇄에서도 그대로 적용되고, print.css의 min-height보다 우선한다).
-	// 값은 A4 가로(사용 폭 281mm)뿐 아니라 A4 세로(사용 폭 194mm)에서도 넘치지 않는 크기로 잡았다 —
-	// 모바일은 인쇄 서비스가 방향을 세로로 되돌릴 수 있어(요청서 3 주석) 둘 다에서 안전해야 한다.
+	// 요청서: 모바일 인쇄는 어차피 세로(A4 portrait)로 나온다는 사실을 받아들이고, 이제 우리도
+	// @page를 세로로 명시해(아래 applyMobilePagePortrait) 브라우저의 실제 페이지 계산 자체를 그
+	// 현실과 맞춘다 — 이전에는 가로/세로 어느 쪽이 실제로 적용될지 몰라 두 경우 모두에서 안전한 값을
+	// 억지로 골랐지만, 이제는 모바일=세로로 확정해 다루므로 세로 용지의 사용 폭(194mm) 하나만
+	// 기준으로 삼는다.
 	var PRINT_MAP_SIZES = {
 		// 목록 페이지 2페이지의 "위치 확인" 비교 지도(패널 하나가 페이지 폭을 다 쓴다).
 		comparison: { width: '178mm', height: '78mm' },
-		// 매물 상세의 개별 지도(대표사진과 2단으로 나눠 쓰는 칸).
-		detail: { width: '85mm', height: '62mm' },
+		// 매물 상세의 개별 지도 — 모바일 인쇄에서는 사진 아래로 세로로 쌓이므로(2단 grid는 194mm
+		// 세로 용지 폭에 맞지 않아 접는다, print.css body.hlf-print-map-sizing .hlf-detail-hero)
+		// 비교 지도와 같은 전체 폭을 쓴다. 높이는 매물 상세 2건을 세로 용지 한 장에 담기 위한 예산
+		// (Playwright 실측, 실제 템플릿과 동일한 헤더+히어로+Leasing Info+Property Details(10항목)
+		// +푸터 구성 2건 기준) 안에서 확보한 값이다.
+		detail: { width: '178mm', height: '21mm' },
 	};
 	var printSizedMaps = [];
 
 	function isNarrowScreen() {
 		return !! ( window.matchMedia && window.matchMedia( '(max-width: 700px)' ).matches );
+	}
+
+	// 요청서: 모바일 인쇄가 항상 세로로 나오는 건 CSS/JS로 더 강제할 수 없는 브라우저/OS 인쇄
+	// 파이프라인의 한계다(README 참고) — 계속 가로(size:A4 landscape, assets/css/public.css)를
+	// 요청해봐야 실제로는 무시당하고 세로로 찍히면서, 우리 레이아웃은 여전히 "가로 281mm 폭"을
+	// 기준으로 계산돼 있어 그 결과물이 세로 194mm 용지에 맞춰지는 과정에서 좌우가 잘려나갔다
+	// (지도가 가운데만 보이던 증상, 상세 히어로 2단 grid가 잘리던 증상 등 전부 이 불일치가 원인).
+	//
+	// 이제 반대로 접근한다: 모바일에서는 아예 우리도 세로(A4 portrait)를 명시해, 브라우저가 실제로
+	// 하게 될 일과 우리가 계산하는 페이지 크기를 일치시킨다 — 그러면 194mm 폭 기준으로 계산된
+	// 레이아웃(히어로 세로 쌓기, 지도 mm 크기 등)이 실제 출력 크기와 정확히 맞아떨어져 더는 잘릴
+	// 일이 없다. 인쇄 버튼을 누른 순간(=아직 screen 상태, isNarrowScreen()이 실제 기기 폭을 정확히
+	// 읽을 수 있는 시점)에만 <style> 태그로 @page를 세로로 덮어쓴다 — 이미 로드된 public.css의
+	// @page(가로)보다 이 태그가 DOM에서 나중에 오므로(document.head에 append) 캐스케이드 순서상
+	// 이 태그가 이긴다. 데스크톱(이 함수가 아예 호출되지 않음)은 지금까지와 완전히 동일하게 가로
+	// 그대로 유지된다.
+	var mobilePageStyleEl = null;
+
+	function applyMobilePagePortrait() {
+		if ( ! isNarrowScreen() || mobilePageStyleEl ) { return; }
+		mobilePageStyleEl = document.createElement( 'style' );
+		mobilePageStyleEl.setAttribute( 'data-hlf-mobile-print-page', '1' );
+		mobilePageStyleEl.textContent = '@page { size: A4 portrait; margin: 8mm; }';
+		document.head.appendChild( mobilePageStyleEl );
+	}
+
+	function clearMobilePagePortrait() {
+		if ( ! mobilePageStyleEl ) { return; }
+		mobilePageStyleEl.remove();
+		mobilePageStyleEl = null;
 	}
 
 	function applyPrintMapSizing() {
@@ -428,6 +465,9 @@
 		// 지도도 그쪽으로 치우쳐 찍힘). 인쇄 직전엔 처음 진입했을 때와 동일하게 전부 해제한다 —
 		// 지도는 바로 아래 relayoutMapsForPrint()가 다시 전체 매물이 보이도록 맞춘다.
 		ListingSync.clearActive();
+		// @page를 세로로 먼저 덮어써야 그 아래 지도 mm 크기 계산(178mm 폭 기준)도 실제로 적용될
+		// 페이지 크기와 맞아떨어진다.
+		applyMobilePagePortrait();
 		// 지도 크기를 먼저 못박아야, 바로 아래에서 "그때 가서" 만들어지는 매물별 인쇄 지도도 처음부터
 		// 인쇄 크기로 만들어진다(요청서 4).
 		applyPrintMapSizing();
@@ -485,10 +525,24 @@
 				// .hlf-shell 바로 아래)가 그 바로 뒤에 이어 붙어 마지막 페이지에 푸터가 두 번
 				// 찍힌다(실사용 버그). 전역 푸터는 매물 상세가 하나도 없을 때(목록/비교 차트만 인쇄)만
 				// 필요하므로 그 경우에만 보이게 한다.
-				var includesItemDetail = included.some( function ( section ) {
+				var itemSections = included.filter( function ( section ) {
 					return 0 === section.getAttribute( 'data-hlf-print-section' ).indexOf( 'item-' );
 				} );
-				document.body.classList.toggle( 'hlf-print-hide-global-footer', includesItemDetail );
+				document.body.classList.toggle( 'hlf-print-hide-global-footer', itemSections.length > 0 );
+				// 요청서: 모바일 인쇄는 세로 용지라 매물 상세 1건이 페이지 하나를 다 쓸 만큼 크지
+				// 않다 — 데스크톱처럼 매번 페이지를 넘기지 않고, 2건씩 짝지어 한 페이지에 담는다
+				// (print.css body.hlf-print-map-sizing .hlf-print-item-detail 쪽에서 기본 break를
+				// 꺼두고, 짝의 두 번째 항목에만 이 클래스로 break를 되살린다). 매번 다시 계산해야
+				// 하므로 이전에 붙은 클래스부터 지운다 — 그렇지 않으면 사용자가 패널에서 항목을
+				// 다시 체크/해제한 뒤에도 예전 짝짓기가 그대로 남는다.
+				document.querySelectorAll( '.hlf-print-pair-break' ).forEach( function ( el ) {
+					el.classList.remove( 'hlf-print-pair-break' );
+				} );
+				if ( isNarrowScreen() ) {
+					itemSections.forEach( function ( section, i ) {
+						if ( 1 === i % 2 ) { section.classList.add( 'hlf-print-pair-break' ); }
+					} );
+				}
 				panel.hidden = true;
 				prepareAndPrint();
 			} );
@@ -822,6 +876,7 @@
 	// 잠깐 보이게 해뒀던 .hlf-print-item-detail을 다시 화면 전용(display:none)으로 되돌리고,
 	// applyPrintMapSizing()이 못박아둔 지도 크기도 화면용으로 풀어준 뒤 다시 relayout한다.
 	function restoreAfterPrint() {
+		clearMobilePagePortrait();
 		clearPrintMapSizing();
 		unprimePrintDetails();
 		relayoutMapsForPrint();
@@ -840,7 +895,7 @@
 		// 돌면 사용자가 드래그/줌으로 옮겨둔 지도 위치가 멋대로 초기화된다.
 		document.addEventListener( 'visibilitychange', function () {
 			if ( document.hidden ) { return; }
-			if ( ! printSizedMaps.length && ! primedPrintDetails.length ) { return; }
+			if ( ! printSizedMaps.length && ! primedPrintDetails.length && ! mobilePageStyleEl ) { return; }
 			restoreAfterPrint();
 		} );
 		if ( window.matchMedia ) {
