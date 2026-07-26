@@ -23,6 +23,12 @@ final class HLF_Cache_Purge {
 			add_action( "save_post_{$post_type}", array( __CLASS__, 'mark_dirty' ) );
 		}
 		// 삭제/휴지통 이동은 post_type이 인자로 오지 않으므로, 훅 안에서 직접 확인한다.
+		// before_delete_post를 쓰는 이유: deleted_post는 포스트 행이 이미 DB에서 지워지고
+		// clean_post_cache()까지 끝난 뒤에 실행돼 get_post_type()이 false를 돌려줄 수 있다(그러면 우리
+		// CPT인지 판별 못 해 캐시를 안 비운다). before_delete_post 시점에는 포스트가 아직 살아 있어
+		// 타입을 확실히 알 수 있다. deleted_post도 그대로 둔다 — 이 두 훅은 서로를 대체하는 게 아니라
+		// 둘 중 하나만 잡혀도 플래그가 서면 되는 관계고, 실제 비우기는 shutdown에서 한 번만 일어난다.
+		add_action( 'before_delete_post', array( __CLASS__, 'mark_dirty_if_relevant_post' ) );
 		add_action( 'deleted_post', array( __CLASS__, 'mark_dirty_if_relevant_post' ) );
 		add_action( 'trashed_post', array( __CLASS__, 'mark_dirty_if_relevant_post' ) );
 		// set_images()/apply_fields() 등은 post 자체(wp_update_post)가 아니라 postmeta만 바꾸는
@@ -68,12 +74,21 @@ final class HLF_Cache_Purge {
 		self::purge_all();
 	}
 
-	/** 흔히 쓰이는 캐시 플러그인의 "전체 비우기" API를 있는 것만 호출한다. */
+	/**
+	 * 흔히 쓰이는 "페이지 캐시" 플러그인의 비우기 API를 있는 것만 호출한다.
+	 *
+	 * 여기서 오브젝트 캐시(wp_cache_flush())는 일부러 호출하지 않는다(외부 코드 감사 P1 반영):
+	 * 우리가 실제로 풀어야 하는 문제는 "페이지 캐시 플러그인이 공개 /list/ HTML을 통째로 캐시해
+	 * 수정이 반영되지 않는 것"이고, 오브젝트 캐시는 워드프레스 코어가 이미 정확히 무효화한다
+	 * (wp_insert_post/wp_update_post/wp_delete_post가 clean_post_cache()를, 메타 변경이 메타 캐시를,
+	 * WP_Query 결과 캐시는 last_changed 키를 각각 갱신한다). 반면 wp_cache_flush()는 이 플러그인과
+	 * 무관한 사이트 전체 오브젝트 캐시(다른 플러그인·테마·트랜지언트 포함)를 통째로 날려버려,
+	 * 매물을 저장할 때마다 사이트 전체가 캐시 미스로 떨어지는(=방문자 요청이 전부 PHP/DB까지
+	 * 내려가는) 심각한 성능 저하를 만든다 — 매물 등록이 잦은 운영 환경에서 체감 속도 저하의 주된
+	 * 원인이 될 수 있어 제거했다. 우리 자신의 캐시(원본 매물 통계 transient)는 해당 변경 지점에서
+	 * 명시적으로 무효화한다(HLF_Source_Listing_Repository::invalidate_stats_cache()).
+	 */
 	public static function purge_all(): void {
-		// 오브젝트 캐시(Redis/Memcached 등 영구 오브젝트 캐시가 있는 환경) — 코어 함수라 항상 안전.
-		if ( function_exists( 'wp_cache_flush' ) ) {
-			wp_cache_flush();
-		}
 		// WP Super Cache.
 		if ( function_exists( 'wp_cache_clear_cache' ) ) {
 			wp_cache_clear_cache();

@@ -16,8 +16,16 @@ delete_option( 'hlf_contact_directory' );
 // 옵션이라 개별 delete_option()으로는 지울 수 없다(이름을 전부 알 수 없음) — 삭제 시점에 와일드카드로
 // 한 번에 정리한다. autoload='no'로 저장돼 사이트 동작 중에는 부담이 없었지만(옵션 오토로드 캐시에
 // 안 실림), 삭제 후에도 wp_options 행 자체는 영구히 남아 있었다.
+// esc_like()로 이름 안의 '_'를 이스케이프한다 — SQL LIKE에서 '_'는 "임의의 한 글자" 와일드카드라
+// 그냥 두면 'hlf_flyer_seqX...' 같은 무관한 옵션까지 지울 수 있다(정확히 이 접두사만 지우도록).
 global $wpdb;
-$wpdb->query( "DELETE FROM {$wpdb->options} WHERE option_name LIKE 'hlf_flyer_seq_%'" );
+$wpdb->query( $wpdb->prepare(
+	"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s",
+	$wpdb->esc_like( 'hlf_flyer_seq_' ) . '%'
+) );
+
+// 대시보드 통계 캐시(HLF_Source_Listing_Repository::STATS_TRANSIENT)도 함께 정리한다.
+delete_transient( 'hlf_source_stats_v1' );
 
 // capability/역할 회수(포스트 데이터는 보존).
 require_once plugin_dir_path( __FILE__ ) . 'includes/class-hlf-post-types.php';

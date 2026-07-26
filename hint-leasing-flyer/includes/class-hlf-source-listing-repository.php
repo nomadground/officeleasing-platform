@@ -182,6 +182,8 @@ final class HLF_Source_Listing_Repository {
 		}
 		$source_id = (int) $source_id;
 		self::apply_fields( $source_id, $fields );
+		// 전체 개수(total)와 미연결 수(unlinked)가 즉시 바뀐다 — 대시보드가 바로 반영하도록 무효화.
+		self::invalidate_stats_cache();
 		return $source_id;
 	}
 
@@ -238,7 +240,12 @@ final class HLF_Source_Listing_Repository {
 		if ( ! self::get( $source_id ) ) {
 			return new WP_Error( 'hlf_source_not_found', '매물을 찾을 수 없습니다.', array( 'status' => 404 ) );
 		}
-		return (bool) wp_delete_post( $source_id, true );
+		$deleted = (bool) wp_delete_post( $source_id, true );
+		if ( $deleted ) {
+			// 전체 개수(total)가 즉시 바뀐다 — 대시보드가 바로 반영하도록 무효화.
+			self::invalidate_stats_cache();
+		}
+		return $deleted;
 	}
 
 	/* ---------------- Flyer 포함/해제 ---------------- */
@@ -478,7 +485,12 @@ final class HLF_Source_Listing_Repository {
 	}
 
 	const STATS_TRANSIENT = 'hlf_source_stats_v1';
-	const STATS_TTL       = 30; // 초. GPT 코드 감사 P1#4 참고.
+	// 초. 예전에는 30초였다 — 통계를 바꾸는 모든 경로(원본 생성/삭제, 포함/해제, Flyer 삭제 cascade)가
+	// 이제 전부 invalidate_stats_cache()로 즉시 무효화하므로, "혹시 놓친 경로 때문에 오래 묵는 것"을
+	// 걱정해 TTL을 짧게 유지할 이유가 없어졌다. 짧은 TTL은 대시보드를 열 때마다 전체 Source+Item을
+	// 다시 훑게 만드는 비용이라(외부 코드 감사 P1), 정확성은 명시적 무효화로 보장하고 TTL은
+	// 안전망으로만 남긴다.
+	const STATS_TTL       = 300;
 
 	/**
 	 * 대시보드용 원본 매물 통계: 전체 / 연결(1개 이상 Flyer에 포함) / 미연결.
@@ -515,8 +527,14 @@ final class HLF_Source_Listing_Repository {
 		return $stats;
 	}
 
-	/** include_in_flyer/exclude_from_flyer로 연결 상태가 바뀌면 다음 stats() 호출이 즉시 새로 계산하게 한다. */
-	private static function invalidate_stats_cache(): void {
+	/**
+	 * 통계(total/linked/unlinked)를 바꾸는 모든 경로에서 호출해 다음 stats()가 즉시 새로 계산하게 한다.
+	 * 호출 지점: 원본 생성/삭제(total 변화), Flyer 포함/해제(linked 변화), Flyer 삭제 cascade로 Item이
+	 * 통째로 사라지는 경우(linked 변화 — HLF_Flyer_Item_Service::delete_flyer_with_items). 이 목록이
+	 * 완전해야 TTL을 안전하게 늘릴 수 있다(STATS_TTL 주석 참고). public인 이유는 Flyer 쪽 서비스가
+	 * 자기 cascade 삭제 뒤에 직접 불러야 하기 때문이다.
+	 */
+	public static function invalidate_stats_cache(): void {
 		delete_transient( self::STATS_TRANSIENT );
 	}
 

@@ -449,6 +449,13 @@
 			script.onload = function () { window.Tesseract ? resolve( window.Tesseract ) : reject( new Error( 'OCR 엔진을 찾을 수 없습니다.' ) ); };
 			script.onerror = function () { reject( new Error( 'OCR 엔진을 불러오지 못했습니다.' ) ); };
 			document.head.appendChild( script );
+		} ).catch( function ( err ) {
+			// 실패한 promise를 캐시에 남겨두면(원래 동작) 일시적인 네트워크 오류 한 번으로 이 탭에서는
+			// 페이지를 새로고침하기 전까지 OCR을 영영 다시 시도할 수 없다 — 실패 시 캐시와 실패한
+			// <script> 태그를 정리해, 사용자가 "텍스트 추출"을 다시 누르면 새로 받아오게 한다.
+			ocrEngineLoader = null;
+			document.querySelectorAll( 'script[src="' + OCR_SCRIPT_URL + '"]' ).forEach( function ( el ) { el.remove(); } );
+			throw err;
 		} );
 		return ocrEngineLoader;
 	}
@@ -579,13 +586,26 @@
 						// 비교는 이 환경(네트워크로 Tesseract CDN에 접근 불가)에서 직접 실행할 수
 						// 없었으므로, 설치 후 실제 캡처로 확인해 볼 것(완료 보고의 "알려진 한계" 참고).
 						var setPsm = worker.setParameters ? worker.setParameters( { tessedit_pageseg_mode: '6' } ) : Promise.resolve();
-						return setPsm.then( function () {
-							return ocrPreprocessImage( file ).then( function ( processedImage ) {
-								return worker.recognize( processedImage ).then( function ( result ) {
-									return worker.terminate().then( function () { return result; } );
-								} );
+						// worker는 WASM 인스턴스와 별도 스레드를 잡고 있어 반드시 정리해야 한다 — 예전에는
+						// 성공 경로에서만 terminate()를 불러서, 전처리·인식이 실패할 때마다 worker가 살아남아
+						// 반복 실패 시 브라우저 메모리에 계속 쌓였다(외부 코드 감사 P1). 성공/실패 모두
+						// 정리하고, terminate() 자체가 실패해도 원래 OCR 오류를 덮어쓰지 않는다.
+						function releaseWorker() {
+							try {
+								return Promise.resolve( worker.terminate() ).catch( function () {} );
+							} catch ( e ) {
+								return Promise.resolve();
+							}
+						}
+						return setPsm
+							.then( function () { return ocrPreprocessImage( file ); } )
+							.then( function ( processedImage ) { return worker.recognize( processedImage ); } )
+							.then( function ( result ) {
+								return releaseWorker().then( function () { return result; } );
+							} )
+							.catch( function ( err ) {
+								return releaseWorker().then( function () { throw err; } );
 							} );
-						} );
 					} ).catch( function ( err ) {
 						err.hlfStage = err.hlfStage || 'recognize';
 						throw err;

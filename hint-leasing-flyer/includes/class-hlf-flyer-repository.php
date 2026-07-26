@@ -46,29 +46,75 @@ final class HLF_Flyer_Repository {
 	 * 읽으면(더블클릭, 느린 네트워크 재요청, 여러 PC 동시 사용) 같은 번호를 받을 수 있었다 — 공개 URL의
 	 * 유일 식별자라 중복되면 같은 번호로 서로 다른 Flyer 중 하나만 찾아지는 실사용 버그가 된다.
 	 */
-	private static function assign_flyer_number( int $flyer_id ): void {
+	private static function assign_flyer_number( int $flyer_id ): bool|WP_Error {
 		$date_prefix = current_time( 'ymd' );
 		$seq         = self::next_daily_sequence( $date_prefix );
-		update_post_meta( $flyer_id, HLF_Meta_Schema::FLYER_NUMBER, $date_prefix . sprintf( '%02d', $seq ) );
+		if ( is_wp_error( $seq ) ) {
+			return $seq;
+		}
+		$number = $date_prefix . sprintf( '%02d', $seq );
+		update_post_meta( $flyer_id, HLF_Meta_Schema::FLYER_NUMBER, $number );
+		// 쓴 값을 다시 읽어 확인한다 — update_post_meta()의 반환값(bool)은 "행이 실제로 바뀌었는지"만
+		// 알려줄 뿐이라 성공 판정에 쓸 수 없다(set_images/set_snapshot_metadata와 같은 규칙). 번호는
+		// 공개 URL의 유일 식별자라, 저장이 안 된 채로 Flyer가 만들어지면 그 Flyer는 영영 열 수 없다.
+		if ( (string) get_post_meta( $flyer_id, HLF_Meta_Schema::FLYER_NUMBER, true ) !== $number ) {
+			return new WP_Error( 'hlf_flyer_number_save_failed', 'Flyer 번호를 저장하지 못했습니다. 다시 시도해 주세요.', array( 'status' => 500 ) );
+		}
+		return true;
 	}
 
 	/**
-	 * 날짜별 발급 순번을 원자적으로 1 증가시켜 반환한다. wp_options의 UNIQUE(option_name) 제약을
-	 * INSERT ... ON DUPLICATE KEY UPDATE ... LAST_INSERT_ID(expr)와 함께 쓰면, 해당 행에 걸리는
-	 * MySQL 잠금 덕분에 두 요청이 정확히 같은 순간에 들어와도 서로 다른 값을 받는다(WooCommerce
-	 * 주문번호 등에서도 쓰는 표준 패턴 — get_option()/update_option()의 조회-후-저장 방식은 그 사이
-	 * 시간차 때문에 이 문제를 그대로 재현하므로 쓰지 않는다). 옵션 자체는 get_option()으로 다시 읽지
-	 * 않으므로(항상 이 함수를 통해서만 값을 얻음) 오브젝트 캐시와 어긋날 걱정이 없다.
+	 * 날짜별 발급 순번을 원자적으로 1 증가시켜 반환한다.
+	 *
+	 * 두 문으로 나눈 이유(실사용 버그 수정): 예전에는
+	 *   INSERT ... VALUES(%s,'1','no') ON DUPLICATE KEY UPDATE option_value = LAST_INSERT_ID(option_value+1)
+	 * 한 문만 쓰고 SELECT LAST_INSERT_ID()를 읽었는데, wp_options.option_id는 AUTO_INCREMENT라
+	 * "그 날짜의 첫 번째" 요청(중복키가 없어 UPDATE 분기를 타지 않는 경우)에는 MySQL이 LAST_INSERT_ID()를
+	 * "새로 만들어진 option_id"로 설정해 버린다 — LAST_INSERT_ID(expr)가 실행되지 않기 때문이다. 그래서
+	 * 날짜별 첫 Flyer가 "26072401"이 아니라 "2607245516"(5516 = 새 wp_options 행의 option_id)처럼
+	 * 발급되고, 그다음 Flyer는 저장값 1에서 이어져 02로 건너뛰어 01이 영영 비는 실사용 버그가 있었다.
+	 *
+	 * 지금은 (1) INSERT IGNORE로 시드 행(0)만 만들고 — 이 문의 LAST_INSERT_ID는 읽지 않는다 —
+	 * (2) 증가는 항상 UPDATE ... LAST_INSERT_ID(expr) 경로로만 처리한다. UPDATE는 AUTO_INCREMENT
+	 * 컬럼을 건드리지 않으므로 LAST_INSERT_ID()가 항상 우리가 넣은 expr(증가된 순번)로 설정된다.
+	 * 원자성은 그대로다 — 해당 행에 걸리는 MySQL 행 잠금 덕분에 두 요청이 정확히 같은 순간에 들어와도
+	 * 서로 다른 값을 받는다(get_option()/update_option()의 조회-후-저장 방식은 그 사이 시간차 때문에
+	 * 이 문제를 그대로 재현하므로 쓰지 않는다). 이미 값이 있는 기존 날짜 행은 INSERT IGNORE가 건드리지
+	 * 않으므로 하위호환도 유지된다(7이면 다음은 8).
+	 *
+	 * 옵션 자체는 get_option()으로 다시 읽지 않으므로(항상 이 함수를 통해서만 값을 얻음) 오브젝트
+	 * 캐시와 어긋날 걱정이 없다.
+	 *
+	 * @return int|WP_Error 1 이상의 순번, 또는 SQL 실패/비정상 값일 때 WP_Error(fail-closed —
+	 *                      잘못된 번호로 Flyer가 만들어지느니 생성 자체를 실패시킨다).
 	 */
-	private static function next_daily_sequence( string $date_prefix ): int {
+	private static function next_daily_sequence( string $date_prefix ): int|WP_Error {
 		global $wpdb;
 		$option_name = 'hlf_flyer_seq_' . $date_prefix;
-		$wpdb->query( $wpdb->prepare(
-			"INSERT INTO {$wpdb->options} (option_name, option_value, autoload) VALUES (%s, '1', 'no')
-			 ON DUPLICATE KEY UPDATE option_value = LAST_INSERT_ID( option_value + 1 )",
+
+		// (1) 시드 행이 없으면 0으로 만든다. 이미 있으면 IGNORE로 기존 값을 그대로 둔다.
+		$seeded = $wpdb->query( $wpdb->prepare(
+			"INSERT IGNORE INTO {$wpdb->options} (option_name, option_value, autoload) VALUES (%s, '0', 'no')",
 			$option_name
 		) );
-		return (int) $wpdb->get_var( 'SELECT LAST_INSERT_ID()' );
+		if ( false === $seeded ) {
+			return new WP_Error( 'hlf_flyer_seq_failed', 'Flyer 번호를 발급하지 못했습니다. 다시 시도해 주세요.', array( 'status' => 500 ) );
+		}
+
+		// (2) 원자적 증가 + 증가된 값을 이 커넥션의 LAST_INSERT_ID로 받는다.
+		$updated = $wpdb->query( $wpdb->prepare(
+			"UPDATE {$wpdb->options} SET option_value = LAST_INSERT_ID( CAST( option_value AS UNSIGNED ) + 1 ) WHERE option_name = %s",
+			$option_name
+		) );
+		if ( false === $updated || 0 === (int) $updated ) {
+			return new WP_Error( 'hlf_flyer_seq_failed', 'Flyer 번호를 발급하지 못했습니다. 다시 시도해 주세요.', array( 'status' => 500 ) );
+		}
+
+		$seq = (int) $wpdb->get_var( 'SELECT LAST_INSERT_ID()' );
+		if ( $seq < 1 ) {
+			return new WP_Error( 'hlf_flyer_seq_failed', 'Flyer 번호를 발급하지 못했습니다. 다시 시도해 주세요.', array( 'status' => 500 ) );
+		}
+		return $seq;
 	}
 
 	/** "LF-000123" → 123. 형식이 안 맞으면 0. 새 형식(순수 숫자 8자리) 번호는 get_by_number()가 별도 처리. */
@@ -132,7 +178,14 @@ final class HLF_Flyer_Repository {
 		// item 시퀀스 시드(0). item 추가 전에 행이 존재해야 원자적 증가가 안전하다.
 		add_post_meta( $flyer_id, HLF_Meta_Schema::FLYER_ITEM_SEQ, 0, true );
 		// 요청서 7: 새 형식 Flyer 번호는 생성 시점에 한 번만 배정하고 이후 절대 바뀌지 않는다.
-		self::assign_flyer_number( $flyer_id );
+		// 번호 발급/저장이 실패하면 방금 만든 Flyer를 정리하고 에러를 그대로 올린다(fail-closed) —
+		// 번호는 공개 URL의 유일 식별자라, 번호 없는 Flyer가 남으면 목록에는 보이는데 공개 링크로는
+		// 영영 열 수 없는 반쪽 상태가 된다(include_in_flyer의 orphan cleanup과 같은 원칙).
+		$numbered = self::assign_flyer_number( $flyer_id );
+		if ( is_wp_error( $numbered ) ) {
+			wp_delete_post( $flyer_id, true );
+			return $numbered;
+		}
 		self::apply_meta_fields( $flyer_id, $data );
 		return $flyer_id;
 	}

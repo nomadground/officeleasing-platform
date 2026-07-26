@@ -258,14 +258,35 @@
 		// 실사용 환경(실제 서버 네트워크 지연)에서는 썸네일에 마우스를 잠깐 스쳐 지나가듯 올리면,
 		// 대표 사진 자리의 큰 이미지(썸네일 자체보다 해상도가 큰 'hlf-item-photo' 사이즈라 아직 브라우저
 		// 캐시에 없음)가 다운로드되기 전에 마우스가 이미 떠나 mouseleave가 원래 사진으로 되돌려버려,
-		// 마치 "호버 효과는 있는데 사진은 안 바뀐다"처럼 보일 수 있다 — 페이지를 열자마자 갤러리
-		// 사진을 전부 미리 받아 브라우저 캐시에 데워 두면, 실제로 마우스를 올렸을 때 src만 바꿔도
-		// 이미 캐시된 이미지라 즉시 나타난다.
-		photos.forEach( function ( url ) {
-			if ( ! url ) { return; }
-			var preload = new Image();
-			preload.src = url;
-		} );
+		// 마치 "호버 효과는 있는데 사진은 안 바뀐다"처럼 보일 수 있다 — 갤러리 사진을 미리 받아 브라우저
+		// 캐시에 데워 두면, 실제로 마우스를 올렸을 때 src만 바꿔도 이미 캐시된 이미지라 즉시 나타난다.
+		//
+		// 단, 이 예열을 페이지 로드와 "동시에" 시작하면 대표 사진(LCP 대상)과 대역폭을 다투게 되어
+		// 방문자가 체감하는 첫 화면이 느려진다(외부 코드 감사 P1) — 첫 화면 렌더가 끝난 뒤(load) 브라우저가
+		// 한가할 때(requestIdleCallback) 시작하도록 미룬다. 사용자가 썸네일에 마우스를 올리기까지는
+		// 최소 수백 ms가 걸리므로 예열 효과는 그대로 유지된다. 데이터 절약 모드(Save-Data)나 저속 회선
+		// (2g/slow-2g)에서는 아예 건너뛴다 — 그런 환경에서 쓰지도 않을 큰 사진을 미리 받는 것은 손해다.
+		function warmGalleryCache() {
+			var conn = navigator.connection;
+			if ( conn && ( conn.saveData || /(^|-)2g$/.test( String( conn.effectiveType || '' ) ) ) ) { return; }
+			photos.forEach( function ( url ) {
+				if ( ! url ) { return; }
+				var preload = new Image();
+				preload.src = url;
+			} );
+		}
+		function scheduleWarmGalleryCache() {
+			if ( window.requestIdleCallback ) {
+				window.requestIdleCallback( warmGalleryCache, { timeout: 3000 } );
+			} else {
+				window.setTimeout( warmGalleryCache, 1200 );
+			}
+		}
+		if ( 'complete' === document.readyState ) {
+			scheduleWarmGalleryCache();
+		} else {
+			window.addEventListener( 'load', scheduleWarmGalleryCache, { once: true } );
+		}
 
 		function clearActiveThumb() {
 			thumbButtons.forEach( function ( b ) { b.classList.remove( 'hlf-gallery-thumb-active' ); } );

@@ -50,11 +50,20 @@ final class HLF_Flyer_Item_Service {
 		if ( HLF_Post_Types::FLYER !== get_post_type( $flyer_id ) ) {
 			return new WP_Error( 'hlf_not_flyer', '대상이 Flyer가 아닙니다.', array( 'status' => 404 ) );
 		}
-		// 소속 item도 함께 제거.
+		// 소속 item도 함께 제거. 이 Item들이 원본 매물을 출처로 갖고 있었다면 그 원본의 "연결됨"
+		// 상태가 바뀌므로($linked_source_ids), 삭제 후 대시보드 통계 캐시를 무효화해야 한다 —
+		// 안 하면 이미 사라진 연결이 통계에 최대 TTL만큼 남는다(외부 코드 감사 P1).
+		$had_source_link = false;
 		foreach ( HLF_Item_Repository::get_items( $flyer_id ) as $item ) {
+			if ( ! $had_source_link && (int) get_post_meta( $item->ID, 'source_listing_id', true ) > 0 ) {
+				$had_source_link = true;
+			}
 			wp_delete_post( $item->ID, true );
 		}
 		$result = wp_delete_post( $flyer_id, $force );
+		if ( $had_source_link ) {
+			HLF_Source_Listing_Repository::invalidate_stats_cache();
+		}
 		return (bool) $result;
 	}
 
