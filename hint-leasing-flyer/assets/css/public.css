@@ -315,9 +315,18 @@ body.hlf-public {
 	   화면에서만 흐름 밖으로 빼서 안 보이게 한다(카카오 지도는 offsetWidth/Height로 크기를 재므로
 	   opacity:0이어도 인쇄 크기를 정확히 읽는다. display:none이면 크기가 0이 되어 못 쓴다).
 	   인쇄에는 이 규칙이 전혀 적용되지 않고(@media screen), 인쇄가 끝나면 JS가 클래스와 인라인
-	   크기를 함께 떼어낸다(restoreAfterPrint). */
+	   크기를 함께 떼어낸다(restoreAfterPrint).
+
+	   중요(실사용 회귀): 흐름에서 빼는 대상은 지도 컨테이너(.hlf-comparison-map)가 아니라 반드시
+	   그 바깥 패널이어야 한다. 카카오 지도는 컨테이너의 position이 static일 때만 relative로 바꿔
+	   놓고 내부 타일 레이어를 그 안에 absolute로 붙인다 — 지도를 만드는 순간 컨테이너가 이미
+	   position:fixed면 카카오가 손대지 않고 넘어가고, 인쇄에서 이 규칙이 빠지면서 컨테이너가 다시
+	   static이 되면 내부 레이어들이 컨테이너를 containing block으로 삼지 못해 페이지 전체 기준으로
+	   튀어나간다(= overflow:hidden도 못 막는다). beta.19에서 실제로 인쇄 1·2페이지 위에 다른 매물
+	   지도들이 겹쳐 찍히던 원인이 이것이다. 컨테이너의 position은 앞으로도 건드리지 않는다. */
 	body.hlf-print-map-sizing { overflow: hidden; }
-	body.hlf-print-map-sizing .hlf-comparison-map {
+	body.hlf-print-map-sizing .hlf-comparison-map-panel,
+	body.hlf-print-map-sizing .hlf-detail-map-panel {
 		position: fixed;
 		top: 0;
 		left: 0;
@@ -497,7 +506,15 @@ body.hlf-public {
 .hlf-map-recenter:focus-visible { outline: 2px solid var(--hlf-primary); outline-offset: 2px; }
 .hlf-comparison-map-unit { color: var(--hlf-muted); font-size: 10px; letter-spacing: .06em; }
 /* 요청서 12: 위치 확인 지도 세로폭을 기존보다 늘린다(360px -> 440px). */
-.hlf-comparison-map { min-height: 440px; background: var(--hlf-line); border-radius: 8px; overflow: hidden; }
+/* position:relative는 장식이 아니라 지도가 제자리에 갇히게 하는 안전장치다(요청서: 인쇄에서 지도가
+   깨져서 다른 페이지 위에 겹쳐 찍히던 문제의 진짜 원인). 카카오 지도는 컨테이너 안에 타일/오버레이
+   레이어를 position:absolute로 붙이는데, 컨테이너가 static이면 그 레이어들의 containing block이
+   컨테이너가 아니라 위쪽의 다른 조상(없으면 페이지 전체)이 된다 — 그러면 아래 overflow:hidden도
+   그 레이어들을 자르지 못한다(CSS 규칙: 클리핑 박스보다 바깥에 containing block을 둔 절대위치
+   자손은 잘리지 않는다). 컨테이너를 항상 positioned로 만들어 두면 어떤 상황에서도 지도는 이 상자
+   안으로 잘려 들어온다 — 최악의 경우가 "지도가 일부만 보임"이지, "다른 내용 위에 겹침"이 아니게 된다.
+   상세 지도(.hlf-detail-map)도 이 클래스를 함께 갖고 있어 같이 적용된다. */
+.hlf-comparison-map { position: relative; min-height: 440px; background: var(--hlf-line); border-radius: 8px; overflow: hidden; }
 .hlf-detail-map { min-height: 260px; }
 .hlf-map-empty { display: grid; place-items: center; min-height: 260px; margin: 0; padding: 24px; color: var(--hlf-muted); font-size: 13px; text-align: center; }
 .hlf-map-marker {
@@ -587,7 +604,8 @@ body.hlf-public {
 	   여유를 확보한다. */
 	.hlf-listing-index { flex-shrink: 0; width: 13px; height: 13px; font-size: 7px; }
 	.hlf-listing-main .hlf-listing-address-block { gap: 0; }
-	.hlf-listing-address { font-size: 12px; line-height: 1.25; }
+	/* 요청서: 모바일 리스트 카드의 지번주소(노란 형광펜 줄)를 한 사이즈 키운다(12px -> 13px). */
+	.hlf-listing-address { font-size: 13px; line-height: 1.25; }
 	.hlf-listing-subaddress { line-height: 1.2; }
 	/* 요청서: 모바일은 자리가 좁아 도로명주소 옆 건물명을 또 두지 않고, 층 칸의 "층" 라벨을 건물명으로
 	   대체한다. */
