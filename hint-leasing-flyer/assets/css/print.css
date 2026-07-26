@@ -100,6 +100,18 @@
 	   또한 align-items:stretch로 물려받을 사진 카드가 없으므로 지도 자체에 최소 높이를 직접 준다. */
 	.hlf-detail-hero--map-only { grid-template-columns: 1fr !important; }
 	.hlf-detail-hero--map-only .hlf-detail-map { min-height: 76mm; }
+	/* 요청서(실사용 버그): 모바일에서 인쇄 방향이 세로로 강제되면(브라우저/OS 인쇄 파이프라인의
+	   한계 — @page landscape 힌트를 무시하는 경우가 실제로 있고, 이건 CSS로 더는 강제할 수단이
+	   없다) 위 2단(사진|지도) grid는 281mm 가로 폭을 전제로 짜여 있어 194mm 세로 용지에 그대로
+	   찍히면서 좌우 바깥쪽이 잘려나가 "가운데 정사각형 정도만 보이고 양옆은 안 보이는" 증상이
+	   생긴다. body.hlf-print-map-sizing는 모바일(≤700px)에서 인쇄 버튼을 눌렀을 때만 JS가 붙이는
+	   클래스(assets/js/public-flyer.js applyPrintMapSizing) — 이 조건에서는 애초에 2단을 포기하고
+	   사진 위/지도 아래로 세로로 쌓아, 필요한 최대 폭이 항상 세로 용지 폭(194mm) 이내로 들어오게
+	   한다. 어느 쪽 방향으로 실제 인쇄되든(가로/세로 모두) 잘릴 일이 없다 — 다만 사진+지도가 한
+	   행이 아니라 두 행을 차지하므로 매물 상세 1건이 1페이지 예산을 넘어 2페이지로 늘어날 수 있다
+	   (지도가 잘려 보이는 것보다 페이지가 한 장 더 느는 쪽이 낫다는 판단). 데스크톱(이 클래스가
+	   전혀 붙지 않음)은 지금까지와 완전히 동일하게 2단 그대로 유지된다. */
+	body.hlf-print-map-sizing .hlf-detail-hero { grid-template-columns: 1fr !important; }
 	/* Leasing Info/Property Details를 포함한 본문 전체를 세로로 압축해 매물 1개 상세를 한 페이지
 	   안에 우겨넣는다 — 카드 여백/줄간격/글자 크기를 화면보다 크게 줄인다. */
 	/* 요청서: 인쇄 시 갤러리/지도 세로폭(85mm)을 76mm로 다시 줄인다 — 목록/상세 버튼 위치 변경,
