@@ -123,6 +123,13 @@ final class HLF_Routes {
 
 	private static function render( WP_Post $flyer, ?WP_Post $item ): void {
 		status_header( 200 );
+		// 요청서(실사용 버그): 매물 사진을 추가/수정한 직후에도 이 공개 페이지가 예전 내용 그대로
+		// 보이는 경우가 있었다 — HLF_Cache_Purge는 알려진 캐시 플러그인 API만 직접 호출하므로, 그
+		// 목록에 없는 호스팅사 엣지 캐시/CDN/프록시는 건드리지 못한다(class-hlf-cache-purge.php 참고).
+		// 이 페이지는 404 응답에는 이미 nocache_headers()를 쓰고 있었는데(send_404) 정작 정상 200
+		// 응답에는 빠져 있었다 — 표준 Cache-Control/Expires 헤더를 지키는 캐시 계층이라면(대부분의
+		// CDN·리버스 프록시 포함) 여기서 막아야 우리가 모르는 캐시 기술이어도 최신 내용이 나간다.
+		nocache_headers();
 
 		// 템플릿에서 참조할 컨텍스트.
 		$hlf_context = array(
