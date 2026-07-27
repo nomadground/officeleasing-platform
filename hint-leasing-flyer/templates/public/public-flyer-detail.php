@@ -65,11 +65,17 @@ $map_items    = $has_coords ? array( array(
 // 없다). 주차/엘리베이터는 예외 — "불가"/"없음"도 그 자체로 유효한 답이므로 항상 표시한다.
 // 순서는 미리보기 목업의 Property Details 순서(해당층/입주가능일 → 임대·전용면적 → 건축물용도·
 // 사용승인일 → 방향 → 엘리베이터·주차)를 따른다.
-// 각 항목은 ['value'=>단순 텍스트] 또는 ['main'=>..., 'sub'=>...](임대/전용면적처럼 강조색+보조줄
-// 2단 표기가 필요한 경우) 형태로 담는다.
+// 각 항목은 ['value'=>단순 텍스트], ['main'=>..., 'sub'=>...](임대/전용면적처럼 강조색+보조줄 2단
+// 표기가 필요한 경우), 또는 ['floor'=>['current'=>.., 'total'=>..]](기준층 — 해당층만 색으로 구분)
+// 형태로 담는다.
 $basic = array();
 if ( $item['floor_current'] || $item['floor_total'] ) {
-	$basic['기준층'] = array( 'value' => trim( ( $item['floor_current'] ?: '-' ) . ' / ' . ( $item['floor_total'] ?: '-' ) . '층' ) );
+	$basic['기준층'] = array(
+		'floor' => array(
+			'current' => $item['floor_current'] ?: '-',
+			'total'   => $item['floor_total'] ?: '-',
+		),
+	);
 }
 if ( $item['available_date_text'] ) {
 	$basic['입주가능일'] = array( 'value' => $item['available_date_text'] );
@@ -247,11 +253,16 @@ $basic['주차']       = array( 'value' => $item['parking_available'] ? ( $item[
 			<dl class="hlf-property-details">
 				<?php foreach ( $basic as $label => $entry ) :
 					$is_wide = in_array( $label, $basic_wide_labels, true );
+					// 요청서: 전용면적의 평수(sub)만 어울리는 파란색으로 구분한다 — 임대면적은 같은
+					// main/sub 마크업을 쓰므로 라벨로만 구분해 이 항목에만 색상용 클래스를 붙인다.
+					$is_exclusive = ( '전용면적' === $label );
 					?>
 					<div class="hlf-basic-item<?php echo $is_wide ? ' hlf-basic-item--wide' : ''; ?>">
 						<dt><?php echo esc_html( $label ); ?></dt>
-						<?php if ( isset( $entry['main'] ) ) : ?>
-							<dd class="hlf-basic-item--accent"><span class="hlf-basic-value-main"><?php echo esc_html( $entry['main'] ); ?></span><span class="hlf-basic-value-sub"><?php echo esc_html( $entry['sub'] ); ?></span></dd>
+						<?php if ( isset( $entry['floor'] ) ) : ?>
+							<dd><span class="hlf-floor-current"><?php echo esc_html( $entry['floor']['current'] ); ?></span> / <?php echo esc_html( $entry['floor']['total'] ); ?>층</dd>
+						<?php elseif ( isset( $entry['main'] ) ) : ?>
+							<dd class="hlf-basic-item--accent<?php echo $is_exclusive ? ' hlf-basic-item--exclusive' : ''; ?>"><span class="hlf-basic-value-main"><?php echo esc_html( $entry['main'] ); ?></span><span class="hlf-basic-value-sub"><?php echo esc_html( $entry['sub'] ); ?></span></dd>
 						<?php else : ?>
 							<dd><?php echo esc_html( $entry['value'] ); ?></dd>
 						<?php endif; ?>

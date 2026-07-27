@@ -32,6 +32,10 @@
 	--hlf-muted: #687780;
 	--hlf-line: #dfe7ec;
 	--hlf-surface: #ffffff;
+	/* 요청서: 해당층(층수의 분자)과 전용면적 평수를 각각 색으로 구분한다 — 공유 링크 복사 성공
+	   메시지(.hlf-share-status.is-success)에 이미 쓰던 초록과 톤을 맞춘 초록/파랑 한 쌍. */
+	--hlf-accent-green: #2f7a4f;
+	--hlf-accent-blue: #2f6fd6;
 }
 
 * { box-sizing: border-box; }
@@ -194,6 +198,12 @@ body.hlf-public {
 .hlf-listing-floor .hlf-listing-floor-building { display: none; }
 /* 임대/전용면적: 제곱미터를 먼저(크게), 평수는 평당가처럼 그 아래 작게. */
 .hlf-listing-area-sub { display: block; margin-top: 0; color: var(--hlf-muted); font-size: 10px; font-weight: 500; line-height: 1.2; white-space: nowrap; }
+/* 요청서: 전용면적 평수만 어울리는 파란색으로 구분한다 — .hlf-listing-area-sub 클래스 자체는
+   임대면적(.hlf-listing-lease-area)과 전용면적(.hlf-listing-area) 둘 다 같이 쓰므로, 전용면적
+   칸(.hlf-listing-area)에 들어있을 때만 이기도록 부모 클래스로 한정한다. */
+.hlf-listing-area .hlf-listing-area-sub { color: var(--hlf-accent-blue); font-weight: 700; }
+/* 요청서: 층수의 해당층(분자)만 눈에 띄는 초록으로 구분한다. */
+.hlf-floor-current { color: var(--hlf-accent-green); }
 /* 환산임대료(NOC) 개별 리스트 행 값은 블랙으로, 크기는 임대면적·전용면적 데이터값(12px)과 맞춘다
    (임대료/관리비의 15px과는 다르게). .hlf-listing-main 안에서만 적용해 상세 페이지 Leasing Info
    카드의 NOC 값(기존 강조색·15px)에는 영향을 주지 않는다. */
@@ -412,6 +422,12 @@ body.hlf-public {
 /* 임대면적/전용면적 값 강조색(#355c73 = --hlf-primary) — .hlf-basic-item dd보다 명시도를 높여야
    기본 잉크색 규칙을 이긴다. */
 .hlf-basic-item dd.hlf-basic-item--accent { color: var(--hlf-primary); }
+/* 요청서: Property Details의 전용면적 평수만 어울리는 파란색으로 구분한다 — 임대면적은 같은
+   main/sub 마크업을 쓰므로 템플릿에서 라벨로 구분해 이 항목에만 붙이는 .hlf-basic-item--exclusive로
+   한정한다. */
+.hlf-basic-item--exclusive .hlf-basic-value-sub { color: var(--hlf-accent-blue); font-weight: 700; }
+/* 요청서: Property Details의 기준층(해당층/분자)만 눈에 띄는 초록으로 구분한다. */
+.hlf-basic-item dd .hlf-floor-current { color: var(--hlf-accent-green); font-weight: 800; }
 .hlf-footer { display: flex; flex-direction: column; gap: 10px; margin-top: 28px; padding-top: 14px; border-top: 1px solid var(--hlf-line); color: var(--hlf-muted); font-size: 12px; }
 .hlf-footer-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
 /* margin-left:auto가 핵심 — text-align만으로는 footer-row가 좁은 화면에서 줄바꿈되어 이 칸이
@@ -534,9 +550,18 @@ body.hlf-public {
 	font-size: 11px;
 	font-weight: 800;
 	box-shadow: 0 1px 4px rgba(0, 0, 0, .25);
-	transition: transform .15s, filter .15s;
+	transition: transform .15s, filter .15s, box-shadow .15s;
 }
-.hlf-map-marker.is-active { transform: scale(1.25); z-index: 5; filter: brightness(.82); }
+/* 요청서: 리스트 행/막대/마커 중 하나에 마우스오버하면(assets/js/public-flyer.js ListingSync) 커지는
+   느낌 외에, 마커 테두리에 노란색 라이트가 도는 느낌을 더한다 — 기존 그림자(0 1px 4px 검정)는
+   그대로 두고 그 뒤에 노란 링 그림자를 하나 더 얹는다(box-shadow는 겹쳐 쓸 수 있어 마커 크기에는
+   영향이 없다). */
+.hlf-map-marker.is-active {
+	transform: scale(1.25);
+	z-index: 5;
+	filter: brightness(.82);
+	box-shadow: 0 1px 4px rgba(0, 0, 0, .25), 0 0 0 4px rgba(255, 196, 0, .55);
+}
 .hlf-map-marker:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 .hlf-map-unavailable { margin: 22px 0; padding: 16px; color: var(--hlf-muted); font-size: 13px; text-align: center; border: 1px dashed var(--hlf-line); border-radius: 8px; }
 /* 인쇄용 순번-주소 목록 — 화면에서는 숨기고 print.css에서만 보여준다(카카오 지도는 인쇄로 재현하기
@@ -547,6 +572,10 @@ body.hlf-public {
 
 @media (max-width: 700px) {
 	.hlf-detail-hero { grid-template-columns: 1fr; }
+	/* 요청서("카드 왼쪽 여백 조금 남아"): Leasing Info/Property Details 카드의 좌우 여백을 모바일에서
+	   줄여, 안쪽 Leasing Info 4칸(아래 .hlf-detail-metrics)이 "임대평당 X만원" 같은 보조 문구를 한
+	   줄로 담을 폭을 조금이라도 더 확보한다. */
+	.hlf-panel { padding: 16px 8px 14px; }
 	/* 목록 페이지 모바일 차트는 세로 폭을 더 줄인다 — 값 표시줄/막대영역/라벨줄 각각 축소. */
 	.hlf-noc-chart { gap: 10px; min-height: 128px; }
 	.hlf-noc-chart-item { flex-basis: 44px; grid-template-rows: 16px 1fr 26px; height: 118px; }
@@ -654,10 +683,14 @@ body.hlf-public {
 	   2열로 접지 않고 글자 크기·여백만 좁은 화면에 맞게 줄인다. 값이 길면(예: "156,838만원") 셀
 	   안에서 줄바꿈되게 둔다(가로 스크롤/잘림 대신).*/
 	.hlf-detail-metrics { gap: 4px; }
-	.hlf-detail-metrics .hlf-lease-metric { padding: 8px 4px; }
+	.hlf-detail-metrics .hlf-lease-metric { padding: 8px 1px; }
 	.hlf-detail-metrics .hlf-lease-metric-label { font-size: 9px; }
 	.hlf-detail-metrics .hlf-lease-metric-value { font-size: 12px; white-space: normal; word-break: keep-all; }
-	.hlf-detail-metrics .hlf-lease-metric-sub { font-size: 9px; white-space: normal; }
+	/* 요청서: "임대평당 X.X만원" 보조 문구가 좁은 셀에서 두 줄로 줄바꿈되던 것을 한 줄로 고정한다 —
+	   폭이 부족해 여전히 넘칠 수 있으므로 글자를 한 단계 줄이고(9px -> 8px), 카드 자체의 좌우 여백도
+	   함께 줄여(.hlf-panel 참고) 셀에 폭을 더 준다. Playwright 실측(360/390/412px, "임대평당
+	   156.8만원"급 긴 값 포함): 이 조합에서 넘침 0. */
+	.hlf-detail-metrics .hlf-lease-metric-sub { font-size: 8px; white-space: nowrap; }
 	/* 특징 노트는 "Leasing Info" 옆(같은 줄 우측)에 붙는데, 모바일에서 줄바꿈되면 기본값(중앙정렬)이
 	   제목 쪽으로 치우쳐 보인다 — 우측 정렬로 오른쪽 끝에 맞춘다. */
 	.hlf-panel-note { text-align: right; }

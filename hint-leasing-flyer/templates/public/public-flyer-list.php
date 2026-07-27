@@ -115,7 +115,11 @@ $kakao_js_key = defined( 'HLF_KAKAO_JS_KEY' ) ? HLF_KAKAO_JS_KEY : '';
 					$address_parts = hlf_format_address( $item['road_address'], $item['lot_address'] );
 					$address = $address_parts['main'];
 					$sub_address = $address_parts['sub'];
-					$floor = trim( ( $item['floor_current'] ?: '-' ) . '/' . ( $item['floor_total'] ?: '-' ) . '층' );
+					// 요청서: 층수(예: "2/5층")에서 해당층(분자, floor_current)만 눈에 띄는 색으로 구분한다 —
+					// 문자열 하나가 아니라 조각으로 나눠 렌더링(아래 hlf-listing-floor-value)해야 그 부분만
+					// 감쌀 수 있다.
+					$floor_current = $item['floor_current'] ?: '-';
+					$floor_total   = $item['floor_total'] ?: '-';
 					?>
 					<li class="hlf-listing-card">
 						<a class="hlf-listing-link" href="<?php echo esc_url( $detail_url ); ?>" data-hlf-listing-key="<?php echo esc_attr( $item['item_number'] ); ?>">
@@ -143,7 +147,7 @@ $kakao_js_key = defined( 'HLF_KAKAO_JS_KEY' ) ? HLF_KAKAO_JS_KEY : '';
 										<?php if ( $item['building_name'] ) : ?>
 											<span class="hlf-lease-metric-label hlf-listing-floor-building"><?php echo esc_html( $item['building_name'] ); ?></span>
 										<?php endif; ?>
-										<span class="hlf-listing-floor-value"><?php echo esc_html( $floor ); ?></span>
+										<span class="hlf-listing-floor-value"><span class="hlf-floor-current"><?php echo esc_html( $floor_current ); ?></span>/<?php echo esc_html( $floor_total ); ?>층</span>
 									</span>
 									<span class="hlf-listing-lease-area">
 										<span class="hlf-lease-metric-label">임대면적</span>
