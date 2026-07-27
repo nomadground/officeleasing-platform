@@ -16,6 +16,9 @@
 defined( 'ABSPATH' ) || exit;
 
 $print_metrics = $item['metrics'];
+// 요청서: 관리비 0원은 "0만원(평당 0.0만원)"이 아니라 "포함"으로 표시만 바꾼다(화면 상세페이지와
+// 동일 규칙) — NOC 등 계산에는 실제 0 값을 그대로 쓰므로 이 표시 분기는 화면에만 영향을 준다.
+$print_maintenance_included = (float) $item['maintenance_fee_manwon'] <= 0;
 $print_address_parts = hlf_format_address( $item['road_address'], $item['lot_address'] );
 $print_address = $print_address_parts['main'];
 
@@ -70,7 +73,7 @@ if ( $item['direction'] ) {
 	$print_basic['방향(주된출입구)'] = array( 'value' => $item['direction'] );
 }
 $print_basic['엘리베이터'] = array( 'value' => $item['elevator_available'] ? '있음' : '없음' );
-$print_basic['주차']       = array( 'value' => $item['parking_available'] ? ( $item['total_parking'] ?: '가능' ) : '불가' );
+$print_basic['주차']       = array( 'value' => hlf_format_parking( $item['parking_available'], $item['available_parking'], $item['total_parking'] ) );
 
 $print_basic_wide_labels = array();
 $print_contact = HLF_Flyer_Repository::public_contact( $flyer, $item );
@@ -169,8 +172,12 @@ $print_contact = HLF_Flyer_Repository::public_contact( $flyer, $item );
 			</div>
 			<div class="hlf-lease-metric">
 				<span class="hlf-lease-metric-label">관리비</span>
-				<span class="hlf-lease-metric-value"><?php echo esc_html( number_format( (float) $item['maintenance_fee_manwon'] ) ); ?>만원</span>
-				<span class="hlf-lease-metric-sub">임대평당 <?php echo esc_html( number_format( $print_metrics['maintenance_per_lease_pyeong'], 1 ) ); ?>만원</span>
+				<?php if ( $print_maintenance_included ) : ?>
+					<span class="hlf-lease-metric-value">포함</span>
+				<?php else : ?>
+					<span class="hlf-lease-metric-value"><?php echo esc_html( number_format( (float) $item['maintenance_fee_manwon'] ) ); ?>만원</span>
+					<span class="hlf-lease-metric-sub">임대평당 <?php echo esc_html( number_format( $print_metrics['maintenance_per_lease_pyeong'], 1 ) ); ?>만원</span>
+				<?php endif; ?>
 			</div>
 			<div class="hlf-lease-metric hlf-lease-metric--noc">
 				<span class="hlf-lease-metric-label">환산임대료</span>

@@ -46,6 +46,27 @@ if ( ! function_exists( 'hlf_format_address' ) ) {
 	}
 }
 
+if ( ! function_exists( 'hlf_format_parking' ) ) {
+	/**
+	 * 주차 표시 문구. 요청서: 가능주차대수를 입력해 두면 총주차대수와 함께
+	 * "가능주차대수/총주차대수"로 보여준다 — 둘 중 하나만 입력돼 있으면 그 값만, 둘 다 없으면
+	 * 기존과 같이 "가능"만 표시한다(옛 데이터와 하위호환).
+	 */
+	function hlf_format_parking( bool $available, int $available_count, string $total ): string {
+		if ( ! $available ) {
+			return '불가';
+		}
+		$total = trim( $total );
+		if ( $available_count > 0 && '' !== $total ) {
+			return $available_count . '/' . $total;
+		}
+		if ( $available_count > 0 ) {
+			return $available_count . '대';
+		}
+		return '' !== $total ? $total : '가능';
+	}
+}
+
 if ( ! function_exists( 'hlf_item_accent_color' ) ) {
 	/** 매물 순번(0-based, 화면 표시 순서와 동일) 기반 고정 팔레트 accent color. */
 	function hlf_item_accent_color( int $order ): string {

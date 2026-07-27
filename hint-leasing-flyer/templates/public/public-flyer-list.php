@@ -138,6 +138,9 @@ $og_image_url   = HLF_Contact_Directory::find_image_url_by_name( $og_contact['na
 					// 감쌀 수 있다.
 					$floor_current = $item['floor_current'] ?: '-';
 					$floor_total   = $item['floor_total'] ?: '-';
+					// 요청서: 관리비 0원은 "0만원(평당 0.0만원)"이 아니라 "포함"으로 표시만 바꾼다 —
+					// NOC 등 계산에는 실제 0 값을 그대로 쓰므로 이 표시 분기는 화면에만 영향을 준다.
+					$maintenance_included = (float) $item['maintenance_fee_manwon'] <= 0;
 					?>
 					<li class="hlf-listing-card">
 						<a class="hlf-listing-link" href="<?php echo esc_url( $detail_url ); ?>" data-hlf-listing-key="<?php echo esc_attr( $item['item_number'] ); ?>">
@@ -191,8 +194,12 @@ $og_image_url   = HLF_Contact_Directory::find_image_url_by_name( $og_contact['na
 									</span>
 									<span class="hlf-lease-metric">
 										<span class="hlf-lease-metric-label">관리비</span>
-										<span class="hlf-lease-metric-value"><?php echo esc_html( number_format( (float) $item['maintenance_fee_manwon'] ) ); ?>만원</span>
-										<span class="hlf-lease-metric-sub">평당 <?php echo esc_html( number_format( $metrics['maintenance_per_lease_pyeong'], 1 ) ); ?>만원</span>
+										<?php if ( $maintenance_included ) : ?>
+											<span class="hlf-lease-metric-value">포함</span>
+										<?php else : ?>
+											<span class="hlf-lease-metric-value"><?php echo esc_html( number_format( (float) $item['maintenance_fee_manwon'] ) ); ?>만원</span>
+											<span class="hlf-lease-metric-sub">평당 <?php echo esc_html( number_format( $metrics['maintenance_per_lease_pyeong'], 1 ) ); ?>만원</span>
+										<?php endif; ?>
 									</span>
 									<span class="hlf-lease-metric hlf-lease-metric--noc">
 										<span class="hlf-lease-metric-label">환산임대료</span>

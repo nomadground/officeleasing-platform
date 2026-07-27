@@ -167,24 +167,30 @@
 	body.hlf-print-mobile .hlf-detail-hero { grid-template-columns: 1fr !important; }
 	/* 갤러리(3:2 고정 비율)와 지도는 세로로 쌓이면서 늘어난 세로 공간을 각각 낮은 높이로 눌러야 한다
 	   — 아래 매물 상세 예산 참고. 요청서: 처음엔 18mm로 빠듯하게 잡았는데, 사진·지도가 너무 좁아
-	   보인다는 실사용 피드백으로 2배(36mm)로 키웠다(지도 쪽은 assets/js/public-flyer.js
-	   PRINT_MAP_SIZES.detail도 21mm -> 42mm로 함께 키움). */
-	body.hlf-print-mobile .hlf-gallery-main { max-height: 36mm; }
+	   보인다는 실사용 피드백으로 2배(36mm)로 키운 뒤(beta.26), 여전히 좁다는 요청으로 다시 2배
+	   (72mm)로 키웠다(지도 쪽은 assets/js/public-flyer.js PRINT_MAP_SIZES.detail도 42mm -> 84mm로
+	   함께 키움). */
+	body.hlf-print-mobile .hlf-gallery-main { max-height: 72mm; }
 
 	/* 요청서: 리스트가 8개 이상이면(최대 10개) 리스트 자체가 길어져 "리스트+차트·지도 = 1장" 예산을
 	   넘어 위치 확인 지도가 다음 페이지로 밀려났다 — Playwright 실측(실제 리스트 행 마크업 기준):
 	   7개일 때 총 1040px로 여유가 있었지만 8개는 1091px, 10개는 1194px로 예산(1062px)을 넘었다.
 	   요청대로 리스트 자체가 아니라 차트 막대·지도의 세로 높이만 줄여 10개 리스트도 한 장에 들어가게
 	   한다 — [data-hlf-print-section="chart-map"] 안으로 한정해 매물 상세 쪽(Location 지도 등, 다른
-	   예산으로 이미 맞춰져 있다)에는 영향이 없게 한다. */
+	   예산으로 이미 맞춰져 있다)에는 영향이 없게 한다.
+	   beta.26에서 한 차례 줄여(108px/98px/58px + 지도 60mm) 이 테스트 환경 기준 10개에서 21px
+	   여유로 "간신히" 맞췄는데, 실제 기기(실제 Pretendard 폰트)에서는 여전히 지도가 다음 페이지로
+	   밀린다는 요청이 다시 들어왔다 — 이 테스트 환경은 대체 폰트로 측정해 실제 폭/높이가 조금씩 다를
+	   수 있으므로, 이번에는 "간신히 맞추기"가 아니라 여유를 넉넉히 두는 쪽으로 한 번 더 줄인다
+	   (Playwright 재실측: 10개 기준 975px, 예산 대비 87px 여유 — beta.26 대비 4배 이상의 여유). */
 	body.hlf-print-mobile [data-hlf-print-section="chart-map"] .hlf-noc-chart {
-		min-height: 108px;
+		min-height: 88px;
 	}
 	body.hlf-print-mobile [data-hlf-print-section="chart-map"] .hlf-noc-chart-item {
-		height: 98px;
-		grid-template-rows: 14px 1fr 22px;
+		height: 78px;
+		grid-template-rows: 13px 1fr 20px;
 	}
-	body.hlf-print-mobile [data-hlf-print-section="chart-map"] .hlf-noc-chart-bar-wrap { height: 58px; }
+	body.hlf-print-mobile [data-hlf-print-section="chart-map"] .hlf-noc-chart-bar-wrap { height: 45px; }
 	body.hlf-print-mobile [data-hlf-print-section="chart-map"] .hlf-noc-chart-panel,
 	body.hlf-print-mobile [data-hlf-print-section="chart-map"] .hlf-comparison-map-panel {
 		margin: 10px 0;
@@ -195,8 +201,8 @@
 		margin-bottom: 5px;
 	}
 	/* 위치 확인 지도 자체의 높이(assets/js/public-flyer.js PRINT_MAP_SIZES.comparison, 인라인 mm
-	   크기가 최종 크기를 결정한다)도 78mm -> 60mm로 함께 줄였다 — 그 값과 위 CSS 압축을 합쳐야
-	   10개 리스트가 한 장에 들어간다(둘 중 하나만 줄이면 부족하다, 실측으로 확인). */
+	   크기가 최종 크기를 결정한다)도 60mm -> 48mm로 함께 줄였다 — 그 값과 위 CSS 압축을 합쳐야
+	   10개 리스트도 넉넉한 여유로 한 장에 들어간다. */
 
 	/* 요청서: "1장에 리스트+차트·지도 2페이지", "상세매물페이지도 1페이지에 2개씩". 실제 인쇄물
 	   (PDF 미리보기 스크린샷)로 확인한 세로 A4 콘텐츠 영역은 733x1062px, 섹션당 실측 높이는

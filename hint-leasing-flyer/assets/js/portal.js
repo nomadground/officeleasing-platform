@@ -34,6 +34,9 @@
 		{ key: 'maintenance_fee_manwon', label: '관리비 (만원)', type: 'number', step: 'any' },
 		{ key: 'parking_available', label: '주차 가능', type: 'checkbox' },
 		{ key: 'elevator_available', label: '엘리베이터 있음', type: 'checkbox' },
+		// 요청서: 주차 가능일 때 지금 쓸 수 있는 대수를 따로 받아 Property Details 카드에
+		// "가능주차대수/총주차대수"로 보여준다.
+		{ key: 'available_parking', label: '가능주차대수', type: 'number', step: '1', placeholder: '예: 3' },
 		{ key: 'total_parking', label: '총주차대수', type: 'text', placeholder: '예: 자주식 10대' },
 		{ key: 'direction', label: '방향', type: 'text' },
 		{ key: 'approval_date', label: '사용승인일', type: 'text', placeholder: '예: 2018.06.21' },

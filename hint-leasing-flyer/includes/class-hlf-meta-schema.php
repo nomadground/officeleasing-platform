@@ -77,6 +77,10 @@ final class HLF_Meta_Schema {
 			// 편의/부대
 			'parking_available'      => array( 'type' => 'bool' ),
 			'total_parking'          => array( 'type' => 'string' ), // building_parking 원문 파생
+			// 요청서: 주차 가능 체크 시 "가능주차대수"(현재 비어 있는/쓸 수 있는 대수)를 입력받아
+			// Property Details 카드에 total_parking과 함께 "가능주차대수/총주차대수"로 보여준다.
+			// total_parking은 "자주식 10대"처럼 설명이 섞인 자유표기라 순수 숫자 하나로 받는다.
+			'available_parking'      => array( 'type' => 'int' ),
 			'elevator_available'     => array( 'type' => 'bool' ),
 			'direction'              => array( 'type' => 'string' ),
 			'available_date_text'    => array( 'type' => 'string' ),

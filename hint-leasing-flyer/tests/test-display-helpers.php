@@ -65,6 +65,13 @@ hlf_dh_assert( 'order 1 color', hlf_item_accent_color( 1 ), '#a8582c' );
 hlf_dh_assert( 'palette wraps around (order 8 == order 0)', hlf_item_accent_color( 8 ), hlf_item_accent_color( 0 ) );
 hlf_dh_assert( 'palette wraps around (order 9 == order 1)', hlf_item_accent_color( 9 ), hlf_item_accent_color( 1 ) );
 
+// 주차 표시: 불가 -> 가능주차대수/총주차대수 -> 한쪽만 있을 때 -> 둘 다 없을 때(기존 "가능") -> 하위호환.
+hlf_dh_assert( 'parking unavailable', hlf_format_parking( false, 3, '자주식 10대' ), '불가' );
+hlf_dh_assert( 'parking available + count + total -> ratio', hlf_format_parking( true, 3, '자주식 10대' ), '3/자주식 10대' );
+hlf_dh_assert( 'parking available + count only', hlf_format_parking( true, 3, '' ), '3대' );
+hlf_dh_assert( 'parking available + total only (legacy data)', hlf_format_parking( true, 0, '자주식 10대' ), '자주식 10대' );
+hlf_dh_assert( 'parking available, nothing entered', hlf_format_parking( true, 0, '' ), '가능' );
+
 echo "\n";
 if ( $failures ) {
 	echo "{$failures} assertion(s) FAILED\n";

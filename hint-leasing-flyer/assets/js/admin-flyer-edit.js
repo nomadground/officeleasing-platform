@@ -25,7 +25,9 @@
 	// 목록에 없어도(옛 데이터, OCR이 "제1종 근린생활시설"처럼 세부 종별을 뽑아낸 경우) renderField가
 	// 그 값을 선택지에 추가로 끼워 넣어 절대 조용히 사라지지 않게 한다.
 	var HLF_DIRECTION_CHOICES = [ '동향', '서향', '남향', '북향', '남동향', '남서향', '북동향', '북서향' ];
-	var HLF_BUILDING_USE_CHOICES = [ '근린생활시설', '업무시설', '교육연구시설', '의료시설', '오피스텔' ];
+	// 요청서: 실사용 매물군에 맞춰 4개로 줄인다(제1종/제2종 근린생활시설은 하나로 합치고, 의료시설
+	// 대신 의원, 오피스텔은 제외 — assets/js/admin-ocr.js OCR_BUILDING_USE_LIST도 같은 값으로 맞춘다).
+	var HLF_BUILDING_USE_CHOICES = [ '근린생활시설', '업무시설', '교육연구시설', '의원' ];
 	// 입주가능일은 구체적인 날짜도 실제로 쓰이므로(요청서 3, "정규화 입주가능일 단일 값") 자유 입력을
 	// 그대로 두고, 자주 쓰는 문구만 datalist로 제안한다 — select로 바꾸면 실제 날짜를 입력할 수 없어진다.
 	var HLF_AVAILABLE_DATE_SUGGESTIONS = [ '즉시입주', '빠른협의', '협의 가능' ];
@@ -46,6 +48,10 @@
 		{ key: 'maintenance_fee_manwon', label: '관리비 (만원)', type: 'number', step: 'any' },
 		{ key: 'parking_available', label: '주차 가능', type: 'checkbox' },
 		{ key: 'elevator_available', label: '엘리베이터 있음', type: 'checkbox' },
+		// 요청서: 주차 가능일 때 지금 쓸 수 있는 대수를 따로 받아 Property Details 카드에
+		// "가능주차대수/총주차대수"로 보여준다(total_parking은 "자주식 10대"처럼 설명이 섞인 자유
+		// 표기라 순수 숫자만 별도 필드로 받는다).
+		{ key: 'available_parking', label: '가능주차대수', type: 'number', step: '1', placeholder: '예: 3' },
 		{ key: 'total_parking', label: '총주차대수', type: 'text', placeholder: '예: 자주식 10대' },
 		{ key: 'direction', label: '방향', type: 'select', choices: HLF_DIRECTION_CHOICES },
 		{ key: 'available_date_text', label: '입주가능일', type: 'text', placeholder: '예: 즉시입주 협의가능', list: 'hlf-available-date-choices' },

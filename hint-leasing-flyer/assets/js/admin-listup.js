@@ -16,7 +16,9 @@
 	// 요청서: 방향/건축물용도 드롭다운 — admin-flyer-edit.js의 ITEM_FIELDS와 완전히 같은 선택지를
 	// 쓴다(OCR 정규화 목록과도 일치, assets/js/admin-ocr.js OCR_BUILDING_USE_LIST 참고).
 	var HLF_DIRECTION_CHOICES = [ '동향', '서향', '남향', '북향', '남동향', '남서향', '북동향', '북서향' ];
-	var HLF_BUILDING_USE_CHOICES = [ '근린생활시설', '업무시설', '교육연구시설', '의료시설', '오피스텔' ];
+	// 요청서: 실사용 매물군에 맞춰 4개로 줄인다(제1종/제2종 근린생활시설은 하나로 합치고, 의료시설
+	// 대신 의원, 오피스텔은 제외 — assets/js/admin-ocr.js OCR_BUILDING_USE_LIST도 같은 값으로 맞춘다).
+	var HLF_BUILDING_USE_CHOICES = [ '근린생활시설', '업무시설', '교육연구시설', '의원' ];
 	var HLF_AVAILABLE_DATE_SUGGESTIONS = [ '즉시입주', '빠른협의', '협의 가능' ];
 
 	// 원본 매물 폼의 조건 필드(주소/좌표는 별도 주소 블록에서 처리, article_no는 폼에 노출하지 않음).
@@ -30,6 +32,9 @@
 		{ key: 'maintenance_fee_manwon', label: '관리비 (만원)', type: 'number', step: 'any' },
 		{ key: 'parking_available', label: '주차 가능', type: 'checkbox' },
 		{ key: 'elevator_available', label: '엘리베이터 있음', type: 'checkbox' },
+		// 요청서: 주차 가능일 때 지금 쓸 수 있는 대수를 따로 받아 Property Details 카드에
+		// "가능주차대수/총주차대수"로 보여준다.
+		{ key: 'available_parking', label: '가능주차대수', type: 'number', step: '1', placeholder: '예: 3' },
 		{ key: 'total_parking', label: '총주차대수', type: 'text', placeholder: '예: 자주식 10대' },
 		{ key: 'direction', label: '방향', type: 'select', choices: HLF_DIRECTION_CHOICES },
 		{ key: 'approval_date', label: '사용승인일', type: 'text', placeholder: '예: 2018.06.21' },

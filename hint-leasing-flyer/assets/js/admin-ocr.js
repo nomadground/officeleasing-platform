@@ -253,12 +253,24 @@
 	// 건축물 용도는 실무상 몇 가지 정해진 값만 쓰인다 — 닫힌 목록과 대조해 검증/정규화한다("제2증
 	// 근린생활시설"처럼 숫자 뒤 "종"이 "증"으로 오인식되는 경우가 실제로 있었다). 목록에 없는
 	// 값은 오인식으로 보고 버린다(방향 필드와 같은 원칙).
-	var OCR_BUILDING_USE_LIST = [ '제1종 근린생활시설', '제2종 근린생활시설', '근린생활시설', '업무시설', '교육연구시설', '의료시설', '오피스텔' ];
+	// 요청서: 관리 화면 드롭다운(assets/js/admin-flyer-edit.js, admin-listup.js
+	// HLF_BUILDING_USE_CHOICES)이 4개(근린생활시설/업무시설/교육연구시설/의원)로 줄어, OCR 정규화도
+	// 같은 4개 값으로만 맞춘다 — 원문의 "제1종/제2종 근린생활시설"은 세부 종별을 버리고 대표 값
+	// "근린생활시설"로 합친다(제1종/제2종을 UI에서 따로 구분할 실익이 없다는 판단). 의료시설/
+	// 오피스텔 문구는 더는 매칭하지 않는다(둘 다 목록에서 빠짐).
+	var OCR_BUILDING_USE_MAP = [
+		{ pattern: '제1종 근린생활시설', value: '근린생활시설' },
+		{ pattern: '제2종 근린생활시설', value: '근린생활시설' },
+		{ pattern: '근린생활시설', value: '근린생활시설' },
+		{ pattern: '업무시설', value: '업무시설' },
+		{ pattern: '교육연구시설', value: '교육연구시설' },
+		{ pattern: '의원', value: '의원' },
+	];
 	function ocrExtractBuildingUse( text ) {
 		var normalized = String( text || '' ).replace( /제(\d)\s*증/g, '제$1종' );
-		var sorted = OCR_BUILDING_USE_LIST.slice().sort( function ( a, b ) { return b.length - a.length; } );
-		var match = sorted.find( function ( candidate ) { return normalized.indexOf( candidate ) !== -1; } );
-		return match || '';
+		var sorted = OCR_BUILDING_USE_MAP.slice().sort( function ( a, b ) { return b.pattern.length - a.pattern.length; } );
+		var match = sorted.find( function ( candidate ) { return normalized.indexOf( candidate.pattern ) !== -1; } );
+		return match ? match.value : '';
 	}
 
 	// 입주가능일은 네이버부동산 원문에 "즉시입주 협의가능"처럼 여러 후보 문구가 한 줄에 같이 잡히는

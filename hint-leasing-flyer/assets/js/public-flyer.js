@@ -363,18 +363,22 @@
 	// 기준으로 삼으면 된다.
 	var PRINT_MAP_SIZES = {
 		// 목록 페이지 2페이지의 "위치 확인" 비교 지도(패널 하나가 페이지 폭을 다 쓴다).
-		// 요청서: 리스트가 8~10개면 이 지도까지 다음 페이지로 밀려났다 — 78mm -> 60mm로 낮추고
-		// print.css의 차트 막대 높이도 함께 줄여야 10개 리스트도 한 장에 들어간다(실측, print.css
-		// [data-hlf-print-section="chart-map"] 관련 주석 참고).
-		comparison: { width: '178mm', height: '60mm' },
+		// 요청서: 리스트가 8~10개면 이 지도까지 다음 페이지로 밀려났다 — 78mm -> 60mm로 한 차례
+		// 낮췄는데(beta.26), 실제 기기에서는 여전히 밀린다는 요청이 다시 들어와 60mm -> 48mm로 한
+		// 번 더 낮췄다(실측 환경의 대체 폰트와 실제 기기 폰트 차이를 감안해 이번엔 여유를 넉넉히
+		// 둔다). print.css의 차트 막대 높이도 함께 줄여야 10개 리스트도 한 장에 들어간다(실측,
+		// print.css [data-hlf-print-section="chart-map"] 관련 주석 참고).
+		comparison: { width: '178mm', height: '48mm' },
 		// 매물 상세의 개별 지도 — 모바일 인쇄에서는 사진 아래로 세로로 쌓이므로(2단 grid는 194mm
 		// 세로 용지 폭에 맞지 않아 접는다, print.css body.hlf-print-mobile .hlf-detail-hero) 비교
 		// 지도와 같은 전체 폭을 쓴다. 요청서: 처음엔 매물 상세 2건/페이지 예산에 맞춰 21mm로 빠듯하게
-		// 잡았는데, 실사용 확인 결과 사진·지도가 너무 좁아 2배(42mm)로 키워달라는 요청이 왔다 — 실제
-		// 폰트(Pretendard)가 이 환경의 대체 폰트보다 조밀해 처음 추정한 예산보다 여유가 있었던 것으로
-		// 보인다. 갤러리 높이도 같은 비율로 함께 키운다(print.css body.hlf-print-mobile
-		// .hlf-gallery-main).
-		detail: { width: '178mm', height: '42mm' },
+		// 잡았는데, 실사용 확인 결과 사진·지도가 너무 좁아 2배(42mm)로 키운 뒤(beta.26), 그래도 여전히
+		// 좁다는 요청이 다시 들어와 42mm -> 84mm로 한 번 더 2배 키웠다. Playwright 재실측: 이 크기에서
+		// 매물 상세 1건 높이는 ~950px로 세로 A4 페이지 예산(~1062px)에는 여전히 들어가지만, 2건
+		// 합계(~1900px)는 이미 42mm 때부터 한 페이지 예산을 넘어 1건/페이지로 자동 전환되고 있었다
+		// (beta.26 당시 확인 사항, 이번 크기도 같은 폴백 — 페이지 수만 늘고 내용이 잘리지는 않는다).
+		// 갤러리 높이도 같은 비율로 함께 키운다(print.css body.hlf-print-mobile .hlf-gallery-main).
+		detail: { width: '178mm', height: '84mm' },
 	};
 	var printSizedMaps = [];
 
@@ -734,7 +738,7 @@
 	// 흐름에서 최대 두 번 순서대로 걸린다(prepareAndPrint: initLazyPrintMaps에서 새로 만든 지도가
 	// 한 번, 그 뒤 relayoutMapsForPrint에서 이미 있던 지도까지 다시 한 번) — tilesloaded가 안 오면
 	// 8초씩 두 번, 최악의 경우 최대 16초까지 막혔다. 요청대로 절반으로 줄인다.
-	function waitForTilesLoaded( map ) {
+	function waitForTilesLoaded( map, timeoutMs ) {
 		return new Promise( function ( resolve ) {
 			var done = false;
 			function finish() {
@@ -743,18 +747,26 @@
 				resolve();
 			}
 			kakao.maps.event.addListener( map, 'tilesloaded', finish );
-			setTimeout( finish, 4000 );
+			setTimeout( finish, timeoutMs || 4000 );
 		} );
 	}
 
 	// 인쇄 시작 직전에 호출된다 — 이미 만들어둔 지도 전부를 인쇄 레이아웃 크기로 다시 맞추고, 그
 	// 크기에 맞는 타일이 실제로 다 그려질 때까지 기다리는 Promise를 모아서 돌려준다.
+	//
+	// 요청서(모바일 인쇄 대기시간): 데스크톱은 인쇄 시 지도 크기를 그대로 두므로(applyPrintMapSizing이
+	// isNarrowScreen()에서만 동작) 이 relayout이 기존 타일을 그대로 재사용해 거의 즉시 끝나지만,
+	// 모바일은 매번 지도를 인쇄용 mm 크기로 실제 리사이즈한 뒤 이 함수를 부르기 때문에(prepareAndPrint
+	// -> applyPrintMapSizing -> ... -> relayoutMapsForPrint) 새 타일을 다시 받아야 해 체감 대기시간이
+	// 훨씬 길었다. 이 시점의 지도는 전부 이미 한 번 로드가 끝난 지도(신규 생성은 initLazyPrintMaps/
+	// initMapContainer 쪽에서 자체적으로 기다림)라 여기서는 짧게만 기다려도 된다 — 새 타일을 못 받아도
+	// 이미 있던 타일이 배경에 남아 있어 "완전히 빈 지도"로는 보이지 않는다.
 	function relayoutMapsForPrint() {
 		if ( ! ( window.kakao && window.kakao.maps ) ) { return Promise.resolve(); }
 		var waits = initializedMaps.map( function ( entry ) {
 			entry.map.relayout();
 			fitMapToItems( entry.map, entry.items );
-			return waitForTilesLoaded( entry.map );
+			return waitForTilesLoaded( entry.map, 1500 );
 		} );
 		return Promise.all( waits );
 	}
