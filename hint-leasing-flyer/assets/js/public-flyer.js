@@ -363,13 +363,18 @@
 	// 기준으로 삼으면 된다.
 	var PRINT_MAP_SIZES = {
 		// 목록 페이지 2페이지의 "위치 확인" 비교 지도(패널 하나가 페이지 폭을 다 쓴다).
-		comparison: { width: '178mm', height: '78mm' },
+		// 요청서: 리스트가 8~10개면 이 지도까지 다음 페이지로 밀려났다 — 78mm -> 60mm로 낮추고
+		// print.css의 차트 막대 높이도 함께 줄여야 10개 리스트도 한 장에 들어간다(실측, print.css
+		// [data-hlf-print-section="chart-map"] 관련 주석 참고).
+		comparison: { width: '178mm', height: '60mm' },
 		// 매물 상세의 개별 지도 — 모바일 인쇄에서는 사진 아래로 세로로 쌓이므로(2단 grid는 194mm
 		// 세로 용지 폭에 맞지 않아 접는다, print.css body.hlf-print-mobile .hlf-detail-hero) 비교
-		// 지도와 같은 전체 폭을 쓴다. 높이는 매물 상세 2건을 세로 용지 한 장에 담기 위한 예산
-		// (Playwright 실측, 실제 템플릿과 동일한 헤더+히어로+Leasing Info+Property Details(10항목)
-		// +푸터 구성 2건 기준) 안에서 확보한 값이다.
-		detail: { width: '178mm', height: '21mm' },
+		// 지도와 같은 전체 폭을 쓴다. 요청서: 처음엔 매물 상세 2건/페이지 예산에 맞춰 21mm로 빠듯하게
+		// 잡았는데, 실사용 확인 결과 사진·지도가 너무 좁아 2배(42mm)로 키워달라는 요청이 왔다 — 실제
+		// 폰트(Pretendard)가 이 환경의 대체 폰트보다 조밀해 처음 추정한 예산보다 여유가 있었던 것으로
+		// 보인다. 갤러리 높이도 같은 비율로 함께 키운다(print.css body.hlf-print-mobile
+		// .hlf-gallery-main).
+		detail: { width: '178mm', height: '42mm' },
 	};
 	var printSizedMaps = [];
 
@@ -724,9 +729,11 @@
 	// 영영 안 올 수도 있으니 인쇄가 무한정 멈추지 않도록 안전 타임아웃을 둔다.
 	//
 	// 요청서(실사용 인쇄물): 2페이지 비교 지도가 마커만 찍히고 타일은 통째로 비어 있는 경우가 있었다 —
-	// 기존 2.5초는 모바일 회선에서 비교 지도(동네 전체를 담아 타일 수가 많다)를 받기에 짧다. 여기서
-	// 시간을 더 주는 대가는 "인쇄 대화상자가 뜨기까지 몇 초 더 걸린다"뿐이고, 짧게 잡았을 때의 대가는
-	// "빈 지도가 그대로 인쇄물이 된다"이므로 넉넉한 쪽으로 옮긴다.
+	// 기존 2.5초는 모바일 회선에서 비교 지도(동네 전체를 담아 타일 수가 많다)를 받기에 짧았다. 8초로
+	// 늘렸더니 이번엔 인쇄 버튼을 누른 뒤 대기 시간이 너무 길다는 요청서가 들어왔다 — 이 함수는 인쇄
+	// 흐름에서 최대 두 번 순서대로 걸린다(prepareAndPrint: initLazyPrintMaps에서 새로 만든 지도가
+	// 한 번, 그 뒤 relayoutMapsForPrint에서 이미 있던 지도까지 다시 한 번) — tilesloaded가 안 오면
+	// 8초씩 두 번, 최악의 경우 최대 16초까지 막혔다. 요청대로 절반으로 줄인다.
 	function waitForTilesLoaded( map ) {
 		return new Promise( function ( resolve ) {
 			var done = false;
@@ -736,7 +743,7 @@
 				resolve();
 			}
 			kakao.maps.event.addListener( map, 'tilesloaded', finish );
-			setTimeout( finish, 8000 );
+			setTimeout( finish, 4000 );
 		} );
 	}
 
