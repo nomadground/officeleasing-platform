@@ -486,6 +486,10 @@ final class HLF_Item_Repository {
 	public static function to_array( WP_Post $item, bool $include_image_previews = true ): array {
 		$data            = HLF_Meta_Schema::read_item( $item->ID );
 		$data['metrics'] = hlf_calculate_item_metrics( $data );
+		// 요청서: 관리자 화면(admin-flyer-edit.js)의 매물 목록에서 "보기" 버튼이 이 개별 상세 페이지로
+		// 바로 열리게 한다 — HLF_Flyer_Repository::to_array()의 'url' 필드와 같은 원칙(item_number는
+		// 서버가 관리하는 불변 식별자이므로 공개 URL도 여기서 서버가 계산해 넘긴다).
+		$data['url']     = HLF_Routes::item_url( (int) $item->post_parent, (string) $data['item_number'] );
 		if ( $include_image_previews ) {
 			$data['image_previews'] = self::image_previews( $data );
 			$data['image_blur']     = self::image_blur( $data );

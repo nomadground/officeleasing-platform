@@ -444,6 +444,10 @@
 					'<td>' + HLFAdmin.formatManwon( item.deposit_manwon ) + ' / ' + HLFAdmin.formatManwon( item.monthly_rent_manwon ) + ' / ' + HLFAdmin.formatManwon( item.maintenance_fee_manwon ) + '</td>' +
 					'<td>' + HLFAdmin.formatNumber1( m.noc ) + '만원/평</td>' +
 					'<td class="hlf-admin-actions">' +
+						// 요청서: 실제 공개 상세 페이지를 새 탭으로 바로 볼 수 있는 "보기" 버튼(수정 버튼
+						// 왼쪽). draft 안내문도 fail-closed 미리보기 정책(HLF_Routes::dispatch)상 이
+						// 화면을 볼 수 있는 사용자(edit_post 권한 보유)는 그대로 열람할 수 있다.
+						( item.url ? '<a class="button button-small" href="' + HLFAdmin.escapeAttr( item.url ) + '" target="_blank" rel="noopener">보기</a> ' : '' ) +
 						'<button type="button" class="button button-small" data-hlf-edit-item="' + HLFAdmin.escapeAttr( item.id ) + '">수정</button> ' +
 						'<button type="button" class="button button-small hlf-danger" data-hlf-delete-item="' + HLFAdmin.escapeAttr( item.id ) + '">삭제</button>' +
 					'</td>' +

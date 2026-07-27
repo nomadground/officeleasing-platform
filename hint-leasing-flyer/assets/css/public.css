@@ -666,13 +666,14 @@ body.hlf-public {
 	.hlf-listing-meta .hlf-listing-area-value { margin-top: 1px; font-size: 11px; line-height: 1.15; }
 	.hlf-listing-meta .hlf-listing-area-sub { margin-top: 0; font-size: 9px; line-height: 1.15; }
 	/* 이 너비에서는 보증금~NOC를 main grid에 합류(display:contents)시키지 않고 자체 4열 grid로
-	   되돌린다(간격만 위 줄과 동일하게 4px). 요청서: 보증금 칸이 위 줄의 1.3fr 비율(지번주소 칸)을
-	   그대로 물려받아 임대료/관리비/환산임대료보다 넓게 보였다 — 네 칸을 균등폭으로 바꿔달라는
-	   요청인데, 위 줄과 변수(--hlf-mobile-cols)를 공유하면 지번주소 칸 폭도 함께 좁아진다(요청서
-	   조건: 그 경우 현재 상태 유지). 이 줄만 별도의 균등 4열로 분리하면 --hlf-mobile-cols(지번주소
-	   폭)는 전혀 건드리지 않고 보증금~NOC만 균등폭으로 만들 수 있다 — 그 대신 두 줄의 세로 구분선은
-	   더 이상 같은 자리에 오지 않는다(요청 범위 밖의 트레이드오프로 판단). */
-	.hlf-listing-main .hlf-lease-metrics { grid-area: metrics; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); column-gap: 4px; }
+	   되돌린다 — 열 비율(--hlf-mobile-cols)과 간격(4px)을 위 줄과 똑같이 써서 두 줄의 칸 경계와
+	   세로 구분선이 정확히 같은 자리에 오게 한다(요청서 1).
+	   요청서(재조정): 한때 이 줄만 균등 4열(repeat(4,1fr))로 분리해 보증금 칸을 다른 칸과 같은
+	   폭으로 만든 적이 있는데, 그러면 위 줄(지번주소/층수/면적)과 열 경계가 어긋나 "평행하지 않다"는
+	   재요청이 들어왔다 — 지번주소 칸 폭(--hlf-mobile-cols)은 건드리지 않는다는 원래 조건을 그대로
+	   지키면서 평행도 함께 만족하려면 두 줄이 같은 열 비율을 쓰는 수밖에 없다(정렬 > 보증금 칸
+	   균등폭). 다시 변수를 공유하도록 되돌린다. */
+	.hlf-listing-main .hlf-lease-metrics { grid-area: metrics; display: grid; grid-template-columns: var(--hlf-mobile-cols); column-gap: 4px; }
 	/* 요청서 4: 보증금 칸은 이 줄의 첫 칸이라 왼쪽에 구분할 대상이 없다 — 세로선을 없앤다(기본
 	   .hlf-lease-metric에는 항상 border-left가 있는데, 데스크톱에서는 전용면적 다음 칸이라 필요하지만
 	   모바일에서는 독립된 줄의 첫 칸이라 불필요). */
