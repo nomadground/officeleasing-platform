@@ -53,6 +53,17 @@ foreach ( $items as $i => $item ) {
 }
 
 $kakao_js_key = defined( 'HLF_KAKAO_JS_KEY' ) ? HLF_KAKAO_JS_KEY : '';
+
+// 요청서: 카카오톡 등 SNS에 안내문 링크를 공유하면 미리보기 썸네일이 없어 링크만 덩그러니 갔다 —
+// Open Graph 태그가 아예 없었던 게 원인이다. og:image는 이 안내문의 담당자 이름으로 담당자
+// 디렉터리(설정 화면에서 등록하는 명함 이미지)를 찾아 있으면 쓴다(HLF_Contact_Directory
+// find_image_url_by_name — Flyer/Item의 문의처는 이름/전화만 저장하므로 이름으로 역매칭한다).
+// 명함을 등록하지 않은 담당자라면 이미지 태그 자체를 생략한다(크롤러가 다른 걸 추측해서 끌어오는
+// 것보다 아예 없는 편이 낫다).
+$og_title       = $flyer['title'] . ' · ' . $flyer['flyer_number'];
+$og_description = count( $items ) . '개 매물 안내 — ' . get_bloginfo( 'name' );
+$og_contact     = HLF_Flyer_Repository::public_contact( $flyer );
+$og_image_url   = HLF_Contact_Directory::find_image_url_by_name( $og_contact['name'] );
 ?>
 <!doctype html>
 <html <?php language_attributes(); ?>>
@@ -64,6 +75,13 @@ $kakao_js_key = defined( 'HLF_KAKAO_JS_KEY' ) ? HLF_KAKAO_JS_KEY : '';
 		<meta name="robots" content="noindex,nofollow">
 	<?php endif; ?>
 	<link rel="canonical" href="<?php echo esc_url( $flyer['url'] ); ?>">
+	<meta property="og:type" content="website">
+	<meta property="og:url" content="<?php echo esc_url( $flyer['url'] ); ?>">
+	<meta property="og:title" content="<?php echo esc_attr( $og_title ); ?>">
+	<meta property="og:description" content="<?php echo esc_attr( $og_description ); ?>">
+	<?php if ( $og_image_url ) : ?>
+		<meta property="og:image" content="<?php echo esc_url( $og_image_url ); ?>">
+	<?php endif; ?>
 	<?php if ( $kakao_js_key && ! empty( $map_items ) ) : ?>
 		<?php // 카카오 지도 SDK 도메인에 미리 연결(DNS/TLS handshake)해 지도 스크립트가 실제 필요할 때 더 빨리 붙게 한다. ?>
 		<link rel="preconnect" href="https://dapi.kakao.com">

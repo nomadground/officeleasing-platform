@@ -284,6 +284,21 @@ final class HLF_REST_Controller {
 			'permission_callback' => array( __CLASS__, 'can_manage_settings' ),
 		) );
 
+		// 명함 이미지(요청서: SNS 공유 썸네일) — Media Library(wp.media)에서 고른 attachment ID를
+		// 저장/해제할 뿐, 이미지 자체를 업로드/삭제하지 않는다(Item 사진과 같은 원칙).
+		register_rest_route( self::NS, '/contacts/(?P<index>\d+)/image', array(
+			array(
+				'methods'             => WP_REST_Server::EDITABLE,
+				'callback'            => array( __CLASS__, 'set_contact_image' ),
+				'permission_callback' => array( __CLASS__, 'can_manage_settings' ),
+			),
+			array(
+				'methods'             => WP_REST_Server::DELETABLE,
+				'callback'            => array( __CLASS__, 'remove_contact_image' ),
+				'permission_callback' => array( __CLASS__, 'can_manage_settings' ),
+			),
+		) );
+
 		/* ---------------- 대시보드 ---------------- */
 		register_rest_route( self::NS, '/dashboard', array(
 			'methods'             => WP_REST_Server::READABLE,
@@ -778,6 +793,23 @@ final class HLF_REST_Controller {
 
 	public static function set_default_contact( WP_REST_Request $request ) {
 		$result = HLF_Contact_Directory::set_default( (int) $request['index'] );
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+		return rest_ensure_response( HLF_Contact_Directory::to_array() );
+	}
+
+	public static function set_contact_image( WP_REST_Request $request ) {
+		$params = self::request_params( $request );
+		$result = HLF_Contact_Directory::set_image( (int) $request['index'], (int) ( $params['image_id'] ?? 0 ) );
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+		return rest_ensure_response( HLF_Contact_Directory::to_array() );
+	}
+
+	public static function remove_contact_image( WP_REST_Request $request ) {
+		$result = HLF_Contact_Directory::remove_image( (int) $request['index'] );
 		if ( is_wp_error( $result ) ) {
 			return $result;
 		}

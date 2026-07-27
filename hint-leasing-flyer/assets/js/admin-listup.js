@@ -1203,12 +1203,17 @@
 	function drawSettings( dir ) {
 		var body = document.getElementById( 'hlf-set-body' );
 		body.innerHTML =
-			'<section class="hlf-card"><p class="hlf-admin-note">여기 저장한 담당자는 새 매물/새 안내문 폼에서 빠르게 선택할 수 있고, “기본”으로 지정한 담당자는 새 안내문에 자동으로 채워집니다.</p>' +
-				'<div class="hlf-table-wrap"><table class="hlf-table"><thead><tr><th>이름</th><th>연락처</th><th>기본</th><th>작업</th></tr></thead><tbody>' +
+			'<section class="hlf-card"><p class="hlf-admin-note">여기 저장한 담당자는 새 매물/새 안내문 폼에서 빠르게 선택할 수 있고, “기본”으로 지정한 담당자는 새 안내문에 자동으로 채워집니다. 명함 이미지를 등록하면 카카오톡 등 SNS에 안내문 링크를 공유할 때 미리보기 썸네일로 쓰입니다(가로 600 x 세로 315px 비율 권장).</p>' +
+				'<div class="hlf-table-wrap"><table class="hlf-table"><thead><tr><th>이름</th><th>연락처</th><th>기본 / 명함</th><th>작업</th></tr></thead><tbody>' +
 				( dir.contacts.length ? dir.contacts.map( function ( c ) {
 					return '<tr>' +
 						'<td>' + esc( c.name || '-' ) + '</td><td>' + esc( c.phone || '-' ) + '</td>' +
-						'<td class="hlf-td-center">' + ( c.is_default ? '★' : '<button type="button" class="button button-small" data-hlf-c-default="' + c.index + '">기본 지정</button>' ) + '</td>' +
+						'<td class="hlf-td-center hlf-contact-badge-cell">' +
+							( c.is_default ? '★' : '<button type="button" class="button button-small" data-hlf-c-default="' + c.index + '">기본 지정</button>' ) +
+							( c.image_url ? '<img class="hlf-contact-thumb" src="' + escAttr( c.image_url ) + '" alt="">' : '' ) +
+							'<button type="button" class="button button-small" data-hlf-c-image="' + c.index + '">명함 ' + ( c.image_id ? '변경' : '삽입' ) + '</button>' +
+							( c.image_id ? '<button type="button" class="button button-small hlf-danger" data-hlf-c-image-del="' + c.index + '">명함 삭제</button>' : '' ) +
+						'</td>' +
 						'<td class="hlf-row-actions">' +
 							'<button type="button" class="button button-small" data-hlf-c-edit="' + c.index + '">수정</button>' +
 							'<button type="button" class="button button-small hlf-danger" data-hlf-c-del="' + c.index + '">삭제</button>' +
@@ -1249,6 +1254,39 @@
 				act( 'contacts/' + idx, 'PUT', { name: name, phone: phone } );
 			} );
 		} );
+		body.querySelectorAll( '[data-hlf-c-image-del]' ).forEach( function ( b ) {
+			b.addEventListener( 'click', function () {
+				if ( window.confirm( '이 담당자의 명함 이미지를 뗄까요? (파일 자체는 삭제되지 않습니다)' ) ) {
+					act( 'contacts/' + b.getAttribute( 'data-hlf-c-image-del' ) + '/image', 'DELETE' );
+				}
+			} );
+		} );
+		body.querySelectorAll( '[data-hlf-c-image]' ).forEach( function ( b ) {
+			b.addEventListener( 'click', function () { openContactImagePicker( Number( b.getAttribute( 'data-hlf-c-image' ) ), act ); } );
+		} );
+	}
+
+	// wp.media는 워드프레스 코어 스크립트라 이 화면(List Up, HLF_Admin_UI::enqueue_assets()의
+	// wp_enqueue_media())에 이미 로드돼 있다 — 매물 사진 선택(admin-flyer-edit.js openImagePicker)과
+	// 같은 패턴이되, 명함은 한 장만 필요하므로 multiple:false.
+	function openContactImagePicker( index, act ) {
+		if ( ! window.wp || ! wp.media ) {
+			window.alert( '미디어 라이브러리를 불러오지 못했습니다. 페이지를 새로고침한 뒤 다시 시도해 주세요.' );
+			return;
+		}
+		var frame = wp.media( {
+			title: '명함 이미지 선택 (가로 600 x 세로 315px 권장)',
+			button: { text: '선택 완료' },
+			multiple: false,
+			library: { type: 'image' },
+			uploader: { params: { hlf_upload: '1' } },
+		} );
+		frame.on( 'select', function () {
+			var attachment = frame.state().get( 'selection' ).first();
+			if ( ! attachment ) { return; }
+			act( 'contacts/' + index + '/image', 'PUT', { image_id: attachment.id } );
+		} );
+		frame.open();
 	}
 
 	render();

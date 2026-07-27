@@ -106,6 +106,14 @@ if ( $item['direction'] ) {
 }
 $basic['엘리베이터'] = array( 'value' => $item['elevator_available'] ? '있음' : '없음' );
 $basic['주차']       = array( 'value' => $item['parking_available'] ? ( $item['total_parking'] ?: '가능' ) : '불가' );
+
+// 요청서: 카카오톡 등 SNS 공유 썸네일(og:image) — 목록 페이지와 같은 방식으로, 이 매물에 실제
+// 적용되는 문의처(Item override 우선, HLF_Flyer_Repository::public_contact 참고) 이름으로 담당자
+// 디렉터리의 명함 이미지를 찾는다.
+$og_title       = $address . ' · ' . $flyer['flyer_number'] . ' ' . $item['item_number'];
+$og_description = number_format( (float) $item['deposit_manwon'] ) . '만원 / ' . number_format( (float) $item['monthly_rent_manwon'] ) . '만원 · 전용 ' . number_format( $metrics['exclusive_pyeong'], 1 ) . '평';
+$og_contact     = HLF_Flyer_Repository::public_contact( $flyer, $item );
+$og_image_url   = HLF_Contact_Directory::find_image_url_by_name( $og_contact['name'] );
 ?>
 <!doctype html>
 <html <?php language_attributes(); ?>>
@@ -117,6 +125,13 @@ $basic['주차']       = array( 'value' => $item['parking_available'] ? ( $item[
 		<meta name="robots" content="noindex,nofollow">
 	<?php endif; ?>
 	<link rel="canonical" href="<?php echo esc_url( HLF_Routes::item_url( $flyer['id'], $item['item_number'] ) ); ?>">
+	<meta property="og:type" content="website">
+	<meta property="og:url" content="<?php echo esc_url( HLF_Routes::item_url( $flyer['id'], $item['item_number'] ) ); ?>">
+	<meta property="og:title" content="<?php echo esc_attr( $og_title ); ?>">
+	<meta property="og:description" content="<?php echo esc_attr( $og_description ); ?>">
+	<?php if ( $og_image_url ) : ?>
+		<meta property="og:image" content="<?php echo esc_url( $og_image_url ); ?>">
+	<?php endif; ?>
 	<?php if ( $kakao_js_key && ! empty( $map_items ) ) : ?>
 		<?php // 카카오 지도 SDK 도메인에 미리 연결(DNS/TLS handshake)해 지도 스크립트가 실제 필요할 때 더 빨리 붙게 한다. ?>
 		<link rel="preconnect" href="https://dapi.kakao.com">
