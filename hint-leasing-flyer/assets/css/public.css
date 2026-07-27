@@ -383,8 +383,13 @@ body.hlf-public {
 .hlf-panel-heading { margin: 0 0 10px; color: var(--hlf-primary); font-size: 16px; letter-spacing: -.02em; }
 /* "Leasing Info" 옆에 매물특징(자유 텍스트)을 작은 글씨로 중앙 배치한다. */
 .hlf-panel-heading-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
-.hlf-panel-heading-row .hlf-panel-heading { margin-bottom: 0; }
-.hlf-panel-note { margin: 0; color: var(--hlf-muted); font-size: 12px; text-align: center; }
+/* 요청서: 매물특징(옆의 .hlf-panel-note) 텍스트가 길어지면 flex-shrink 기본값(1) 때문에 "Leasing
+   Info" 제목까지 같이 눌려서 "Leasing"/"Info"가 두 줄로 쪼개졌다 — 제목은 줄어들지도 줄바꿈되지도
+   않게 고정하고(flex-shrink:0 + white-space:nowrap), 남는 폭은 전부 옆의 노트가 가져가 거기서만
+   줄바꿈되게 한다(min-width:0 없이는 flex 아이템이 내용 길이만큼 폭을 계속 요구해 오히려 줄바꿈
+   대신 컨테이너 밖으로 넘친다). */
+.hlf-panel-heading-row .hlf-panel-heading { margin-bottom: 0; flex-shrink: 0; white-space: nowrap; }
+.hlf-panel-note { margin: 0; min-width: 0; color: var(--hlf-muted); font-size: 12px; text-align: center; }
 .hlf-detail-metrics { margin: 0; }
 /* 요청서: 보증금/임대료/관리비/환산임대료 각각을 네모 박스로 감싸던 것을, 리스트페이지 한 줄
    표기와 같은 세로 구분선 방식으로 통일한다 — .hlf-lease-metric 기본 스타일(border-left)을

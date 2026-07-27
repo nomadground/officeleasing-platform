@@ -358,18 +358,57 @@
 	// 해결: 인쇄 직전에 지도 컨테이너 크기를 mm 단위로 못박는다. mm는 화면과 인쇄에서 같은 물리
 	// 길이이므로, 이 크기로 relayout해 타일까지 다 받아두면 실제 인쇄물에서도 정확히 같은 크기다
 	// (인라인 스타일이라 인쇄에서도 그대로 적용되고, print.css의 min-height보다 우선한다).
-	// 값은 A4 가로(사용 폭 281mm)뿐 아니라 A4 세로(사용 폭 194mm)에서도 넘치지 않는 크기로 잡았다 —
-	// 모바일은 인쇄 서비스가 방향을 세로로 되돌릴 수 있어(요청서 3 주석) 둘 다에서 안전해야 한다.
+	// 요청서: 모바일 인쇄는 이제 우리도 세로(A4 portrait)를 명시한다(아래 applyMobilePagePortrait) —
+	// 브라우저의 실제 페이지 계산 자체를 그 현실과 맞추므로, 세로 용지의 사용 폭(194mm) 하나만
+	// 기준으로 삼으면 된다.
 	var PRINT_MAP_SIZES = {
 		// 목록 페이지 2페이지의 "위치 확인" 비교 지도(패널 하나가 페이지 폭을 다 쓴다).
 		comparison: { width: '178mm', height: '78mm' },
-		// 매물 상세의 개별 지도(대표사진과 2단으로 나눠 쓰는 칸).
-		detail: { width: '85mm', height: '62mm' },
+		// 매물 상세의 개별 지도 — 모바일 인쇄에서는 사진 아래로 세로로 쌓이므로(2단 grid는 194mm
+		// 세로 용지 폭에 맞지 않아 접는다, print.css body.hlf-print-mobile .hlf-detail-hero) 비교
+		// 지도와 같은 전체 폭을 쓴다. 높이는 매물 상세 2건을 세로 용지 한 장에 담기 위한 예산
+		// (Playwright 실측, 실제 템플릿과 동일한 헤더+히어로+Leasing Info+Property Details(10항목)
+		// +푸터 구성 2건 기준) 안에서 확보한 값이다.
+		detail: { width: '178mm', height: '21mm' },
 	};
 	var printSizedMaps = [];
 
 	function isNarrowScreen() {
 		return !! ( window.matchMedia && window.matchMedia( '(max-width: 700px)' ).matches );
+	}
+
+	// 요청서: 모바일 인쇄가 항상 세로로 나오는 건 CSS/JS로 더 강제할 수 없는 브라우저/OS 인쇄
+	// 파이프라인의 한계다(실사용 인쇄물로 확인, README 참고) — 계속 가로(size:A4 landscape,
+	// assets/css/public.css)를 요청해봐야 실제로는 무시당하고 세로로 찍히면서, 우리 레이아웃은
+	// 여전히 "가로 281mm 폭 / 194mm 높이"를 기준으로 계산돼 있어 실제 세로 출력(194mm 폭 / 281mm
+	// 높이)과 어긋난다 — 지도가 가운데만 보이던 증상, 여백이 남는데도 페이지가 일찍 넘어가던 증상
+	// 모두 이 불일치가 원인으로 보인다.
+	//
+	// 이제 반대로 접근한다: 모바일에서는 아예 우리도 세로(A4 portrait)를 명시해, 브라우저가 실제로
+	// 하게 될 일과 우리가 계산하는 페이지 크기를 일치시킨다. 인쇄 버튼을 누른 순간(=아직 screen
+	// 상태, isNarrowScreen()이 실제 기기 폭을 정확히 읽을 수 있는 시점)에만 <style> 태그로 @page를
+	// 세로로 덮어쓴다 — 이미 로드된 public.css의 @page(가로)보다 이 태그가 DOM에서 나중에 오므로
+	// (document.head에 append) 캐스케이드 순서상 이 태그가 이긴다. 데스크톱(이 함수가 아예 호출되지
+	// 않음)은 지금까지와 완전히 동일하게 가로 그대로 유지된다.
+	//
+	// v0.4.0-beta.23에서 이 설계를 처음 넣었다가 되돌린 적이 있다 — 그때 문제는 이 설계 자체가
+	// 아니라, 모바일에서 afterprint가 실제 인쇄 스냅샷보다 먼저 발생해 여기서 붙인 <style>이 스냅샷
+	// 전에 벗겨지던 별도의 경쟁 조건이었다(clearMobilePagePortrait가 restoreAfterPrint를 통해 너무
+	// 일찍 불렸다). 그 경쟁 조건을 scheduleDeferredRestore로 고친 뒤 다시 넣는다.
+	var mobilePageStyleEl = null;
+
+	function applyMobilePagePortrait() {
+		if ( ! isNarrowScreen() || mobilePageStyleEl ) { return; }
+		mobilePageStyleEl = document.createElement( 'style' );
+		mobilePageStyleEl.setAttribute( 'data-hlf-mobile-print-page', '1' );
+		mobilePageStyleEl.textContent = '@page { size: A4 portrait; margin: 8mm; }';
+		document.head.appendChild( mobilePageStyleEl );
+	}
+
+	function clearMobilePagePortrait() {
+		if ( ! mobilePageStyleEl ) { return; }
+		mobilePageStyleEl.remove();
+		mobilePageStyleEl = null;
 	}
 
 	function applyPrintMapSizing() {
@@ -428,6 +467,12 @@
 		// 지도도 그쪽으로 치우쳐 찍힘). 인쇄 직전엔 처음 진입했을 때와 동일하게 전부 해제한다 —
 		// 지도는 바로 아래 relayoutMapsForPrint()가 다시 전체 매물이 보이도록 맞춘다.
 		ListingSync.clearActive();
+		// 요청서: 모바일 인쇄 전용 레이아웃(한 장에 2섹션)의 CSS 훅. applyPrintMapSizing()이 붙이는
+		// hlf-print-map-sizing과 달리 지도가 하나도 없는 안내문에서도 항상 붙어야 하므로 따로 둔다.
+		if ( isNarrowScreen() ) { document.body.classList.add( 'hlf-print-mobile' ); }
+		// @page를 세로로 먼저 덮어써야 그 아래 지도 mm 크기 계산(178mm 폭 기준)도 실제로 적용될
+		// 페이지 크기와 맞아떨어진다.
+		applyMobilePagePortrait();
 		// 지도 크기를 먼저 못박아야, 바로 아래에서 "그때 가서" 만들어지는 매물별 인쇄 지도도 처음부터
 		// 인쇄 크기로 만들어진다(요청서 4).
 		applyPrintMapSizing();
@@ -485,10 +530,53 @@
 				// .hlf-shell 바로 아래)가 그 바로 뒤에 이어 붙어 마지막 페이지에 푸터가 두 번
 				// 찍힌다(실사용 버그). 전역 푸터는 매물 상세가 하나도 없을 때(목록/비교 차트만 인쇄)만
 				// 필요하므로 그 경우에만 보이게 한다.
-				var includesItemDetail = included.some( function ( section ) {
+				var itemSections = included.filter( function ( section ) {
 					return 0 === section.getAttribute( 'data-hlf-print-section' ).indexOf( 'item-' );
 				} );
-				document.body.classList.toggle( 'hlf-print-hide-global-footer', includesItemDetail );
+				document.body.classList.toggle( 'hlf-print-hide-global-footer', itemSections.length > 0 );
+
+				// 요청서: "1장에 (1페이지 리스트 + 2페이지 차트·지도) 2페이지씩", "상세매물페이지도
+				// 1페이지에 2개씩". 실제 인쇄물로 확인된 세로 A4 콘텐츠 영역은 733x1062px이고, 각
+				// 섹션 실측 높이는 리스트 ~330px / 차트·지도 ~470px / 매물 상세 ~470px이라 두 섹션이
+				// 한 장에 넉넉히 들어간다(합쳐도 1062px 미만).
+				//
+				// 구현: print.css가 모바일에서 섹션별 기본 break-after:page를 꺼두고, 여기서 "짝의
+				// 두 번째"에 해당하는 섹션에만 .hlf-print-pair-break를 붙여 그때만 페이지를 넘긴다.
+				// 매번 다시 계산해야 하므로 이전 클래스부터 지운다 — 안 그러면 사용자가 패널에서 항목을
+				// 다시 체크/해제했을 때 예전 짝짓기가 그대로 남는다.
+				document.querySelectorAll( '.hlf-print-pair-break' ).forEach( function ( el ) {
+					el.classList.remove( 'hlf-print-pair-break' );
+				} );
+				if ( isNarrowScreen() ) {
+					// 실사용 버그(Playwright로 재현·확정): .hlf-print-section-last(마지막 섹션 뒤에
+					// 빈 페이지가 안 붙게 break-after:auto !important)와 .hlf-print-pair-break(짝의
+					// 두 번째에서 break-after:page !important)가 같은 섹션에 동시에 붙으면, CSS
+					// 명시도상 pair-break 쪽 셀렉터(body.hlf-print-mobile .hlf-print-pair-break)가
+					// section-last(.hlf-print-section-last)보다 더 구체적이라 !important끼리도
+					// pair-break가 이겨버린다 — 문서 마지막 섹션이 하필 짝의 두 번째일 때마다(선택한
+					// 항목 수가 짝수일 때 항상 이 경우다) 그 뒤에 빈 페이지가 한 장 더 붙었다. CSS
+					// 명시도 경쟁으로 풀지 않고,애초에 문서상 마지막 섹션에는 pair-break를 절대 붙이지
+					// 않는다 — 마지막 섹션은 어차피 그 뒤에 아무것도 없어 페이지를 넘길 필요 자체가
+					// 없다(break-after 값이 auto든 page든 결과가 같아야 정상이지만, 실측상 page를
+					// 주면 빈 페이지가 붙는 엔진이 있어 auto만 남긴다).
+					var lastSection = included.length ? included[ included.length - 1 ] : null;
+					function addPairBreak( section ) {
+						if ( section !== lastSection ) { section.classList.add( 'hlf-print-pair-break' ); }
+					}
+					// 리스트/차트·지도는 문서상 항상 앞에 오는 고정 2개다 — 둘 다 인쇄에 포함되면
+					// 그 둘이 한 장을 이루므로, 뒤쪽(차트·지도)에서 페이지를 넘긴다. 둘 중 하나만
+					// 포함됐다면 그 하나가 첫 장을 이루고 거기서 넘긴다.
+					var leadSections = included.filter( function ( section ) {
+						return -1 === itemSections.indexOf( section );
+					} );
+					if ( leadSections.length ) {
+						addPairBreak( leadSections[ leadSections.length - 1 ] );
+					}
+					// 매물 상세는 2건씩 짝지어 홀수 번째(0-based 인덱스 1, 3, 5...)에서 넘긴다.
+					itemSections.forEach( function ( section, i ) {
+						if ( 1 === i % 2 ) { addPairBreak( section ); }
+					} );
+				}
 				panel.hidden = true;
 				prepareAndPrint();
 			} );
@@ -634,6 +722,11 @@
 	// 전부 도착해 실제로 그려졌다는 신호(tilesloaded)가 (다시) 한 번 더 뜰 때까지 기다린 뒤에야
 	// window.print()를 불러야 인쇄 스냅샷에 빈 지도가 찍히지 않는다. 네트워크 문제 등으로 이 이벤트가
 	// 영영 안 올 수도 있으니 인쇄가 무한정 멈추지 않도록 안전 타임아웃을 둔다.
+	//
+	// 요청서(실사용 인쇄물): 2페이지 비교 지도가 마커만 찍히고 타일은 통째로 비어 있는 경우가 있었다 —
+	// 기존 2.5초는 모바일 회선에서 비교 지도(동네 전체를 담아 타일 수가 많다)를 받기에 짧다. 여기서
+	// 시간을 더 주는 대가는 "인쇄 대화상자가 뜨기까지 몇 초 더 걸린다"뿐이고, 짧게 잡았을 때의 대가는
+	// "빈 지도가 그대로 인쇄물이 된다"이므로 넉넉한 쪽으로 옮긴다.
 	function waitForTilesLoaded( map ) {
 		return new Promise( function ( resolve ) {
 			var done = false;
@@ -643,7 +736,7 @@
 				resolve();
 			}
 			kakao.maps.event.addListener( map, 'tilesloaded', finish );
-			setTimeout( finish, 2500 );
+			setTimeout( finish, 8000 );
 		} );
 	}
 
@@ -822,9 +915,38 @@
 	// 잠깐 보이게 해뒀던 .hlf-print-item-detail을 다시 화면 전용(display:none)으로 되돌리고,
 	// applyPrintMapSizing()이 못박아둔 지도 크기도 화면용으로 풀어준 뒤 다시 relayout한다.
 	function restoreAfterPrint() {
+		if ( deferredRestoreTimer ) {
+			clearTimeout( deferredRestoreTimer );
+			deferredRestoreTimer = null;
+		}
+		document.body.classList.remove( 'hlf-print-mobile' );
+		clearMobilePagePortrait();
 		clearPrintMapSizing();
 		unprimePrintDetails();
 		relayoutMapsForPrint();
+	}
+
+	// 요청서(실사용 인쇄물로 원인 확정): 안드로이드에서는 window.print()가 즉시 반환하고 실제 인쇄
+	// 스냅샷은 그 뒤 별도 화면에서 비동기로 찍히는데, 크로미움은 afterprint를 그 스냅샷보다 **먼저**
+	// 발생시키는 경우가 있다. 그 시점에 곧바로 원상복구를 돌리면, 우리가 인쇄용으로 맞춰둔 상태
+	// (지도 컨테이너의 mm 인라인 크기, body의 인쇄 레이아웃 클래스)가 스냅샷이 찍히기 전에 통째로
+	// 벗겨진다 — 실제 인쇄물에서 지도 컨테이너가 못박아둔 폭(85mm/178mm)이 아니라 페이지 전체 폭으로
+	// 나오고, 그 안의 카카오 캔버스는 예전 크기 그대로라 가운데만 조그맣게 남는("가운데 정사각형")
+	// 증상이 여기서 나왔다. 페이지 나눔 규칙도 같은 이유로 사라져 "2페이지씩 안 나오기도" 했다
+	// (간헐적으로 보이던 것도 이 경쟁 조건 때문).
+	//
+	// 그래서 모바일에서는 afterprint에서 곧바로 정리하지 않고 뒤로 미룬다. 실제로 안전한 복구 시점은
+	// "인쇄 화면에서 페이지로 돌아왔을 때"(visibilitychange -> visible)이고, 그 이벤트가 아예 오지
+	// 않는 기기를 위해 넉넉한 타임아웃을 안전망으로 둔다. 데스크톱은 afterprint가 인쇄가 끝난 뒤에
+	// 정확히 오고 visibilitychange는 오지 않으므로 지금까지처럼 즉시 복구한다.
+	var deferredRestoreTimer = null;
+
+	function scheduleDeferredRestore() {
+		if ( deferredRestoreTimer ) { return; }
+		deferredRestoreTimer = setTimeout( function () {
+			deferredRestoreTimer = null;
+			restoreAfterPrint();
+		}, 20000 );
 	}
 
 	// 인쇄 버튼(bindPrintButton/prepareAndPrint)이 아니라 브라우저 자체 단축키(Ctrl+P 등)로 인쇄에
@@ -832,15 +954,23 @@
 	// 보장하진 못하지만, beforeprint에서라도 relayout을 걸어두면 완전히 빈 지도보다는 낫다.
 	function bindPrintMapRelayout() {
 		window.addEventListener( 'beforeprint', function () { ListingSync.clearActive(); relayoutMapsForPrint(); } );
-		window.addEventListener( 'afterprint', restoreAfterPrint );
-		// 안전망: 안드로이드는 인쇄 대화상자가 별도 화면으로 뜨기 때문에, 브라우저에 따라 afterprint가
-		// 오지 않을 수 있다. 그대로 두면 크기를 못박고 화면 밖으로 빼둔 지도가 영영 안 돌아온다 —
-		// 인쇄 화면에서 페이지로 돌아온 시점(visibilitychange → visible)에도 한 번 더 복구한다.
-		// 복구할 게 남아 있을 때만 움직인다 — 그냥 탭을 바꿨다 돌아온 것뿐인데 relayout+fitMapToItems가
-		// 돌면 사용자가 드래그/줌으로 옮겨둔 지도 위치가 멋대로 초기화된다.
+		window.addEventListener( 'afterprint', function () {
+			// 모바일은 afterprint가 인쇄 스냅샷보다 먼저 올 수 있다(위 scheduleDeferredRestore 주석) —
+			// 여기서 바로 정리하면 인쇄물이 깨진다. 화면으로 돌아온 시점이나 타임아웃까지 미룬다.
+			if ( isNarrowScreen() ) { scheduleDeferredRestore(); return; }
+			restoreAfterPrint();
+		} );
+		// 모바일의 실제 복구 시점 — 인쇄 화면에서 페이지로 돌아왔을 때. 이때는 스냅샷이 이미 다
+		// 찍힌 뒤라 안전하다. 복구할 게 남아 있을 때만 움직인다 — 그냥 탭을 바꿨다 돌아온 것뿐인데
+		// relayout+fitMapToItems가 돌면 사용자가 드래그/줌으로 옮겨둔 지도 위치가 멋대로 초기화된다.
 		document.addEventListener( 'visibilitychange', function () {
 			if ( document.hidden ) { return; }
-			if ( ! printSizedMaps.length && ! primedPrintDetails.length ) { return; }
+			// 지도가 하나도 없는 안내문(좌표 미등록 매물만 있는 경우)은 printSizedMaps/primedPrintDetails가
+			// 계속 비어 있다 — mobilePageStyleEl(세로 @page)이나 hlf-print-mobile 클래스만 남아 있어도
+			// 복구 대상이므로 함께 확인한다.
+			var hasPending = printSizedMaps.length || primedPrintDetails.length || mobilePageStyleEl ||
+				document.body.classList.contains( 'hlf-print-mobile' );
+			if ( ! hasPending ) { return; }
 			restoreAfterPrint();
 		} );
 		if ( window.matchMedia ) {
