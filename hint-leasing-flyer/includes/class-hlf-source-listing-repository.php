@@ -600,7 +600,32 @@ final class HLF_Source_Listing_Repository {
 		if ( $stored_exterior !== $exterior_image_id || $stored_interior !== $interior_image_ids ) {
 			return new WP_Error( 'hlf_image_save_failed', '이미지 정보를 저장하지 못했습니다. 다시 시도해 주세요.', array( 'status' => 500 ) );
 		}
+		self::sync_included_item_images( $source_id, $exterior_image_id, $interior_image_ids );
 		return true;
+	}
+
+	/**
+	 * 요청서(실사용 버그): 원본 매물 사진을 추가/교체/삭제해도 이미 포함된 임대안내문에는 반영되지
+	 * 않아, 빼서 다시 넣어야만(그러면 순서도 맨 뒤로 밀림) 보였다 — sync_included_items()가 텍스트
+	 * 필드에 이미 적용하는 것과 같은 "즉시 반영" 원칙을 사진에도 그대로 적용한다. 예전에는 사진을
+	 * 일부러 이 동기화에서 제외했었다("임대안내문마다 독립적으로 사진 관리", v0.4.0-beta.14) — 그런데
+	 * 실사용에서는 그 독립성보다 "원본에 사진을 추가하면 이미 포함된 안내문에도 바로 보여야 한다"는
+	 * 쪽이 실제 업무 흐름이라는 재요청이 들어와 텍스트 필드와 같은 정책으로 통일한다.
+	 * HLF_Item_Repository::set_images()가 내부적으로 이미 하는 보관(archived) Flyer 가드가 그 경우만
+	 * 조용히 건너뛴다 — 원본 저장 자체를 실패시킬 이유는 아니므로 개별 Item 실패는 무시한다.
+	 */
+	private static function sync_included_item_images( int $source_id, int $exterior_image_id, array $interior_image_ids ): void {
+		$items = get_posts( array(
+			'post_type'      => HLF_Post_Types::ITEM,
+			'post_status'    => array( 'publish', 'inherit', 'draft' ),
+			'posts_per_page' => -1,
+			'no_found_rows'  => true,
+			'meta_key'       => 'source_listing_id',
+			'meta_value'     => $source_id,
+		) );
+		foreach ( $items as $item ) {
+			HLF_Item_Repository::set_images( (int) $item->post_parent, $item->ID, $exterior_image_id, $interior_image_ids );
+		}
 	}
 
 	/** HLF_Item_Repository::ensure_image_sizes와 동일 — 원본 매물도 같은 두 사이즈를 공유해 쓴다. */

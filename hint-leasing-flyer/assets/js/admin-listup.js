@@ -880,9 +880,11 @@
 		box.innerHTML =
 			'<h4>매물 사진</h4>' +
 			'<p class="hlf-admin-note">첫 번째 사진이 대표 이미지입니다. 미디어 라이브러리에서 선택하거나 새로 업로드할 수 있습니다.</p>' +
-			// 주소/금액 등은 안내문에 포함되는 순간 완전한 스냅샷이 되지만, 사진은 미디어 라이브러리
-			// 원본을 그대로 참조한다 — 원본을 지우거나 바꾸면 이미 포함된 안내문의 사진도 함께 바뀐다.
-			'<p class="hlf-admin-note hlf-image-snapshot-warning">주의: 사진은 미디어 라이브러리 원본을 그대로 참조합니다. 이 원본을 다른 곳에서 삭제·교체하면, 이미 임대안내문에 포함된 매물의 사진도 함께 바뀌거나 사라질 수 있습니다.</p>' +
+			// 요청서(실사용 버그): 사진은 그동안 텍스트 필드(주소/금액 등)와 달리 안내문에 이미
+			// 포함된 매물에는 자동 반영되지 않아, 빼서 다시 넣어야만 보였다 — 이제 텍스트 필드와
+			// 같은 원칙으로 통일해 여기서 사진을 추가/교체/삭제하면 이미 포함된 모든 안내문에도
+			// 그 즉시 반영된다(HLF_Source_Listing_Repository::sync_included_item_images).
+			'<p class="hlf-admin-note hlf-image-snapshot-warning">주의: 여기서 사진을 추가·교체·삭제하면 이미 임대안내문에 포함된 이 매물의 사진도 즉시 함께 바뀝니다(보관된 안내문은 제외).</p>' +
 			'<button type="button" class="button" id="hlf-src-img-pick">사진 선택/추가</button>' +
 			'<div class="hlf-img-strip">' +
 				( ordered.length ? ordered.map( function ( id, i ) {

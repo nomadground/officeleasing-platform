@@ -906,7 +906,7 @@
 		box.innerHTML =
 			'<h4>매물 사진</h4>' +
 			'<p class="hlf-admin-note">첫 번째 사진이 대표 이미지입니다. 미디어 라이브러리에서 선택하거나 새로 업로드할 수 있습니다.</p>' +
-			'<p class="hlf-admin-note hlf-image-snapshot-warning">주의: 사진은 미디어 라이브러리 원본을 그대로 참조합니다. 이 원본을 다른 곳에서 삭제·교체하면, 이미 임대안내문에 포함된 매물의 사진도 함께 바뀌거나 사라질 수 있습니다.</p>' +
+			'<p class="hlf-admin-note hlf-image-snapshot-warning">주의: 여기서 사진을 추가·교체·삭제하면 이미 임대안내문에 포함된 이 매물의 사진도 즉시 함께 바뀝니다(보관된 안내문은 제외).</p>' +
 			'<button type="button" class="button" id="hlf-src-img-pick">사진 선택/추가</button>' +
 			'<div class="hlf-img-strip">' +
 				( ordered.length ? ordered.map( function ( id, i ) {
