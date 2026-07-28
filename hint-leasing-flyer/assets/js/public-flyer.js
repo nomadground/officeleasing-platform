@@ -794,19 +794,25 @@
 	// isNarrowScreen()에서만 동작) 이 relayout이 기존 타일을 그대로 재사용해 거의 즉시 끝난다 — 이
 	// 경우는 짧게(1500ms)만 기다려도 된다.
 	//
-	// 요청서(실사용 인쇄물 — 지도 오른쪽/일부가 회색으로 잘려 나옴): 모바일은 매번 지도를 인쇄용 mm
-	// 크기로 실제 리사이즈한 뒤 이 함수를 부르므로(prepareAndPrint -> applyPrintMapSizing -> ... ->
-	// relayoutMapsForPrint) 데스크톱과 달리 새 타일을 진짜로 다시 받아야 한다 — "이미 로드된
-	// 지도라 짧게 기다려도 된다"고 판단해 1500ms로 통일했었는데, 모바일에서는 이 재요청 타일이
-	// 1.5초 안에 다 못 받아 인쇄 스냅샷에 일부 타일이 회색으로 그대로 찍혔다. 모바일만 최초 생성 때와
-	// 같은 4000ms로 늘린다(데스크톱은 실제로 다시 받을 게 없어 그대로 짧게 둔다).
+	// 요청서(실사용 인쇄물 — 지도 오른쪽/일부가 흰색으로 잘려 나옴, 4초로 늘린 뒤에도 재현): 타일
+	// 로딩 대기시간 문제가 아니었다 — 흰 여백이 매번 같은 자리(오른쪽)에 딱 잘린 사각형으로 나오는
+	// 건 "타일 일부가 안 왔다"보다 "캔버스 자체가 새 컨테이너 크기를 못 따라잡았다"는 신호다. 카카오
+	// 지도(다른 지도 SDK도 흔히 겪는 문제)는 relayout()을 컨테이너가 리사이즈된 바로 그 틱에 부르면
+	// 브라우저가 아직 그 새 크기로 완전히 반영(paint)하기 전이라 캔버스가 이전 크기 기준으로 굳어버릴
+	// 수 있다 — relayout() 한 번을 부른 뒤 한 틱 쉬었다가 다시 relayout()+fitMapToItems()를 걸어
+	// 최종 크기를 확실히 따라잡게 한다. 이러면 타일도 이미 대부분 캐시돼 있어 대기시간을 다시 줄일 수
+	// 있다 — 4000ms는 실제로는 불필요하게 길었다는 요청대로 2500ms로 낮춘다(데스크톱은 애초에 지도
+	// 크기를 안 바꾸므로 그대로 1500ms).
 	function relayoutMapsForPrint() {
 		if ( ! ( window.kakao && window.kakao.maps ) ) { return Promise.resolve(); }
-		var timeout = isNarrowScreen() ? 4000 : 1500;
+		var timeout = isNarrowScreen() ? 2500 : 1500;
 		var waits = initializedMaps.map( function ( entry ) {
 			entry.map.relayout();
-			fitMapToItems( entry.map, entry.items );
-			return waitForTilesLoaded( entry.map, timeout );
+			return new Promise( function ( resolve ) { setTimeout( resolve, 0 ); } ).then( function () {
+				entry.map.relayout();
+				fitMapToItems( entry.map, entry.items );
+				return waitForTilesLoaded( entry.map, timeout );
+			} );
 		} );
 		return Promise.all( waits );
 	}
@@ -1018,8 +1024,15 @@
 	//
 	// 그래서 모바일에서는 afterprint에서 곧바로 정리하지 않고 뒤로 미룬다. 실제로 안전한 복구 시점은
 	// "인쇄 화면에서 페이지로 돌아왔을 때"(visibilitychange -> visible)이고, 그 이벤트가 아예 오지
-	// 않는 기기를 위해 넉넉한 타임아웃을 안전망으로 둔다. 데스크톱은 afterprint가 인쇄가 끝난 뒤에
+	// 않는 기기를 위해 타임아웃을 안전망으로 둔다. 데스크톱은 afterprint가 인쇄가 끝난 뒤에
 	// 정확히 오고 visibilitychange는 오지 않으므로 지금까지처럼 즉시 복구한다.
+	//
+	// 요청서(실사용 버그 — 인쇄 취소 후 20초나 기다려야 화면이 돌아옴): 원래 20초는 "안드로이드
+	// 인쇄 파이프라인이 비동기로 스냅샷을 찍는 데 걸리는 시간"을 넉넉히 잡은 안전망이었는데, 실제
+	// 병목은 스냅샷 렌더링 자체(수백 ms~1~2초 수준)가 아니라 사용자가 인쇄 미리보기 화면을 보고 있는
+	// "상호작용 시간"을 걱정한 것이었다 — visibilitychange/pageshow가 이제 각각 별도로 복구를
+	// 맡고 있어(위 참고), 이 값은 그 둘이 전부 실패했을 때만 쓰이는 최후의 보루다. 20초는
+	// 지나치게 길어 "취소했는데 안 돌아온다"는 체감을 주므로 4초로 줄인다.
 	var deferredRestoreTimer = null;
 
 	function scheduleDeferredRestore() {
@@ -1027,7 +1040,7 @@
 		deferredRestoreTimer = setTimeout( function () {
 			deferredRestoreTimer = null;
 			restoreAfterPrint();
-		}, 20000 );
+		}, 4000 );
 	}
 
 	// 인쇄 버튼(bindPrintButton/prepareAndPrint)이 아니라 브라우저 자체 단축키(Ctrl+P 등)로 인쇄에
@@ -1070,6 +1083,12 @@
 		// bfcache 복귀를 포함해 "페이지로 돌아왔다"는 신호를 더 폭넓게 잡아주는 표준 이벤트라 —
 		// visibilitychange를 놓치는 기기에서도 더 빨리 복구되도록 같은 조건으로 추가 등록한다.
 		window.addEventListener( 'pageshow', function () {
+			if ( ! hasPendingPrintState() ) { return; }
+			restoreAfterPrint();
+		} );
+		// 같은 이유로 focus도 추가로 잡는다 — 인쇄 미리보기가 완전히 별도 창/액티비티로 뜨는
+		// 기기에서는 visibilitychange보다 focus가 먼저(또는 그것만) 오는 경우가 있다.
+		window.addEventListener( 'focus', function () {
 			if ( ! hasPendingPrintState() ) { return; }
 			restoreAfterPrint();
 		} );
