@@ -321,6 +321,21 @@ body.hlf-public {
    범위를 좁힌다. */
 @media screen {
 	.hlf-print-priming { display: block !important; visibility: hidden !important; }
+	/* 요청서(실사용 버그로 원인 확정): 목록 인쇄에 끼워 넣는 매물 카드는 지도 오른쪽이 흰 여백으로
+	   잘려 나오는데, 매물 상세 페이지 단독 인쇄에서는 재현되지 않는다는 것으로 원인을 좁혔다 —
+	   차이는 이 지도의 조상(.hlf-print-item-detail, 바로 위 .hlf-print-priming)이
+	   visibility:hidden이라는 점뿐이다. visibility:hidden인 조상 아래 요소는 브라우저가 아예
+	   페인트하지 않는데(레이아웃 크기는 유지되지만 화면에 그려지지는 않음), 카카오 지도 캔버스는
+	   생성·relayout이 "실제로 페인트되는" 상태에서 이뤄져야 최종 크기까지 제대로 그려지는 것으로
+	   보인다 — 단독 상세 페이지의 지도는 이런 visibility:hidden 조상이 없고(아래
+	   body.hlf-print-map-sizing의 opacity:0 + position:fixed로만 가려지는데, 이건 여전히 페인트는
+	   된다) 문제가 없었다. 지도 패널만 visibility:visible로 되돌려 조상의 visibility:hidden을
+	   상쇄한다 — body.hlf-print-map-sizing이 이미 걸어둔 opacity:0 + position:fixed(아래)가 여전히
+	   화면에는 안 보이게 가려주므로 사용자 눈에는 아무 변화가 없다. */
+	.hlf-print-priming .hlf-detail-map-panel,
+	.hlf-print-priming .hlf-comparison-map-panel {
+		visibility: visible !important;
+	}
 	/* 요청서 4: 인쇄 직전에 지도 컨테이너를 인쇄 크기(mm, 인라인 스타일 — assets/js/public-flyer.js
 	   applyPrintMapSizing)로 못박는 짧은 구간에만 붙는 클래스. 그 크기는 모바일 뷰포트보다 훨씬
 	   넓어서 그대로 두면 인쇄 대화상자가 뜨기 전 1초 남짓 동안 지도가 화면 밖으로 삐져나온다 —

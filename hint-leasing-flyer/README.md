@@ -1014,6 +1014,39 @@ beta.39에서 "타일 로딩이 안 끝나 회색으로 찍힌다"고 보고 대
 `php tests/test-calculations.php`, `php tests/test-display-helpers.php`, `node --check
 assets/js/public-flyer.js` 통과.
 
+## 요청서 반영 — v0.4.0-beta.41 (지도 흰 여백 — 진짜 원인: visibility:hidden 조상 아래에서 렌더링)
+
+### 진단
+사용자에게 "개별 매물 상세 페이지를 직접 인쇄해도 같은 문제가 있는지" 물어 답을 받았다 — **단독
+인쇄에서는 재현되지 않는다.** 이 한 가지 답으로 원인을 확정할 수 있었다: 두 경로의 유일한 구조적
+차이는, 목록 인쇄에 끼워 넣는 매물 카드(`.hlf-print-item-detail`)는 지도를 만들고 처음 relayout할
+때 그 조상이 `.hlf-print-priming`(`visibility: hidden !important`)이라는 점이다 — 단독 상세
+페이지의 지도는 이런 `visibility:hidden` 조상이 아예 없다(그쪽은 `body.hlf-print-map-sizing`의
+`opacity:0 + position:fixed`로만 화면에서 가려지는데, 이 방식은 여전히 브라우저가 **실제로
+페인트**한다).
+
+### 진짜 원인
+`visibility:hidden`인 조상 아래 요소는 레이아웃 크기(따라서 `offsetWidth`/`offsetHeight`)는
+유지하지만, 브라우저가 **아예 페인트하지 않는다.** 카카오 지도 캔버스는 생성·relayout이 "실제로
+페인트되는" 상태에서 이뤄져야 최종 컨테이너 크기까지 제대로 그려지는 것으로 보인다 — 목록 인쇄
+카드는 이 조건을 어겨 지도가 일부만 그려진 채로 남았고, 단독 상세 페이지는 애초에 이 조건을 어긴
+적이 없어 문제가 없었다. beta.39/40에서 타일 로딩 시간과 relayout 타이밍을 반복해서 조정한 건
+전부 방향이 틀렸던 시도였다.
+
+### 수정
+`.hlf-print-priming .hlf-detail-map-panel, .hlf-print-priming .hlf-comparison-map-panel`에
+`visibility: visible !important`를 추가해, 조상의 `visibility:hidden`을 지도 패널에서만
+상쇄한다. `body.hlf-print-map-sizing`이 이미 걸어 둔 `opacity:0 + position:fixed`가 여전히
+화면에는 안 보이게 가려주므로 사용자 눈에 보이는 변화는 없다 — 대신 카카오 지도는 이제 진짜로
+페인트되는 상태에서 만들어지고 relayout된다. Playwright로 조상(`hidden`)/패널(`visible`)/지도
+div(`visible`)의 계산된 visibility 값이 의도대로 갈리는 것을 확인했다.
+
+### 검증
+`php tests/test-calculations.php`, `php tests/test-display-helpers.php`, `node --check
+assets/js/public-flyer.js` 통과. Playwright로 CSS 상속/오버라이드가 의도대로 적용됨을 확인했다
+(카카오 지도 API 접근이 없어 실제 타일 렌더링 자체는 이 환경에서 확인할 수 없다 — 실기기 확인
+필요).
+
 ## 후속 단계에서 제외
 AI 이미지 적합성 판별, 워터마크 제거/자동 보정, 얼굴·번호판 블러, 이미지 Drag & Drop/크롭 편집기,
 이미지 순서 변경(위/아래) UI, officeleasing 원본 이미지 자동 동기화, PDF 생성, 인쇄 밀도별 레이아웃,
