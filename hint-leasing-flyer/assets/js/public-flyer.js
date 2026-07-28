@@ -904,17 +904,26 @@
 	// 만든다. data-hlf-map-initialized로 한 번 만든 뒤 다시 만들지 않는다.
 	function initLazyPrintMaps( root ) {
 		var pending = [];
-		root.querySelectorAll( '[data-hlf-print-section]:not(.hlf-print-section-excluded) [data-hlf-map-items][data-hlf-lazy-map]:not([data-hlf-map-initialized])' ).forEach( function ( container ) {
-			container.setAttribute( 'data-hlf-map-initialized', '1' );
+		// 요청서(실사용 버그 — 두 번째 인쇄부터 매물 카드 지도가 깨짐, beta.34로도 안 고쳐짐): 이전에는
+		// :not([data-hlf-map-initialized])만 걸러 첫 인쇄에서 지도를 "만든" 컨테이너만 프라이밍
+		// (보이게)했다 — 그런데 restoreAfterPrint()의 unprimePrintDetails()가 인쇄가 끝날 때마다 이
+		// 컨테이너를 다시 display:none으로 되돌리므로, 두 번째 인쇄부터는 이 셀렉터가 이미 초기화된
+		// 컨테이너를 걸러내 버려 프라이밍 자체가 아예 일어나지 않았다 — 그 상태로 바로 아래
+		// relayoutMapsForPrint()가 여전히 숨겨진(크기 0) 컨테이너에 map.relayout()을 걸어 지도가 또
+		// 굳었다. 이제 지도 "생성"(new kakao.maps.Map)은 처음 한 번만 하되, 프라이밍(보이게 하기)은
+		// data-hlf-map-initialized 여부와 무관하게 인쇄할 때마다 매번 한다.
+		root.querySelectorAll( '[data-hlf-print-section]:not(.hlf-print-section-excluded) [data-hlf-map-items][data-hlf-lazy-map]' ).forEach( function ( container ) {
 			// 이 컨테이너는 화면에서 항상 display:none인 .hlf-print-item-detail 안에 있다(public.css) —
-			// 지도를 만드는 시점(new kakao.maps.Map(container, ...))에 컨테이너 크기가 0이면 카카오
-			// 지도가 빈 채로 굳어버린다(실사용 버그: 인쇄 시 지도가 안 나옴). 지도를 만들기 직전에
+			// 지도를 만들거나 relayout하는 시점에 컨테이너 크기가 0이면 카카오 지도가 빈 채로
+			// 굳어버린다(실사용 버그: 인쇄 시 지도가 안 나옴/두 번째 인쇄부터 깨짐). relayout 전에
 			// 실제로 보이게 해 정상적인 크기를 갖게 한다.
 			var detail = container.closest( '.hlf-print-item-detail' );
 			if ( detail && ! detail.classList.contains( 'hlf-print-priming' ) ) {
 				detail.classList.add( 'hlf-print-priming' );
 				primedPrintDetails.push( detail );
 			}
+			if ( container.hasAttribute( 'data-hlf-map-initialized' ) ) { return; }
+			container.setAttribute( 'data-hlf-map-initialized', '1' );
 			pending.push( initMapContainer( container ) );
 		} );
 		return Promise.all( pending );

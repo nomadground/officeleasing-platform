@@ -873,6 +873,32 @@ assets/js/public-flyer.js` 통과. Playwright로 보증금 칸 텍스트 위치 
 assets/js/public-flyer.js` 통과. Playwright로 두 컨텍스트(`body.hlf-detail`/`body.hlf-list`)의
 갤러리 높이가 82mm로 동일하게 나옴을 확인했다.
 
+## 요청서 반영 — v0.4.0-beta.36 (전체 인쇄 지도 깨짐 — 진짜 마지막 원인 + 보증금 텍스트 추가 조정)
+
+### 데스크톱 "전체 인쇄" 두 번째부터 지도가 깨지는 문제, 이번엔 진짜 원인
+beta.34에서 `restoreAfterPrint()`의 순서(relayout을 먼저, 숨기기를 나중에)를 고쳤는데도 여전히
+재현됐다 — 순서 문제가 아니라 `initLazyPrintMaps()`의 셀렉터 자체가 원인이었다. 이 함수는
+`:not([data-hlf-map-initialized])`로 걸러 "아직 지도를 안 만든" 컨테이너만 보이게(prime) 했는데,
+`data-hlf-map-initialized`는 최초 인쇄 때 한 번 세팅되면 절대 지워지지 않는다 — 그런데
+`restoreAfterPrint()`의 `unprimePrintDetails()`는 인쇄가 끝날 때마다 그 컨테이너를 다시
+`display:none`으로 되돌린다. 그 결과 **두 번째 인쇄부터는 이 셀렉터가 이미 초기화된 컨테이너를
+전부 걸러내 버려 prime(보이게 하기) 자체가 아예 일어나지 않았다** — 숨겨진 채로 곧바로
+`relayoutMapsForPrint()`가 `map.relayout()`을 걸어 지도가 다시 "굳었다"(beta.34가 고친 것과 같은
+함정을 다른 경로로 다시 밟은 것).
+
+**수정**: `initLazyPrintMaps()`에서 지도 "생성"(`new kakao.maps.Map`)은 여전히 처음 한 번만 하되,
+프라이밍(보이게 하기)은 `data-hlf-map-initialized` 여부와 무관하게 인쇄할 때마다 매번 하도록
+분리했다. Playwright로 두 번의 인쇄 사이클을 시뮬레이션해 두 번째 사이클에서도 프라이밍은 일어나고
+(생성은 건너뜀)을 확인했다.
+
+### 모바일 리스트 보증금 텍스트 추가 오른쪽 이동
+지난 라운드의 이동(`padding-left: 14px`)이 부족하다는 요청 — `24px`로 더 밀었다.
+
+### 검증
+`php tests/test-calculations.php`, `php tests/test-display-helpers.php`, `node --check
+assets/js/public-flyer.js` 통과. Playwright로 프라이밍 로직 2회 반복 시뮬레이션과 보증금 텍스트
+위치를 재확인했다.
+
 ## 후속 단계에서 제외
 AI 이미지 적합성 판별, 워터마크 제거/자동 보정, 얼굴·번호판 블러, 이미지 Drag & Drop/크롭 편집기,
 이미지 순서 변경(위/아래) UI, officeleasing 원본 이미지 자동 동기화, PDF 생성, 인쇄 밀도별 레이아웃,
