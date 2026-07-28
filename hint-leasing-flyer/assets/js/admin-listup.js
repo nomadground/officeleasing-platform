@@ -187,14 +187,17 @@
 			if ( ! flyers.length ) { box.innerHTML = '<p class="hlf-empty">등록된 임대안내문이 없습니다.</p>'; return; }
 			box.innerHTML =
 				'<div class="hlf-table-wrap"><table class="hlf-table">' +
-					'<thead><tr><th>날짜</th><th>번호</th><th>제목</th><th>상태</th><th>매물수</th><th>담당자</th></tr></thead><tbody>' +
+					'<thead><tr><th>날짜</th><th>번호</th><th>제목</th><th>작업</th><th>매물수</th><th>담당자</th></tr></thead><tbody>' +
 					flyers.map( function ( f ) {
 						var dateStr = f.created ? f.created.substring( 0, 10 ) : '-';
 						return '<tr class="hlf-dash-flyer-row" data-hlf-dash-flyer="' + f.id + '">' +
 							'<td>' + esc( dateStr ) + '</td>' +
 							'<td>' + esc( f.flyer_number ) + '</td>' +
 							'<td>' + esc( f.title || '(제목 없음)' ) + '</td>' +
-							'<td><span class="' + A.statusBadgeClass( f.status ) + '">' + esc( A.statusLabel( f.status ) ) + '</span></td>' +
+							'<td class="hlf-row-actions">' +
+								'<a class="button button-small" href="' + escAttr( f.url ) + '" target="_blank" rel="noopener">보기</a>' +
+								'<button type="button" class="button button-small" data-hlf-dash-copy="' + f.id + '">링크복사</button>' +
+							'</td>' +
 							'<td class="hlf-td-center">' + esc( f.item_count ) + '</td>' +
 							'<td class="hlf-td-contact">' + esc( f.contact_name || '-' ) + '</td>' +
 						'</tr>';
@@ -202,6 +205,19 @@
 					'</tbody></table></div>';
 			box.querySelectorAll( '[data-hlf-dash-flyer]' ).forEach( function ( row ) {
 				row.addEventListener( 'click', function () { goToFlyerManage( Number( row.getAttribute( 'data-hlf-dash-flyer' ) ) ); } );
+			} );
+			// 요청서: 상태 칸 대신 작업 칸(보기/링크복사) — 행 전체가 클릭 시 "포함 매물 관리"로
+			// 이동하므로, 이 칸 안의 버튼 클릭은 그 행 클릭으로 번지지 않게 막는다.
+			box.querySelectorAll( '.hlf-row-actions' ).forEach( function ( cell ) {
+				cell.addEventListener( 'click', function ( event ) { event.stopPropagation(); } );
+			} );
+			box.querySelectorAll( '[data-hlf-dash-copy]' ).forEach( function ( b ) {
+				b.addEventListener( 'click', function () {
+					var f = flyers.filter( function ( x ) { return x.id === Number( b.getAttribute( 'data-hlf-dash-copy' ) ); } )[ 0 ];
+					if ( ! f ) { return; }
+					if ( navigator.clipboard ) { navigator.clipboard.writeText( f.url ).then( function () { toast( '링크를 복사했습니다.' ); }, function () { window.prompt( '링크', f.url ); } ); }
+					else { window.prompt( '링크', f.url ); }
+				} );
 			} );
 		} ).catch( function ( err ) { errorText( box, '임대안내문을 불러오지 못했습니다: ' + err.message ); } );
 	}

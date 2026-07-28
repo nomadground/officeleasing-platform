@@ -1216,6 +1216,47 @@ Playwright로 배지-카드 중심 좌표 일치, hover 시 행 전체 배경 �
 확인했다. `php tests/test-calculations.php`, `php tests/test-display-helpers.php`,
 `node --check assets/js/portal.js`, `node --check assets/js/admin-listup.js` 통과.
 
+## 요청서 반영 — v0.4.0-beta.46 (배지 정렬 재조정 + 포함매물관리 행 높이 실제 원인 + 대시보드 작업열 + 위치확인 지도 여백 + 인쇄 대기시간)
+
+### 1. 모바일 리스트 순번 배지 — 그냥 지번주소와 평행하게
+beta.45(카드 전체 중앙)가 오히려 어색하다는 요청 — 두 줄 중앙도 카드 전체 중앙도 아니라 그냥
+지번주소 줄과 같은 시작선에 나란히 두면 된다. `.hlf-listing-idaddr`를 `align-items:flex-start`로
+되돌려 배지와 주소 블록이 같은 위치에서 시작하게 했다(beta.45의 절대 위치 트릭은 걷어냈다).
+Playwright로 배지 상단과 지번주소 블록 상단 y좌표가 정확히 같음을 확인했다.
+
+### 2. "포함 매물 관리" 작업 칸만 행 높이가 다른 진짜 원인
+beta.45의 `flex-wrap:nowrap` 수정 이후에도 작업 칸만 높이가 달랐던 이유를 실측해 찾았다 —
+`<td class="hlf-row-actions">`에 `display:flex`를 직접 얹으면 그 순간 이 셀은 더 이상 진짜
+표 칸(table-cell)이 아니게 되어(표 관련 요소도 display를 명시하면 그 값을 그대로 따른다) 같은 행의
+다른 칸과 같은 행 높이로 늘어나지 못한다(Playwright 실측: 이 칸만 47px, 나머지 55px). `display:flex`
+를 버리고 일반 표 칸으로 되돌린 채, 버튼들은 인라인 흐름 + 오른쪽 여백(margin-right)만으로 나란히
+두도록 고쳤다 — 재실측 결과 모든 칸이 55px로 일치한다. `.hlf-row-actions`는 admin.css 공용
+클래스라 wp-admin/포털의 모든 목록(전체 매물/임대안내문/포함 매물 관리)에 함께 적용된다.
+
+### 3. 대시보드 임대안내문 표 — 상태 열 대신 작업 열(보기/링크복사)
+`renderDashboardFlyers()`(wp-admin `admin-listup.js` + 직원 포털 `portal.js` 양쪽)의 "상태" 열을
+"작업" 열로 바꿔 "보기"(공개 목록 페이지를 새 탭으로)와 "링크복사"(클립보드 복사, 이미 "임대안내문"
+탭에 있는 것과 같은 로직) 버튼 두 개를 넣었다. 이 표는 행 전체를 눌러도 "포함 매물 관리"로 이동하는
+기존 동작이 있어, 새 버튼 클릭이 그 행 클릭으로 번지지 않게 `stopPropagation`을 걸었다.
+
+### 4. 모바일 인쇄 1페이지 하단 "위치 확인" 카드 — 지도 양옆 여백
+비교 지도가 `178mm`로 고정폭이었는데, 그 부모 패널(`.hlf-comparison-map-panel`)의 실제 안쪽 폭이
+그보다 넓어 양옆에 흰 여백이 남았다 — 목록 인쇄 매물 카드 지도(beta.42/43)와 같은 원인, 같은 원칙
+으로 고쳤다. `PRINT_MAP_SIZES.comparison`에서 고정 폭을 없애고 `applyPrintMapSizing()`이 비교
+지도에는 `width:100%`를 적용해 부모 칸을 그대로 채운다(높이 48mm는 페이지당 리스트 개수 예산과
+무관해 그대로 유지). Playwright 실측: 지도-패널 폭 차이가 정확히 패널 자체 padding+border 합계
+(38px)뿐임을 확인했다(설명 안 되는 여백 없음).
+
+### 5. 개별 매물 상세페이지 인쇄 — 인쇄창 뜨는 속도
+`relayoutMapsForPrint()`의 tilesloaded 최대 대기 시간(모바일)을 2500ms → 1000ms로 1.5초 줄였다 —
+이 값은 타일 이벤트가 안 올 때만 실제로 다 채우는 최악의 경우 상한이라, 대부분의 실제 인쇄에서는
+체감 대기시간이 그만큼 그대로 줄어든다.
+
+### 검증
+Playwright로 1~4번을 각각 실측/스크린샷 확인했다. `php tests/test-calculations.php`,
+`php tests/test-display-helpers.php`, `node --check assets/js/public-flyer.js`,
+`node --check assets/js/admin-listup.js`, `node --check assets/js/portal.js` 통과.
+
 ## 후속 단계에서 제외
 AI 이미지 적합성 판별, 워터마크 제거/자동 보정, 얼굴·번호판 블러, 이미지 Drag & Drop/크롭 편집기,
 이미지 순서 변경(위/아래) UI, officeleasing 원본 이미지 자동 동기화, PDF 생성, 인쇄 밀도별 레이아웃,

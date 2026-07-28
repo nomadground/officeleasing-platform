@@ -367,8 +367,10 @@
 		// 낮췄는데(beta.26), 실제 기기에서는 여전히 밀린다는 요청이 다시 들어와 60mm -> 48mm로 한
 		// 번 더 낮췄다(실측 환경의 대체 폰트와 실제 기기 폰트 차이를 감안해 이번엔 여유를 넉넉히
 		// 둔다). print.css의 차트 막대 높이도 함께 줄여야 10개 리스트도 한 장에 들어간다(실측,
-		// print.css [data-hlf-print-section="chart-map"] 관련 주석 참고).
-		comparison: { width: '178mm', height: '48mm' },
+		// print.css [data-hlf-print-section="chart-map"] 관련 주석 참고). 폭은 더 이상 여기서
+		// 못박지 않는다 — 부모 패널의 실제 안쪽 폭과 어긋나 양옆에 흰 여백이 남던 문제가 있었다
+		// (요청서), applyPrintMapSizing()이 이제 width:100%로 그 칸을 그대로 채운다.
+		comparison: { height: '48mm' },
 		// 매물 상세의 개별 지도 — 요청서: 사진 위/지도 아래로 세로로 쌓던 것을(21mm→42mm→84mm로
 		// 계속 키워왔다, beta.26/beta.28) 다시 좌 사진/우 지도 2단으로 되돌린다(2배씩 키울수록 세로
 		// 쌓기라 항목 높이가 그만큼 늘어 1페이지 2건 예산을 못 채웠다는 요청). 194mm 세로 용지 폭에서
@@ -434,7 +436,13 @@
 		document.querySelectorAll( '[data-hlf-map-items]:not([data-hlf-lazy-map])' ).forEach( function ( container ) {
 			var isComparison = 'hlf-comparison-map' === container.id;
 			var size = isComparison ? PRINT_MAP_SIZES.comparison : PRINT_MAP_SIZES.detail;
-			container.style.width = size.width;
+			// 요청서(실사용 버그 — 모바일 인쇄 1페이지 하단 위치확인 카드 지도 양옆에 여백): 비교
+			// 지도는 178mm로 못박혀 있었는데, 그 부모 패널(.hlf-comparison-map-panel)의 실제 안쪽
+			// 폭은 모바일 인쇄에서 194mm - 좌우 padding(각 14px)이라 178mm보다 넓다 — 지도가 그 폭을
+			// 다 못 채워 양옆에 흰 여백이 남았다. 목록 인쇄 매물 카드 지도(beta.42/43)와 같은 원칙 —
+			// mm 매직넘버 대신 width:100%로 부모 칸을 그대로 채운다. 높이(48mm)는 페이지당 리스트
+			// 개수 예산과 무관해 그대로 둔다.
+			container.style.width = isComparison ? '100%' : size.width;
 			container.style.height = size.height;
 			// print.css/public.css의 min-height(비교 지도 320px, 사진 없는 상세 76mm)가 위 height보다
 			// 크면 상자만 더 커지고 캔버스는 그대로라 또 "일부만" 나온다 — 같은 값으로 눌러둔다.
@@ -805,7 +813,10 @@
 	// 크기를 안 바꾸므로 그대로 1500ms).
 	function relayoutMapsForPrint() {
 		if ( ! ( window.kakao && window.kakao.maps ) ) { return Promise.resolve(); }
-		var timeout = isNarrowScreen() ? 2500 : 1500;
+		// 요청서: 개별 매물 상세페이지 인쇄 버튼을 누른 뒤 인쇄창이 뜨기까지 너무 느리다 — 이 대기는
+		// tilesloaded가 오지 않을 때만 실제로 다 채우는 최악의 경우 상한이므로(대부분은 훨씬 먼저
+		// resolve된다), 이 상한 자체를 1.5초 줄인다(모바일 2500ms -> 1000ms).
+		var timeout = isNarrowScreen() ? 1000 : 1500;
 		var waits = initializedMaps.map( function ( entry ) {
 			entry.map.relayout();
 			return new Promise( function ( resolve ) { setTimeout( resolve, 0 ); } ).then( function () {
