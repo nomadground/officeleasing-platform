@@ -373,10 +373,12 @@
 		// 계속 키워왔다, beta.26/beta.28) 다시 좌 사진/우 지도 2단으로 되돌린다(2배씩 키울수록 세로
 		// 쌓기라 항목 높이가 그만큼 늘어 1페이지 2건 예산을 못 채웠다는 요청). 194mm 세로 용지 폭에서
 		// 두 열이 함께 들어가야 하므로 폭을 178mm(전체 폭) -> 87mm(약 절반, Playwright 실측 — 열
-		// 간격·패널 여백을 뺀 실제 사용 가능 폭)로 낮췄다. 높이는 직전 요청(84mm의 70% = 59mm)을
-		// 그대로 유지한다 — 이 저장소의 Playwright 실측 환경은 실제 폰트(Pretendard)보다 성긴 대체
-		// 폰트를 쓰므로 여기서 나오는 절대 높이값은 실제 기기와 다르다(README 여러 차례 기록).
-		detail: { width: '87mm', height: '59mm' },
+		// 간격·패널 여백을 뺀 실제 사용 가능 폭)로 낮췄다. 높이는 84mm의 70%(59mm)로 낮췄었는데,
+		// 실제 기기에서는 그 상태로도 1페이지 2건이 다시 밀린다는 요청 — 한 번 더 10% 낮춰 53mm로
+		// (59 x 0.9 = 53.1 반올림). 이 저장소의 Playwright 실측 환경은 실제 폰트(Pretendard)보다
+		// 성긴 대체 폰트를 쓰므로 여기서 나오는 절대 높이값은 실제 기기와 다르다(README 여러 차례
+		// 기록).
+		detail: { width: '87mm', height: '53mm' },
 	};
 	var printSizedMaps = [];
 
@@ -421,8 +423,15 @@
 	function applyPrintMapSizing() {
 		if ( ! isNarrowScreen() || printSizedMaps.length ) { return; }
 		document.querySelectorAll( '[data-hlf-map-items]' ).forEach( function ( container ) {
-			var size = 'hlf-comparison-map' === container.id ? PRINT_MAP_SIZES.comparison : PRINT_MAP_SIZES.detail;
-			container.style.width = size.width;
+			var isComparison = 'hlf-comparison-map' === container.id;
+			var size = isComparison ? PRINT_MAP_SIZES.comparison : PRINT_MAP_SIZES.detail;
+			// 요청서: 대표 사진이 없는 매물(.hlf-detail-hero--map-only, PHP가 서버에서 미리 판정)은
+			// 좌 사진/우 지도 2단이 아니라 지도 혼자 이 히어로 전체를 차지한다 — 데스크톱은 CSS
+			// grid-template-columns만으로 이게 자연히 처리되지만(별도 인라인 폭을 강제하지 않음),
+			// 모바일은 여기서 폭을 mm로 못박기 때문에 이 경우를 따로 확인하지 않으면 사진이 없어도
+			// 계속 절반 폭(detail.width)에 눌려 있었다 — 위치 확인 지도와 같은 전체 폭을 쓴다.
+			var mapOnly = ! isComparison && !! container.closest( '.hlf-detail-hero--map-only' );
+			container.style.width = mapOnly ? PRINT_MAP_SIZES.comparison.width : size.width;
 			container.style.height = size.height;
 			// print.css/public.css의 min-height(비교 지도 320px, 사진 없는 상세 76mm)가 위 height보다
 			// 크면 상자만 더 커지고 캔버스는 그대로라 또 "일부만" 나온다 — 같은 값으로 눌러둔다.
@@ -1018,17 +1027,29 @@
 			if ( isNarrowScreen() ) { scheduleDeferredRestore(); return; }
 			restoreAfterPrint();
 		} );
+		// 지도가 하나도 없는 안내문(좌표 미등록 매물만 있는 경우)은 printSizedMaps/primedPrintDetails가
+		// 계속 비어 있다 — mobilePageStyleEl(세로 @page)이나 hlf-print-mobile 클래스만 남아 있어도
+		// 복구 대상이므로 함께 확인한다.
+		function hasPendingPrintState() {
+			return !! ( printSizedMaps.length || primedPrintDetails.length || mobilePageStyleEl ||
+				document.body.classList.contains( 'hlf-print-mobile' ) );
+		}
 		// 모바일의 실제 복구 시점 — 인쇄 화면에서 페이지로 돌아왔을 때. 이때는 스냅샷이 이미 다
 		// 찍힌 뒤라 안전하다. 복구할 게 남아 있을 때만 움직인다 — 그냥 탭을 바꿨다 돌아온 것뿐인데
 		// relayout+fitMapToItems가 돌면 사용자가 드래그/줌으로 옮겨둔 지도 위치가 멋대로 초기화된다.
 		document.addEventListener( 'visibilitychange', function () {
 			if ( document.hidden ) { return; }
-			// 지도가 하나도 없는 안내문(좌표 미등록 매물만 있는 경우)은 printSizedMaps/primedPrintDetails가
-			// 계속 비어 있다 — mobilePageStyleEl(세로 @page)이나 hlf-print-mobile 클래스만 남아 있어도
-			// 복구 대상이므로 함께 확인한다.
-			var hasPending = printSizedMaps.length || primedPrintDetails.length || mobilePageStyleEl ||
-				document.body.classList.contains( 'hlf-print-mobile' );
-			if ( ! hasPending ) { return; }
+			if ( ! hasPendingPrintState() ) { return; }
+			restoreAfterPrint();
+		} );
+		// 요청서(실사용 버그 — 모바일 개별 매물 페이지에서 인쇄를 눌렀다 취소하면 지도가 안 돌아옴):
+		// 일부 모바일 브라우저는 인쇄 미리보기를 취소했을 때 visibilitychange를 안정적으로 쏘지
+		// 않는 것으로 보인다 — 그러면 20초 안전망(scheduleDeferredRestore)이 돌 때까지 지도가 인쇄용
+		// mm 크기(예: 87mm 폭)로 눌린 채 화면에 남아 사실상 "사라진" 것처럼 보인다. pageshow는
+		// bfcache 복귀를 포함해 "페이지로 돌아왔다"는 신호를 더 폭넓게 잡아주는 표준 이벤트라 —
+		// visibilitychange를 놓치는 기기에서도 더 빨리 복구되도록 같은 조건으로 추가 등록한다.
+		window.addEventListener( 'pageshow', function () {
+			if ( ! hasPendingPrintState() ) { return; }
 			restoreAfterPrint();
 		} );
 		if ( window.matchMedia ) {
