@@ -1182,6 +1182,40 @@ Playwright로 데스크톱 폭(1100px)에서 보증금/임대료/관리비 세 �
 `php tests/test-display-helpers.php`, `node --check assets/js/public-flyer.js`, PHP 템플릿 lint
 통과.
 
+## 요청서 반영 — v0.4.0-beta.45 (모바일 리스트 배지 = 카드 전체 중앙 + 포털 "포함 매물 관리" 보기 버튼/행 정렬/hover)
+
+### 1. 모바일 리스트 순번 배지 — "그 칸"은 카드 전체였다
+beta.44에서 지번주소+도로명주소 두 줄 높이 기준으로 배지를 정중앙에 맞췄는데, 사용자가 의도한
+"그 칸의 중앙"은 두 줄이 아니라 **리스트 항목 카드 전체**(주소 줄 + 그 아래 보증금/임대료/관리비/
+환산임대료 줄을 합친 높이)의 중앙이었다 — `.hlf-listing-idaddr`는 grid-area가 "idaddr"인 위쪽
+행에만 걸쳐 있어 그 안에서 아무리 정렬해도 아래 지표 행 높이는 반영되지 않는 구조였다.
+
+배지를 `.hlf-listing-idaddr`의 flex 흐름에서 완전히 빼(`position:absolute`), 카드 전체 높이를
+실제로 갖는 `.hlf-listing-main`(`position:relative`로 기준점을 만들었다) 기준으로
+`top:50%; transform:translateY(-50%)`로 세로 중앙 정렬한다 — 주소 줄이 몇 줄이 되든 아래 지표 줄
+높이가 바뀌든 고정 px 여백 추정이 아니라 항상 카드 전체의 실제 중앙을 따라간다. 주소 블록은 배지가
+차지하던 자리(13px+간격 2px)만큼 `padding-left`로 비워 겹치지 않게 했다.
+
+Playwright 실측: 카드 전체(`.hlf-listing-main`)의 세로 중심과 배지의 세로 중심이 정확히 일치함을
+확인했다(이전 두 줄 기준 정렬과 배지 위치가 약 15px 차이 — 사용자가 설명한 "도로명주소 좌측
+아래쯤"과 일치).
+
+### 2. 직원 포털 "임대안내문 > 포함 매물 관리" — 보기 버튼 + 행 정렬 + hover
+- wp-admin 쪽(`assets/js/admin-listup.js`)의 이 화면에는 이미 "보기" 버튼(그 매물이 지금 이
+  안내문에 포함돼 있을 때만 공개 상세 URL로 새 탭)이 있었는데, 직원 포털(`assets/js/portal.js`)의
+  같은 화면에는 빠져 있었다 — 완전히 같은 로직으로 추가했다.
+- "보기"+"수정" 두 버튼이 `.hlf-row-actions`의 `flex-wrap:wrap` 때문에 칸이 좁으면 두 줄로 접혀
+  그 행만 유독 높아지면서 옆 칸들과 줄이 안 맞아 보였다 — `flex-wrap:nowrap`으로 항상 한 줄에
+  담고, 정말 넘치면 `.hlf-table-wrap`의 가로 스크롤에 맡긴다.
+- 행 위에 마우스를 올리면 그 행 전체가 강조되는 hover 효과가 아예 없었다 —
+  `.hlf-admin .hlf-table tbody tr:hover`를 추가했다. `.hlf-table`은 admin.css의 공용 컴포넌트라
+  wp-admin/포털 양쪽 모두에 적용된다.
+
+### 검증
+Playwright로 배지-카드 중심 좌표 일치, hover 시 행 전체 배경 강조, 두 버튼이 한 줄에 유지되는 것을
+확인했다. `php tests/test-calculations.php`, `php tests/test-display-helpers.php`,
+`node --check assets/js/portal.js`, `node --check assets/js/admin-listup.js` 통과.
+
 ## 후속 단계에서 제외
 AI 이미지 적합성 판별, 워터마크 제거/자동 보정, 얼굴·번호판 블러, 이미지 Drag & Drop/크롭 편집기,
 이미지 순서 변경(위/아래) UI, officeleasing 원본 이미지 자동 동기화, PDF 생성, 인쇄 밀도별 레이아웃,

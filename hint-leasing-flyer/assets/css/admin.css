@@ -205,9 +205,14 @@
 .hlf-admin .hlf-table th, .hlf-admin .hlf-table td { padding: 9px 10px; border-bottom: 1px solid #eef0f2; text-align: left; vertical-align: middle; }
 .hlf-admin .hlf-table th { background: #f6f7f7; color: #50575e; font-size: 12px; }
 .hlf-admin .hlf-table td small { display: block; color: #7c868d; font-size: 11px; }
+/* 요청서: 마우스를 올리면 그 행 전체가 한 줄로 강조되게 한다(포함 매물 관리 등 목록 공용). */
+.hlf-admin .hlf-table tbody tr:hover { background: #f0f6fc; }
 .hlf-admin .hlf-td-center { text-align: center; }
 .hlf-admin .hlf-td-contact { color: #646970; font-size: 11px; }
-.hlf-admin .hlf-row-actions { display: flex; gap: 4px; flex-wrap: wrap; }
+/* 요청서(포함 매물 관리 — 작업 칸이 옆 칸과 줄이 안 맞아 보임): "보기"+"수정" 두 버튼이
+   flex-wrap:wrap이라 칸이 좁으면 두 줄로 접혀 그 행만 유독 높아졌다 — 한 줄로 고정하고, 정말 넘치면
+   .hlf-table-wrap의 가로 스크롤(overflow-x:auto)에 맡긴다. */
+.hlf-admin .hlf-row-actions { display: flex; gap: 4px; flex-wrap: nowrap; }
 .hlf-admin .hlf-row-actions .button.button-small { min-height: 26px; line-height: 24px; padding: 0 8px; }
 .hlf-admin .hlf-empty { padding: 22px; text-align: center; color: #646970; }
 /* 요청서: 담당자 디렉터리의 "기본 지정" 버튼 옆 명함(SNS 공유 썸네일) 관련 버튼/미리보기 —

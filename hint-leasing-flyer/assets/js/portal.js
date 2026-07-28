@@ -1164,6 +1164,10 @@
 					'<th>보증금</th><th>임대료</th><th>관리비</th><th>작업</th></tr></thead><tbody>' +
 				sources.map( function ( s ) {
 					var on = !! includedSet[ s.id ];
+					// 요청서: 작업 칸에 "보기" 버튼 — 이 매물이 지금 이 안내문에 포함돼 있을 때만
+					// 뜻이 있다(포함 안 된 원본 매물 자체는 공개 URL이 없다). linked_items에서 지금
+					// 이 flyer.id와 일치하는 항목을 찾아 그 개별 상세페이지 URL을 쓴다.
+					var link = on ? ( s.linked_items || [] ).filter( function ( li ) { return li.flyer_id === flyer.id; } )[ 0 ] : null;
 					return '<tr><td><input type="checkbox" class="hlf-fm-pick" data-id="' + s.id + '"' + ( on ? ' checked' : '' ) + '></td>' +
 						'<td>' + esc( s.lot_address || '-' ) + '<small>' + esc( s.road_address || '' ) + '</small></td>' +
 						'<td>' + esc( num( s.floor_current ) ) + '/' + esc( num( s.floor_total ) ) + '</td>' +
@@ -1173,6 +1177,7 @@
 						'<td>' + esc( won( s.monthly_rent_manwon ) ) + '</td>' +
 						'<td>' + esc( won( s.maintenance_fee_manwon ) ) + '</td>' +
 						'<td class="hlf-row-actions">' +
+							( link ? '<a class="button button-small" href="' + escAttr( link.url ) + '" target="_blank" rel="noopener">보기</a>' : '' ) +
 							'<button type="button" class="button button-small" data-hlf-fm-edit="' + s.id + '">수정</button>' +
 						'</td></tr>';
 				} ).join( '' ) +
