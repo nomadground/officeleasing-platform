@@ -957,6 +957,35 @@ assets/js/public-flyer.js` 통과. Playwright로 map-only 폭 분기 로직(사�
 assets/js/public-flyer.js` 통과. Playwright로 그리드 명시도 수정 전/후 패널·지도 폭을 직접
 측정해 확인했다.
 
+## 요청서 반영 — v0.4.0-beta.39 (모바일 인쇄 지도 회색 잘림 + 인쇄 취소 후 화면 먹통)
+
+### 1. 리스트 페이지 모바일 인쇄 — 매물 카드 지도 오른쪽/일부가 회색으로 잘려 나옴
+beta.38에서 map-only(사진 없음) 케이스는 고쳤는데, 사진이 있는 일반 2단 카드에서도 지도 일부가
+회색으로 나온다는 스크린샷 — 진짜 원인은 그리드가 아니라 **타일 로딩 대기시간**이었다.
+`relayoutMapsForPrint()`의 코드 자체 주석에 이미 답이 있었다: "데스크톱은 인쇄 시 지도 크기를
+그대로 두므로 relayout이 기존 타일을 재사용해 거의 즉시 끝나지만, **모바일은 매번 지도를 인쇄용
+mm 크기로 실제 리사이즈해 새 타일을 다시 받아야 한다**" — 그런데 beta.28에서 "이미 로드된 지도라
+짧게 기다려도 된다"는 이유로 이 대기 상한을 데스크톱·모바일 구분 없이 1500ms로 통일했었다.
+모바일은 실제로 새 타일을 받아야 하는데 1.5초 안에 다 못 받으면, 인쇄 스냅샷에 아직 안 도착한
+타일이 회색으로 그대로 찍혔다. 모바일만 최초 생성 때와 같은 4000ms로 늘렸다(데스크톱은 실제로
+다시 받을 타일이 없으므로 1500ms 그대로).
+
+### 2. 개별 매물 페이지 모바일 — 인쇄 취소 후 지도가 사라지고 화면 스크롤도 안 움직임
+`body.hlf-print-map-sizing`(인쇄 크기로 부풀린 지도를 화면에서 숨기려고 `applyPrintMapSizing()`이
+붙이는 `overflow:hidden` 클래스)가 안 풀린 것이 원인 — 이 클래스는 `restoreAfterPrint()`의
+`clearPrintMapSizing()`에서만 벗겨지는데, 그 `restoreAfterPrint()` 호출이 지금까지 순전히
+`afterprint`/`visibilitychange`/`pageshow` 같은 브라우저 이벤트에만 의존하고 있었다. 일부 모바일
+브라우저는 인쇄 미리보기를 취소했을 때 이 이벤트를 하나도 안 쏘는 것으로 보인다 — 그러면
+`afterprint`에서만 무장되는 20초 안전망(`scheduleDeferredRestore`)조차 걸리지 않아 영영 안
+풀렸다(지도가 인쇄용 작은 크기에 눌린 채 남고, body의 `overflow:hidden`이 화면 스크롤 자체를
+막았다). `window.print()`를 부르는 시점에 우리가 직접 이 20초 안전망을 걸어, 인쇄 라이프사이클
+이벤트가 전혀 안 오는 기기에서도 반드시 복구되게 했다(이벤트가 먼저 오면 `restoreAfterPrint()`가
+이 타이머를 그대로 지우므로 중복 실행 없음).
+
+### 검증
+`php tests/test-calculations.php`, `php tests/test-display-helpers.php`, `node --check
+assets/js/public-flyer.js` 통과.
+
 ## 후속 단계에서 제외
 AI 이미지 적합성 판별, 워터마크 제거/자동 보정, 얼굴·번호판 블러, 이미지 Drag & Drop/크롭 편집기,
 이미지 순서 변경(위/아래) UI, officeleasing 원본 이미지 자동 동기화, PDF 생성, 인쇄 밀도별 레이아웃,

@@ -525,6 +525,17 @@
 			// 클래스는 어차피 실제 인쇄에서는 @media print 규칙(display:block !important)이 항상
 			// 이기므로 켜져 있어도 무해하다 — 인쇄가 끝난 뒤(afterprint)에만 정리한다.
 			printPreparedByUs = true;
+			// 요청서(실사용 버그 — 인쇄 취소 후 지도가 사라지고 화면 스크롤도 안 움직임): 원인은
+			// body.hlf-print-map-sizing(applyPrintMapSizing이 붙이는 overflow:hidden)이 안 풀린
+			// 것이었다 — 이 클래스는 restoreAfterPrint()의 clearPrintMapSizing()에서만 벗겨지는데,
+			// 지금까지는 그 restoreAfterPrint()가 순전히 afterprint/visibilitychange/pageshow 같은
+			// 브라우저 이벤트에만 기대고 있었다. 일부 모바일 브라우저는 인쇄 미리보기를 취소했을 때
+			// 이 이벤트들을 아예 하나도 안 쏘는 것으로 보인다 — 그러면 afterprint에서만 무장되는
+			// 20초 안전망(scheduleDeferredRestore)조차 걸리지 않아 영영 안 풀린다. window.print()를
+			// 부르는 지금 이 시점에 우리가 직접 안전망을 걸어, 브라우저 이벤트가 전혀 안 오는
+			// 기기에서도 반드시 복구되게 한다(이벤트가 먼저 오면 restoreAfterPrint()가 이 타이머를
+			// 그대로 지우므로 중복 실행 걱정은 없다).
+			if ( isNarrowScreen() ) { scheduleDeferredRestore(); }
 			window.print();
 		} );
 	}
@@ -780,18 +791,22 @@
 	// 크기에 맞는 타일이 실제로 다 그려질 때까지 기다리는 Promise를 모아서 돌려준다.
 	//
 	// 요청서(모바일 인쇄 대기시간): 데스크톱은 인쇄 시 지도 크기를 그대로 두므로(applyPrintMapSizing이
-	// isNarrowScreen()에서만 동작) 이 relayout이 기존 타일을 그대로 재사용해 거의 즉시 끝나지만,
-	// 모바일은 매번 지도를 인쇄용 mm 크기로 실제 리사이즈한 뒤 이 함수를 부르기 때문에(prepareAndPrint
-	// -> applyPrintMapSizing -> ... -> relayoutMapsForPrint) 새 타일을 다시 받아야 해 체감 대기시간이
-	// 훨씬 길었다. 이 시점의 지도는 전부 이미 한 번 로드가 끝난 지도(신규 생성은 initLazyPrintMaps/
-	// initMapContainer 쪽에서 자체적으로 기다림)라 여기서는 짧게만 기다려도 된다 — 새 타일을 못 받아도
-	// 이미 있던 타일이 배경에 남아 있어 "완전히 빈 지도"로는 보이지 않는다.
+	// isNarrowScreen()에서만 동작) 이 relayout이 기존 타일을 그대로 재사용해 거의 즉시 끝난다 — 이
+	// 경우는 짧게(1500ms)만 기다려도 된다.
+	//
+	// 요청서(실사용 인쇄물 — 지도 오른쪽/일부가 회색으로 잘려 나옴): 모바일은 매번 지도를 인쇄용 mm
+	// 크기로 실제 리사이즈한 뒤 이 함수를 부르므로(prepareAndPrint -> applyPrintMapSizing -> ... ->
+	// relayoutMapsForPrint) 데스크톱과 달리 새 타일을 진짜로 다시 받아야 한다 — "이미 로드된
+	// 지도라 짧게 기다려도 된다"고 판단해 1500ms로 통일했었는데, 모바일에서는 이 재요청 타일이
+	// 1.5초 안에 다 못 받아 인쇄 스냅샷에 일부 타일이 회색으로 그대로 찍혔다. 모바일만 최초 생성 때와
+	// 같은 4000ms로 늘린다(데스크톱은 실제로 다시 받을 게 없어 그대로 짧게 둔다).
 	function relayoutMapsForPrint() {
 		if ( ! ( window.kakao && window.kakao.maps ) ) { return Promise.resolve(); }
+		var timeout = isNarrowScreen() ? 4000 : 1500;
 		var waits = initializedMaps.map( function ( entry ) {
 			entry.map.relayout();
 			fitMapToItems( entry.map, entry.items );
-			return waitForTilesLoaded( entry.map, 1500 );
+			return waitForTilesLoaded( entry.map, timeout );
 		} );
 		return Promise.all( waits );
 	}
