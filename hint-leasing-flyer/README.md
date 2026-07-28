@@ -1124,6 +1124,41 @@ public.css에는 일반 모바일 화면 열람용 반응형 규칙이 이미 �
 `php tests/test-calculations.php`, `php tests/test-display-helpers.php`, `node --check
 assets/js/public-flyer.js`, 터치한 PHP 템플릿 lint 전부 통과.
 
+## 요청서 반영 — v0.4.0-beta.43 (지도 아래쪽 여백 — 폭과 같은 원칙으로 높이도 고정하지 않는다)
+
+### 진단
+beta.42로 좌우 폭은 딱 맞았는데, 사용자가 위(Location 제목)는 그렇다 치고 아래쪽 여백도 없애
+달라고 요청했다 — 목록 인쇄 매물 카드(사진 있는 경우)의 지도 아래에 빈 공간이 남는 문제.
+
+### 원인
+이 행(사진|지도 2단)의 실제 높이는 사진 카드(`.hlf-gallery-main`, 모바일 인쇄에서
+`max-height:72mm`)가 정하고, grid `align-items:stretch`로 지도 패널이 그 높이까지 함께
+늘어난다. 그런데 지도 자체(`.hlf-detail-map`)는 print.css의
+`body.hlf-print-mobile .hlf-detail-hero .hlf-detail-map { flex:0 0 auto; min-height:0 }`
+규칙 때문에 늘어나지 않고, JS(`initLazyPrintMapsSequentially`)가 인라인으로 못박은 53mm에 그대로
+멈춰 있었다 — 패널은 사진 높이까지 늘어났는데 그 안의 지도만 53mm에서 멈추니 나머지가 빈 채로
+남았다. beta.42에서 폭은 "부모 칸을 그대로 따라가게" 고쳤으면서 높이는 여전히 마지막 남은 mm
+매직넘버(53mm)를 쓰고 있었던 것 — 같은 원칙을 끝까지 적용하지 않은 게 원인이다.
+
+### 수정
+- `assets/css/print.css`: `body.hlf-print-mobile .hlf-detail-hero .hlf-detail-map`의
+  `flex:0 0 auto; min-height:0` 오버라이드를 지웠다 — 기본값(public.css
+  `.hlf-detail-hero .hlf-detail-map { flex:1 1 auto }`)으로 돌아가 지도가 늘어난 패널 높이까지
+  그대로 채운다. 사진이 없는 매물(map-only)은 늘어날 대상(사진) 자체가 없어 이 되돌림의 영향을
+  받지 않고, 기존 `min-height:40mm` 바닥은 그대로 남겨 뒀다(늘어날 사진이 없을 때의 붕괴 방지용).
+- `assets/js/public-flyer.js`: `initLazyPrintMapsSequentially()`에서 `container.style.height`/
+  `minHeight` 인라인 설정을 제거했다 — 폭(`width:100%`)과 같은 원칙으로, 높이도 더는 못박지 않고
+  부모 칸(사진 있으면 그 사진과 같은 높이로 늘어난 패널, 없으면 CSS min-height 바닥)을 그대로
+  따라간다.
+
+### 검증
+Playwright로 인쇄 미디어(모바일)에서 실측 — 사진 있는 매물: 히어로/갤러리/패널/지도 높이가 각각
+288.5px로 전부 일치하고, 지도 바닥과 패널 바닥의 차이는 4px(패널의 인쇄용 padding-bottom
+3px + border 1px, `body.hlf-print-mobile .hlf-detail-map-panel { padding: 3px 8px 3px }`와 정확히
+일치)뿐이다. 사진 없는 매물도 지도 바닥과 패널 바닥 차이가 동일하게 4px — 설명되지 않는 여백은
+남지 않는다. `php tests/test-calculations.php`, `php tests/test-display-helpers.php`,
+`node --check assets/js/public-flyer.js` 통과.
+
 ## 후속 단계에서 제외
 AI 이미지 적합성 판별, 워터마크 제거/자동 보정, 얼굴·번호판 블러, 이미지 Drag & Drop/크롭 편집기,
 이미지 순서 변경(위/아래) UI, officeleasing 원본 이미지 자동 동기화, PDF 생성, 인쇄 밀도별 레이아웃,

@@ -240,10 +240,16 @@
 		padding-top: 4mm;
 		border-top: 1px dashed var(--hlf-line, #dfe7ec);
 	}
-	/* 개별 지도는 assets/js/public-flyer.js PRINT_MAP_SIZES.detail이 인라인 mm 크기(폭·높이)를
-	   못박는다 — 여기서는 그 인라인 크기가 이길 수 있도록 CSS 쪽 min-height만 낮춰 겹치는 제약을
-	   없앤다. */
-	body.hlf-print-mobile .hlf-detail-hero .hlf-detail-map { flex: 0 0 auto; min-height: 0; }
+	/* 요청서(실사용 버그 — 지도 좌우는 꽉 찼는데 아래쪽에 여백이 남음): 이전에는 여기서
+	   flex:0 0 auto로 고정한 뒤 JS가 인라인 mm 높이(53mm)를 못박았다 — 그런데 이 행의 실제 높이는
+	   사진 카드(.hlf-gallery-main, 아래 max-height:72mm)가 정하고 grid align-items:stretch로 지도
+	   패널이 그 높이까지 늘어나는데, 지도 자체는 고정 53mm에 멈춰 있어 패널 안에서 늘어난 만큼(제목
+	   높이를 뺀 나머지)이 빈 채로 남았다. flex 오버라이드를 지워 기본값(public.css
+	   .hlf-detail-hero .hlf-detail-map { flex:1 1 auto })으로 되돌리면 지도가 사진과 같은 높이까지
+	   그대로 늘어나 바닥 여백이 없어진다(assets/js/public-flyer.js
+	   initLazyPrintMapsSequentially도 더는 높이를 못박지 않는다 — 폭과 마찬가지로 부모 칸을 그대로
+	   따라간다). 사진이 없는 매물(map-only)은 늘어날 대상(사진)이 아예 없으므로 이 규칙의 영향을
+	   받지 않고, 아래 min-height만 그대로 최소 바닥으로 쓴다. */
 	body.hlf-print-mobile .hlf-detail-hero--map-only .hlf-detail-map { min-height: 40mm; }
 
 	/* 매물 상세 1건을 2건/페이지 예산(각 ~130mm)에 맞추기 위해 데스크톱 인쇄보다 한 단계 더

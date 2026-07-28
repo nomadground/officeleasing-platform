@@ -985,16 +985,13 @@
 				// 컨테이너에서 읽어가는 폭이 그 상속과 어긋나지 않게 명시적으로 못박는다(요청서 4·9 —
 				// mm 매직넘버가 아니라 부모 칸을 그대로 따라간다).
 				container.style.width = '100%';
-				// height는 모바일 인쇄에서만 못박는다 — print.css의 body.hlf-print-mobile 전용 규칙
-				// (.hlf-detail-hero .hlf-detail-map { flex:0 0 auto; min-height:0 })이 정확히 이
-				// 인라인 값이 이기도록 CSS 쪽 제약을 미리 낮춰 둔 상태다(매물 1건 상세 1페이지 2건
-				// 예산 때문— 사진 높이를 그대로 물려받으면 항목이 너무 길어져 밀린다). 데스크톱은 이
-				// 예산 제약이 없고, 지금까지도 지도 높이를 건드린 적이 없다(align-items:stretch로 사진
-				// 높이를 그대로 물려받는 게 기존 동작) — 여기서 새로 개입하면 회귀다(요청서 8).
-				if ( isNarrowScreen() ) {
-					container.style.height = PRINT_MAP_SIZES.detail.height;
-					container.style.minHeight = PRINT_MAP_SIZES.detail.height;
-				}
+				// 요청서(실사용 버그 — 좌우는 꽉 찼는데 아래쪽에 여백 남음): 높이도 폭과 같은 원칙으로
+				// 바꾼다 — mm 매직넘버로 못박지 않고 부모 칸(사진 있으면 그 사진과 grid
+				// align-items:stretch로 같은 높이까지 늘어난 패널, 없으면 print.css의 min-height
+				// 바닥)을 그대로 따라간다. 인라인 height를 아예 안 주면 기본값(public.css
+				// .hlf-detail-hero .hlf-detail-map { flex:1 1 auto })이 그 늘어난 패널 높이까지
+				// 채운다 — 이전에 여기서 53mm로 고정하던 것이 오히려 그 늘어난 높이에 못 미쳐 바닥에
+				// 빈 공간을 남긴 원인이었다.
 				return initMapContainer( container );
 			} );
 		}, Promise.resolve() );
