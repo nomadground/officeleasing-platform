@@ -696,7 +696,13 @@ body.hlf-public {
 	/* 요청서: 지번주소가 숫자 하나만 더 늘어나도 줄바꿈되던 문제 — 순번 배지 폭/배지-주소 간격을
 	   더 줄이고(아래 .hlf-listing-idaddr gap도 함께) 주소 글자 크기도 살짝 낮춰, 숫자 2개 정도
 	   여유를 확보한다. */
-	.hlf-listing-index { flex-shrink: 0; width: 13px; height: 13px; font-size: 7px; }
+	/* 요청서(실사용 — 실기기에서 배지가 지번주소+도로명주소 두 줄 중앙보다 살짝 위로 보임): 부모
+	   .hlf-listing-idaddr는 이미 align-items:center로 배지 박스 자체는 기하학적으로 정중앙에 온다
+	   (Playwright 실측으로 두 요소의 세로 중심 좌표가 정확히 일치함을 확인) — 실기기 폰트
+	   (Pretendard)의 줄 간격 여백이 이 환경의 대체 폰트와 달라, 텍스트의 실제 보이는 두 줄(글자
+	   자체)이 그 박스보다 살짝 아래로 치우쳐 보이는 것으로 판단된다. 배지만 살짝 내려 시각적으로
+	   맞춘다. */
+	.hlf-listing-index { flex-shrink: 0; width: 13px; height: 13px; font-size: 7px; margin-top: 2px; }
 	.hlf-listing-main .hlf-listing-address-block { gap: 0; }
 	/* 요청서: 모바일 리스트 카드의 지번주소(노란 형광펜 줄)를 한 사이즈 키운다(12px -> 13px). */
 	.hlf-listing-address { font-size: 13px; line-height: 1.25; }

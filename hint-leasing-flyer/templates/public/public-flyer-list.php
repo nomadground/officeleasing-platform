@@ -196,6 +196,15 @@ $og_image_url   = HLF_Contact_Directory::find_image_url_by_name( $og_contact['na
 										<span class="hlf-lease-metric-label">관리비</span>
 										<?php if ( $maintenance_included ) : ?>
 											<span class="hlf-lease-metric-value">포함</span>
+										<?php
+										/*
+										 * 요청서(데스크톱 — 관리비만 "포함"일 때 다른 칸(보증금/임대료/
+										 * 환산임대료)은 값+평당 서브텍스트로 2줄인데 여기만 값 1줄이라
+										 * 이 칸만 짧아 보여 가로 정렬이 어긋난다. 실제 서브텍스트로 쓸
+										 * 값이 없으므로 같은 클래스로 빈 자리만 채워 높이를 맞춘다.
+										 */
+										?>
+										<span class="hlf-lease-metric-sub">&nbsp;</span>
 										<?php else : ?>
 											<span class="hlf-lease-metric-value"><?php echo esc_html( number_format( (float) $item['maintenance_fee_manwon'] ) ); ?>만원</span>
 											<span class="hlf-lease-metric-sub">평당 <?php echo esc_html( number_format( $metrics['maintenance_per_lease_pyeong'], 1 ) ); ?>만원</span>

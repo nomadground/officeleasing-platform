@@ -1159,6 +1159,29 @@ Playwright로 인쇄 미디어(모바일)에서 실측 — 사진 있는 매물:
 남지 않는다. `php tests/test-calculations.php`, `php tests/test-display-helpers.php`,
 `node --check assets/js/public-flyer.js` 통과.
 
+## 요청서 반영 — v0.4.0-beta.44 (모바일 리스트 순번 배지 미세 조정 + 데스크톱 "관리비 포함" 칸 높이 정렬)
+
+### 1. 모바일 리스트 순번 배지가 살짝 위로 보임
+`.hlf-listing-idaddr`는 이미 `align-items:center`로 배지 박스 자체를 지번주소+도로명주소 두 줄
+전체 높이의 기하학적 정중앙에 놓고 있다(Playwright로 두 요소의 세로 중심 좌표가 정확히 일치함을
+재확인). 실기기 화면에서 살짝 위로 보인다는 요청은, 이 저장소의 실측 환경(대체 폰트)과 실기기
+폰트(Pretendard)의 줄 간격 여백 차이로 텍스트의 실제 보이는 두 줄이 박스보다 살짝 아래로 치우쳐
+보이는 것으로 판단해, `.hlf-listing-index`에 `margin-top: 2px`를 더해 배지만 살짝 내렸다.
+
+### 2. 데스크톱 리스트 "관리비 포함" 칸이 옆 칸보다 짧아 보임
+보증금/임대료/환산임대료 칸은 값(굵은 글씨) + 평당 서브텍스트(회색, 작은 글씨)로 2줄인데, 관리비가
+0원이라 "포함"으로만 표시될 때는 서브텍스트 없이 1줄이라 그 칸만 짧아 가로 정렬이 어긋났다.
+`templates/public/public-flyer-list.php`의 관리비 "포함" 분기에 같은 `.hlf-lease-metric-sub`
+클래스로 빈 자리(`&nbsp;`)만 추가해 높이를 맞췄다 — 실제 표시할 값이 없으므로 텍스트 없이 자리만
+차지한다. 모바일에서는 `.hlf-listing-main .hlf-lease-metric-sub { display:none; }`이 이미 서브텍스트
+전체를 숨기므로 이 변경의 영향을 받지 않는다.
+
+### 검증
+Playwright로 데스크톱 폭(1100px)에서 보증금/임대료/관리비 세 칸의 `getBoundingClientRect().height`가
+모두 48px로 일치함을 확인했다(이전에는 관리비 칸만 짧았다). `php tests/test-calculations.php`,
+`php tests/test-display-helpers.php`, `node --check assets/js/public-flyer.js`, PHP 템플릿 lint
+통과.
+
 ## 후속 단계에서 제외
 AI 이미지 적합성 판별, 워터마크 제거/자동 보정, 얼굴·번호판 블러, 이미지 Drag & Drop/크롭 편집기,
 이미지 순서 변경(위/아래) UI, officeleasing 원본 이미지 자동 동기화, PDF 생성, 인쇄 밀도별 레이아웃,
