@@ -171,6 +171,16 @@
 	   194mm 폭에 맞게 각 열을 절반(약 87mm, assets/js/public-flyer.js PRINT_MAP_SIZES.detail)으로
 	   맞춰 잘리지 않게 한다. */
 	body.hlf-print-mobile .hlf-detail-hero { grid-template-columns: 1fr 1fr !important; }
+	/* 요청서(실사용 버그 — 대표 사진이 없는 매물은 지도가 카드를 꽉 채워야 하는데 모바일 인쇄에서
+	   오른쪽이 조금 부족하게 나옴): 원인은 명시도 충돌이었다 — 위 규칙(body.hlf-print-mobile
+	   .hlf-detail-hero, 클래스 2개+important)이 `.hlf-detail-hero--map-only { grid-template-columns:
+	   1fr !important }`(클래스 1개+important)보다 명시도가 높아, 사진이 없는 매물의 그리드도
+	   모바일에서는 계속 2단으로 유지되고 있었다 — 지도 div 자체의 폭은 applyPrintMapSizing()이
+	   전체 폭으로 넓혀도, 그 지도가 들어앉은 그리드 칸(패널)은 여전히 절반 폭이라 지도가 그 칸
+	   경계를 넘어 삐져나가는 식으로 렌더링돼 오른쪽 여백이 어긋나 보였다. 이 셀렉터(클래스
+	   3개+important)가 위 규칙보다 명시도가 높으므로 사진 없는 매물은 모바일에서도 제대로 1단이
+	   된다. */
+	body.hlf-print-mobile .hlf-detail-hero--map-only { grid-template-columns: 1fr !important; }
 	/* 갤러리(3:2 고정 비율)는 위에서 열 폭이 절반(약 91mm)으로 줄었으므로 그 비율대로 세로 높이도
 	   자연히 지도 높이(59mm)와 비슷하게 줄어든다 — max-height는 그보다 넉넉한 상한으로만 남긴다. */
 	body.hlf-print-mobile .hlf-gallery-main { max-height: 72mm; }

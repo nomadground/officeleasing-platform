@@ -379,6 +379,12 @@
 		// 성긴 대체 폰트를 쓰므로 여기서 나오는 절대 높이값은 실제 기기와 다르다(README 여러 차례
 		// 기록).
 		detail: { width: '87mm', height: '53mm' },
+		// 대표 사진이 없는 매물(.hlf-detail-hero--map-only)은 지도 혼자 히어로 전체를 차지한다 —
+		// print.css의 그리드 명시도 수정(body.hlf-print-mobile .hlf-detail-hero--map-only)과 함께
+		// 써야 한다. .hlf-detail-map-panel의 실제 안쪽 폭(Playwright 실측, padding 8px×2 제외)이
+		// comparison(.hlf-comparison-map-panel, padding 14px×2)과 달라 그 값을 그대로 재사용하면
+		// 약 2~3mm 부족했다 — 이 패널 전용 값으로 따로 둔다.
+		detailFull: { width: '180mm', height: '53mm' },
 	};
 	var printSizedMaps = [];
 
@@ -431,7 +437,7 @@
 			// 모바일은 여기서 폭을 mm로 못박기 때문에 이 경우를 따로 확인하지 않으면 사진이 없어도
 			// 계속 절반 폭(detail.width)에 눌려 있었다 — 위치 확인 지도와 같은 전체 폭을 쓴다.
 			var mapOnly = ! isComparison && !! container.closest( '.hlf-detail-hero--map-only' );
-			container.style.width = mapOnly ? PRINT_MAP_SIZES.comparison.width : size.width;
+			container.style.width = mapOnly ? PRINT_MAP_SIZES.detailFull.width : size.width;
 			container.style.height = size.height;
 			// print.css/public.css의 min-height(비교 지도 320px, 사진 없는 상세 76mm)가 위 height보다
 			// 크면 상자만 더 커지고 캔버스는 그대로라 또 "일부만" 나온다 — 같은 값으로 눌러둔다.

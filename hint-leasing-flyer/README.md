@@ -927,6 +927,36 @@ beta.32에서 좌 사진/우 지도 2단으로 되돌린 뒤(이 라운드 자�
 assets/js/public-flyer.js` 통과. Playwright로 map-only 폭 분기 로직(사진 있음/없음/위치확인
 지도 3가지 케이스)을 직접 검증했다.
 
+## 요청서 반영 — v0.4.0-beta.38 (모바일 개별 매물 페이지 — 사진 없을 때 지도 오른쪽 여백 진짜 원인)
+
+### 증상
+개별 매물 페이지(대표 사진 없음)를 모바일에서 인쇄하면 지도가 카드 오른쪽 끝까지 안 채워지고 살짝
+여백이 남았다(beta.37에서 폭을 178mm로 넓혔지만 여전히 재현). 반면 사진이 있는 매물(2단, 좌
+사진/우 지도)은 문제없었다.
+
+### 진짜 원인 — CSS 명시도 충돌
+`.hlf-detail-hero--map-only { grid-template-columns: 1fr !important; }`(사진이 없을 때 그리드를
+1열로 만들어 지도가 히어로 전체를 차지하게 하는 규칙, 클래스 1개+important)가, 모바일 전용 규칙
+`body.hlf-print-mobile .hlf-detail-hero { grid-template-columns: 1fr 1fr !important; }`(클래스
+2개+important)보다 명시도가 낮았다 — 두 규칙 다 `!important`라 명시도로 비교되는데, 모바일 규칙이
+이겨서 **사진이 없어도 모바일에서는 그리드가 계속 2열로 남아 있었다.** `applyPrintMapSizing()`이
+지도 div 자체의 폭은 전체 폭으로 넓혀도, 그 지도가 들어앉은 그리드 칸(패널)은 여전히 절반 폭이라
+지도가 칸 경계를 넘어 삐져나가는 식으로 렌더링돼 오른쪽 여백이 어긋나 보였다.
+
+### 수정
+`body.hlf-print-mobile .hlf-detail-hero--map-only { grid-template-columns: 1fr !important; }`
+(클래스 3개+important)를 추가해 모바일에서도 사진 없는 매물의 그리드가 제대로 1열이 되게 했다.
+그리드가 진짜로 넓어지자 패널의 실제 안쪽 폭(Playwright 실측)이 `.hlf-comparison-map-panel`(위치
+확인 지도, padding 14px)과 `.hlf-detail-map-panel`(padding 8px)에서 서로 다르다는 것도 드러나,
+지도 폭 값을 comparison 것을 재사용하던 것에서 이 패널 전용 값(`PRINT_MAP_SIZES.detailFull`,
+180mm)으로 분리했다. Playwright 재실측: 지도 오른쪽 끝과 패널 안쪽 오른쪽 끝의 차이가 약 1mm로
+좁혀졌다(패널 자체 padding 만큼만 남고 사실상 꽉 채움).
+
+### 검증
+`php tests/test-calculations.php`, `php tests/test-display-helpers.php`, `node --check
+assets/js/public-flyer.js` 통과. Playwright로 그리드 명시도 수정 전/후 패널·지도 폭을 직접
+측정해 확인했다.
+
 ## 후속 단계에서 제외
 AI 이미지 적합성 판별, 워터마크 제거/자동 보정, 얼굴·번호판 블러, 이미지 Drag & Drop/크롭 편집기,
 이미지 순서 변경(위/아래) UI, officeleasing 원본 이미지 자동 동기화, PDF 생성, 인쇄 밀도별 레이아웃,
