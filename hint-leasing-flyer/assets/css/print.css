@@ -161,15 +161,16 @@
 	 * 적용되지 않으므로 위에서 정의한 2단 히어로·1건/페이지 동작이 그대로 유지된다.
 	 * ============================================================ */
 
-	/* 위(105번째 줄 부근)의 2단 히어로는 281mm 가로 폭 전제라 194mm 세로 용지에서는 사진 왼쪽
-	   끝·지도 오른쪽 끝이 잘려나간다(요청서: "지도가 가운데 정사각형 정도만 보이고 양옆은 안
-	   보여") — 사진 위/지도 아래로 세로로 쌓아 필요한 최대 폭을 194mm 이내로 줄인다. */
-	body.hlf-print-mobile .hlf-detail-hero { grid-template-columns: 1fr !important; }
-	/* 갤러리(3:2 고정 비율)와 지도는 세로로 쌓이면서 늘어난 세로 공간을 각각 낮은 높이로 눌러야 한다
-	   — 아래 매물 상세 예산 참고. 요청서: 처음엔 18mm로 빠듯하게 잡았는데, 사진·지도가 너무 좁아
-	   보인다는 실사용 피드백으로 2배(36mm)로 키운 뒤(beta.26), 여전히 좁다는 요청으로 다시 2배
-	   (72mm)로 키웠다(지도 쪽은 assets/js/public-flyer.js PRINT_MAP_SIZES.detail도 42mm -> 84mm로
-	   함께 키움). */
+	/* 요청서: 처음엔 281mm 가로 폭 전제인 2단 히어로가 194mm 세로 용지에서 사진 왼쪽 끝·지도 오른쪽
+	   끝이 잘려나가(요청서: "지도가 가운데 정사각형 정도만 보이고 양옆은 안 보여") 사진 위/지도
+	   아래로 세로로 쌓는 방식으로 바꿨었다 — 그런데 사진·지도 세로 높이를 키울수록(아래 참고) 세로
+	   쌓기라 항목 하나의 전체 높이가 그만큼 두 배로 늘어, 1페이지에 2건씩 넣으려던 목표를 못 채우고
+	   지도가 다음 페이지로 밀리는 문제가 생겼다 — 다시 2단(좌 사진/우 지도)으로 되돌리되, 이번엔
+	   194mm 폭에 맞게 각 열을 절반(약 87mm, assets/js/public-flyer.js PRINT_MAP_SIZES.detail)으로
+	   맞춰 잘리지 않게 한다. */
+	body.hlf-print-mobile .hlf-detail-hero { grid-template-columns: 1fr 1fr !important; }
+	/* 갤러리(3:2 고정 비율)는 위에서 열 폭이 절반(약 91mm)으로 줄었으므로 그 비율대로 세로 높이도
+	   자연히 지도 높이(59mm)와 비슷하게 줄어든다 — max-height는 그보다 넉넉한 상한으로만 남긴다. */
 	body.hlf-print-mobile .hlf-gallery-main { max-height: 72mm; }
 
 	/* 요청서: 리스트가 8개 이상이면(최대 10개) 리스트 자체가 길어져 "리스트+차트·지도 = 1장" 예산을
@@ -227,9 +228,9 @@
 		padding-top: 4mm;
 		border-top: 1px dashed var(--hlf-line, #dfe7ec);
 	}
-	/* 요청서 4(재확인): 개별 지도는 이제 히어로가 세로로 쌓이므로 절반 폭이 아니라 전체 폭을 쓴다
-	   (assets/js/public-flyer.js PRINT_MAP_SIZES.detail이 178mm 폭으로 mm 크기를 못박는다) — 여기서는
-	   그 인라인 크기가 이길 수 있도록 CSS 쪽 min-height만 낮춰 겹치는 제약을 없앤다. */
+	/* 개별 지도는 assets/js/public-flyer.js PRINT_MAP_SIZES.detail이 인라인 mm 크기(폭·높이)를
+	   못박는다 — 여기서는 그 인라인 크기가 이길 수 있도록 CSS 쪽 min-height만 낮춰 겹치는 제약을
+	   없앤다. */
 	body.hlf-print-mobile .hlf-detail-hero .hlf-detail-map { flex: 0 0 auto; min-height: 0; }
 	body.hlf-print-mobile .hlf-detail-hero--map-only .hlf-detail-map { min-height: 40mm; }
 
@@ -241,6 +242,12 @@
 	body.hlf-print-mobile .hlf-print-item-header {
 		margin-bottom: 2mm;
 		padding: 3px 8px;
+		/* 실사용 버그(스크린샷으로 확인): 이 헤더 하나만 페이지 맨 아래에 남고 바로 아래 사진·지도는
+		   다음 페이지로 밀리는 "헤더만 고아가 되는" 증상 — 헤더 아래에 break-inside:avoid인 블록
+		   (.hlf-gallery-main/.hlf-detail-map-panel)이 있어도, 헤더 자체엔 break-after 제약이 없어
+		   브라우저가 헤더 바로 뒤에서 페이지를 넘겨버릴 수 있었다. 헤더 뒤에서는 페이지가 넘어가지
+		   않게 강제해, 공간이 부족하면 헤더까지 통째로 다음 페이지로 넘어가게 한다. */
+		break-after: avoid-page;
 	}
 	body.hlf-print-mobile .hlf-print-item-header .hlf-header-address-main { font-size: 12px; }
 	body.hlf-print-mobile .hlf-print-item-header .hlf-header-address-sub,
