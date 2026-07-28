@@ -378,13 +378,11 @@
 		// (59 x 0.9 = 53.1 반올림). 이 저장소의 Playwright 실측 환경은 실제 폰트(Pretendard)보다
 		// 성긴 대체 폰트를 쓰므로 여기서 나오는 절대 높이값은 실제 기기와 다르다(README 여러 차례
 		// 기록).
+		// width는 항상 화면에 떠 있던 상세 페이지 자체 지도(.hlf-detail-map-panel, 요청서 1 — 이 경로는
+		// 건드리지 않는다)에만 쓰인다. 목록 인쇄용 lazy 매물 카드 지도(사진 있음/없음 모두)는 더 이상
+		// 이 mm 값을 쓰지 않고 프라이밍된 그리드 칸을 width:100%로 그대로 채운다(요청서 4·9,
+		// initLazyPrintMapsSequentially 참고) — height만 인쇄 밀도 제어용으로 공유해 재사용한다.
 		detail: { width: '87mm', height: '53mm' },
-		// 대표 사진이 없는 매물(.hlf-detail-hero--map-only)은 지도 혼자 히어로 전체를 차지한다 —
-		// print.css의 그리드 명시도 수정(body.hlf-print-mobile .hlf-detail-hero--map-only)과 함께
-		// 써야 한다. .hlf-detail-map-panel의 실제 안쪽 폭(Playwright 실측, padding 8px×2 제외)이
-		// comparison(.hlf-comparison-map-panel, padding 14px×2)과 달라 그 값을 그대로 재사용하면
-		// 약 2~3mm 부족했다 — 이 패널 전용 값으로 따로 둔다.
-		detailFull: { width: '180mm', height: '53mm' },
 	};
 	var printSizedMaps = [];
 
@@ -426,27 +424,21 @@
 		mobilePageStyleEl = null;
 	}
 
+	// 요청서: 항상 화면에 떠 있던 지도(위치 확인 비교 지도·매물 상세 단독 페이지 자체 지도)만
+	// 대상으로 한다 — data-hlf-lazy-map(목록 인쇄에 끼워 넣는 매물 카드 지도)은 제외한다. 그 쪽은
+	// 이제 initLazyPrintMapsSequentially()가 프라이밍된 카드의 실제 그리드 칸을 width:100%로 그대로
+	// 채우는 방식으로 처리한다(mm 매직넘버로 폭을 못박지 않는다) — 두 경로를 분리해야 이 함수의
+	// 변경이 지금까지 문제없던 비교 지도·단독 상세 지도에 영향을 주지 않는다(요청서 1·8).
 	function applyPrintMapSizing() {
 		if ( ! isNarrowScreen() || printSizedMaps.length ) { return; }
-		document.querySelectorAll( '[data-hlf-map-items]' ).forEach( function ( container ) {
+		document.querySelectorAll( '[data-hlf-map-items]:not([data-hlf-lazy-map])' ).forEach( function ( container ) {
 			var isComparison = 'hlf-comparison-map' === container.id;
 			var size = isComparison ? PRINT_MAP_SIZES.comparison : PRINT_MAP_SIZES.detail;
-			// 요청서: 대표 사진이 없는 매물(.hlf-detail-hero--map-only, PHP가 서버에서 미리 판정)은
-			// 좌 사진/우 지도 2단이 아니라 지도 혼자 이 히어로 전체를 차지한다 — 데스크톱은 CSS
-			// grid-template-columns만으로 이게 자연히 처리되지만(별도 인라인 폭을 강제하지 않음),
-			// 모바일은 여기서 폭을 mm로 못박기 때문에 이 경우를 따로 확인하지 않으면 사진이 없어도
-			// 계속 절반 폭(detail.width)에 눌려 있었다 — 위치 확인 지도와 같은 전체 폭을 쓴다.
-			var mapOnly = ! isComparison && !! container.closest( '.hlf-detail-hero--map-only' );
-			container.style.width = mapOnly ? PRINT_MAP_SIZES.detailFull.width : size.width;
+			container.style.width = size.width;
 			container.style.height = size.height;
 			// print.css/public.css의 min-height(비교 지도 320px, 사진 없는 상세 76mm)가 위 height보다
 			// 크면 상자만 더 커지고 캔버스는 그대로라 또 "일부만" 나온다 — 같은 값으로 눌러둔다.
 			container.style.minHeight = size.height;
-			// max-width:100% 같은 상대 제약은 절대로 걸지 않는다 — 아래에서 이 컨테이너를
-			// position:fixed로 빼는 순간 %가 뷰포트 기준으로 풀려서(모바일 390px) 못박아둔 mm 크기가
-			// 그 값으로 다시 줄어들고, 결국 인쇄 크기가 아니라 화면 크기를 재는 원래 문제로 돌아간다
-			// (Playwright 실측으로 확인). 대신 값 자체를 A4 세로(사용 폭 194mm, 안쪽 컨텐츠 폭
-			// 약 180mm)에도 넘치지 않는 크기로 고른다.
 			container.style.marginLeft = 'auto';
 			container.style.marginRight = 'auto';
 			// 상세 지도는 인쇄에서 flex column 패널의 flex:1 아이템이라(public.css .hlf-detail-hero
@@ -509,13 +501,21 @@
 		// 지도 크기를 먼저 못박아야, 바로 아래에서 "그때 가서" 만들어지는 매물별 인쇄 지도도 처음부터
 		// 인쇄 크기로 만들어진다(요청서 4).
 		applyPrintMapSizing();
-		// 이전에는 relayout을 위 두 작업과 동시에(Promise.all에 나란히) 걸어서, 이 시점에 아직 만들어지지
-		// 않은 인쇄 전용 지도들은 relayout 대상에서 통째로 빠졌다 — 지도 생성이 끝난 뒤에 돌려야
-		// initializedMaps에 갓 들어온 지도까지 함께 인쇄 크기로 맞춰지고 타일 로드도 기다릴 수 있다.
-		Promise.all( [
-			initLazyPrintMaps( document ),
-			loadPendingPrintPhotos( document ),
-		] ).then( function () {
+		// 요청서 2·5: 매물별 인쇄 카드를 194mm 폭으로 먼저 프라이밍하고, 그 그리드 계산이 실제로
+		// 반영됐다고 볼 수 있는 시점(requestAnimationFrame 두 번)까지 기다린 뒤에야 그 칸 폭을 읽어
+		// 지도를 만든다 — 프라이밍과 지도 생성을 같은 틱에 걸면 지도가 이전 레이아웃 기준 폭을 읽어갈
+		// 수 있다(README 참고, beta.34~41까지의 원인 분석).
+		primePrintItemDetails( document );
+		// 이전에는 relayout을 지도/사진 로딩과 동시에(Promise.all에 나란히) 걸어서, 이 시점에 아직
+		// 만들어지지 않은 인쇄 전용 지도들은 relayout 대상에서 통째로 빠졌다 — 지도 생성이 끝난 뒤에
+		// 돌려야 initializedMaps에 갓 들어온 지도까지 함께 인쇄 크기로 맞춰지고 타일 로드도 기다릴 수
+		// 있다.
+		waitTwoAnimationFrames().then( function () {
+			return Promise.all( [
+				initLazyPrintMapsSequentially( document ),
+				loadPendingPrintPhotos( document ),
+			] );
+		} ).then( function () {
 			return relayoutMapsForPrint();
 		} ).then( function () {
 			// 지도 준비를 위해 잠깐 visibility:hidden으로 켜둔 .hlf-print-item-detail은 여기서 떼지
@@ -936,33 +936,68 @@
 	}
 
 	// 인쇄 선택 패널에서 "인쇄" 확정 시(또는 패널이 없는 상세 페이지에서 인쇄 버튼 클릭 시) 호출된다 —
-	// 지금 화면에 남아있는(=사용자가 체크한) 매물별 인쇄 전용 지도 중 아직 만들지 않은 것만 그때 가서
-	// 만든다. data-hlf-map-initialized로 한 번 만든 뒤 다시 만들지 않는다.
-	function initLazyPrintMaps( root ) {
-		var pending = [];
-		// 요청서(실사용 버그 — 두 번째 인쇄부터 매물 카드 지도가 깨짐, beta.34로도 안 고쳐짐): 이전에는
-		// :not([data-hlf-map-initialized])만 걸러 첫 인쇄에서 지도를 "만든" 컨테이너만 프라이밍
-		// (보이게)했다 — 그런데 restoreAfterPrint()의 unprimePrintDetails()가 인쇄가 끝날 때마다 이
-		// 컨테이너를 다시 display:none으로 되돌리므로, 두 번째 인쇄부터는 이 셀렉터가 이미 초기화된
-		// 컨테이너를 걸러내 버려 프라이밍 자체가 아예 일어나지 않았다 — 그 상태로 바로 아래
-		// relayoutMapsForPrint()가 여전히 숨겨진(크기 0) 컨테이너에 map.relayout()을 걸어 지도가 또
-		// 굳었다. 이제 지도 "생성"(new kakao.maps.Map)은 처음 한 번만 하되, 프라이밍(보이게 하기)은
-		// data-hlf-map-initialized 여부와 무관하게 인쇄할 때마다 매번 한다.
+	// 지금 화면에 남아있는(=사용자가 체크한) 매물별 카드를 인쇄 폭(194mm)으로 프라이밍만 한다(지도
+	// 생성은 하지 않는다 — 아래 initLazyPrintMapsSequentially 참고).
+	//
+	// 요청서(실사용 버그 — 두 번째 인쇄부터 매물 카드 지도가 깨짐, beta.34로도 안 고쳐짐): 이전에는
+	// :not([data-hlf-map-initialized])만 걸러 첫 인쇄에서 지도를 "만든" 컨테이너만 프라이밍
+	// (보이게)했다 — 그런데 restoreAfterPrint()의 unprimePrintDetails()가 인쇄가 끝날 때마다 이
+	// 컨테이너를 다시 display:none으로 되돌리므로, 두 번째 인쇄부터는 이 셀렉터가 이미 초기화된
+	// 컨테이너를 걸러내 버려 프라이밍 자체가 아예 일어나지 않았다. 이제 지도 "생성"(new
+	// kakao.maps.Map)은 처음 한 번만 하되, 프라이밍(보이게 하기)은 data-hlf-map-initialized 여부와
+	// 무관하게 인쇄할 때마다 매번 한다.
+	function primePrintItemDetails( root ) {
 		root.querySelectorAll( '[data-hlf-print-section]:not(.hlf-print-section-excluded) [data-hlf-map-items][data-hlf-lazy-map]' ).forEach( function ( container ) {
-			// 이 컨테이너는 화면에서 항상 display:none인 .hlf-print-item-detail 안에 있다(public.css) —
-			// 지도를 만들거나 relayout하는 시점에 컨테이너 크기가 0이면 카카오 지도가 빈 채로
-			// 굳어버린다(실사용 버그: 인쇄 시 지도가 안 나옴/두 번째 인쇄부터 깨짐). relayout 전에
-			// 실제로 보이게 해 정상적인 크기를 갖게 한다.
 			var detail = container.closest( '.hlf-print-item-detail' );
 			if ( detail && ! detail.classList.contains( 'hlf-print-priming' ) ) {
 				detail.classList.add( 'hlf-print-priming' );
 				primedPrintDetails.push( detail );
 			}
-			if ( container.hasAttribute( 'data-hlf-map-initialized' ) ) { return; }
-			container.setAttribute( 'data-hlf-map-initialized', '1' );
-			pending.push( initMapContainer( container ) );
 		} );
-		return Promise.all( pending );
+	}
+
+	// 요청서 5: 프라이밍(.hlf-print-priming 부여)만으로는 브라우저가 실제로 그 194mm 폭 기준 그리드를
+	// 계산해 반영했다는 보장이 없다 — 클래스를 붙인 바로 다음 동기 코드에서 지도를 만들면 여전히 이전
+	// 레이아웃(그리드 미계산 또는 이전 폭) 기준으로 컨테이너 크기를 읽어갈 수 있다. requestAnimationFrame
+	// 두 번(브라우저가 스타일 재계산 + 레이아웃 + 페인트를 한 프레임 안에 실제로 끝냈다고 볼 수 있는
+	// 시점)을 기다린 뒤에야 지도를 만든다.
+	function waitTwoAnimationFrames() {
+		return new Promise( function ( resolve ) {
+			requestAnimationFrame( function () {
+				requestAnimationFrame( resolve );
+			} );
+		} );
+	}
+
+	// 요청서 4·6·9: 프라이밍이 끝나(그리드 칸 폭이 확정된) 뒤, 그 칸을 그대로 width:100%로 채우는
+	// 방식으로 지도를 순차 생성한다(Promise.all 병렬이 아니라 하나씩 promise 체이닝 — 요청서 6,
+	// 동시 생성 시의 타이밍 경합을 피한다). 폭은 더 이상 mm 매직넘버로 못박지 않는다 — 높이만 인쇄
+	// 밀도 제어용으로 유지한다(요청서 9는 "고정 폭" 임시 숫자만 금지한다).
+	function initLazyPrintMapsSequentially( root ) {
+		var containers = Array.prototype.slice.call(
+			root.querySelectorAll( '[data-hlf-print-section]:not(.hlf-print-section-excluded) [data-hlf-map-items][data-hlf-lazy-map]:not([data-hlf-map-initialized])' )
+		);
+		return containers.reduce( function ( chain, container ) {
+			return chain.then( function () {
+				container.setAttribute( 'data-hlf-map-initialized', '1' );
+				// width는 항상 100%로 명시한다 — 프라이밍된 그리드 칸(사진 있으면 절반, 없으면 전체)이
+				// 이미 flex align-items:stretch로 이 값과 같은 폭을 물려주지만, 카카오가 생성 시점에
+				// 컨테이너에서 읽어가는 폭이 그 상속과 어긋나지 않게 명시적으로 못박는다(요청서 4·9 —
+				// mm 매직넘버가 아니라 부모 칸을 그대로 따라간다).
+				container.style.width = '100%';
+				// height는 모바일 인쇄에서만 못박는다 — print.css의 body.hlf-print-mobile 전용 규칙
+				// (.hlf-detail-hero .hlf-detail-map { flex:0 0 auto; min-height:0 })이 정확히 이
+				// 인라인 값이 이기도록 CSS 쪽 제약을 미리 낮춰 둔 상태다(매물 1건 상세 1페이지 2건
+				// 예산 때문— 사진 높이를 그대로 물려받으면 항목이 너무 길어져 밀린다). 데스크톱은 이
+				// 예산 제약이 없고, 지금까지도 지도 높이를 건드린 적이 없다(align-items:stretch로 사진
+				// 높이를 그대로 물려받는 게 기존 동작) — 여기서 새로 개입하면 회귀다(요청서 8).
+				if ( isNarrowScreen() ) {
+					container.style.height = PRINT_MAP_SIZES.detail.height;
+					container.style.minHeight = PRINT_MAP_SIZES.detail.height;
+				}
+				return initMapContainer( container );
+			} );
+		}, Promise.resolve() );
 	}
 
 	// 매물 인쇄 상세(print-item-detail.php)의 대표사진은 항상 display:none 컨테이너 안에 있어(공개

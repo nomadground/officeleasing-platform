@@ -130,7 +130,8 @@ $print_contact = HLF_Flyer_Repository::public_contact( $flyer, $item );
 				// 인쇄에서 이 항목이 선택됐을 때만 지도를 실제로 그린다(data-hlf-lazy-map) — 매물이
 				// 많은 안내문에서 인쇄 버튼을 누르기도 전에 카카오 지도를 매물 수만큼 미리 만들어두면
 				// 낭비다. 인쇄 확정 시점에 새로 만든 지도는 tilesloaded 이벤트까지 기다린 뒤에야
-				// window.print()를 호출한다(assets/js/public-flyer.js initLazyPrintMaps).
+				// window.print()를 호출한다(assets/js/public-flyer.js primePrintItemDetails +
+				// initLazyPrintMapsSequentially).
 				?>
 				<div
 					class="hlf-comparison-map hlf-detail-map"

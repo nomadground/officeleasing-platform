@@ -320,23 +320,49 @@ body.hlf-public {
    선택한 페이지 수와 무관하다). 화면에서만 숨기고 인쇄에는 전혀 영향이 없도록 @media screen으로
    범위를 좁힌다. */
 @media screen {
-	.hlf-print-priming { display: block !important; visibility: hidden !important; }
-	/* 요청서(실사용 버그로 원인 확정): 목록 인쇄에 끼워 넣는 매물 카드는 지도 오른쪽이 흰 여백으로
-	   잘려 나오는데, 매물 상세 페이지 단독 인쇄에서는 재현되지 않는다는 것으로 원인을 좁혔다 —
-	   차이는 이 지도의 조상(.hlf-print-item-detail, 바로 위 .hlf-print-priming)이
-	   visibility:hidden이라는 점뿐이다. visibility:hidden인 조상 아래 요소는 브라우저가 아예
-	   페인트하지 않는데(레이아웃 크기는 유지되지만 화면에 그려지지는 않음), 카카오 지도 캔버스는
-	   생성·relayout이 "실제로 페인트되는" 상태에서 이뤄져야 최종 크기까지 제대로 그려지는 것으로
-	   보인다 — 단독 상세 페이지의 지도는 이런 visibility:hidden 조상이 없고(아래
-	   body.hlf-print-map-sizing의 opacity:0 + position:fixed로만 가려지는데, 이건 여전히 페인트는
-	   된다) 문제가 없었다. 지도 패널만 visibility:visible로 되돌려 조상의 visibility:hidden을
-	   상쇄한다 — body.hlf-print-map-sizing이 이미 걸어둔 opacity:0 + position:fixed(아래)가 여전히
-	   화면에는 안 보이게 가려주므로 사용자 눈에는 아무 변화가 없다. */
-	.hlf-print-priming .hlf-detail-map-panel,
-	.hlf-print-priming .hlf-comparison-map-panel {
+	/* 요청서(실사용 버그 — 목록 인쇄 카드에서만 지도가 가운데 작게, 흰 여백을 남기고 그려짐. 매물
+	   상세 페이지 단독 인쇄에서는 재현 안 됨 — 사용자가 직접 비교 확인): 예전에는 이 클래스가
+	   display:block만 주고 실제 폭은 그 시점의 화면(모바일 뷰포트, ~390px)에 맡겨져 있었다 — 그
+	   상태에서 사진/지도 50:50 그리드가 계산되고, 지도 컨테이너에는 그와 무관한 별도의 mm 값(예:
+	   87mm)을 강제로 얹었다. 즉 지도를 만들 때 그 부모(그리드 칸)의 실제 폭과 지도 자체에 못박은
+	   폭이 서로 달랐다 — 카카오 지도 캔버스가 "자기 컨테이너 크기"를 어느 시점 기준으로 읽느냐에
+	   따라 어긋난 채로 굳어버린 것으로 보인다(매물 상세 단독 페이지는애초에 이런 이중 기준이 없어
+	   문제가 없었다).
+	   이제는 매물 상세 카드(.hlf-print-item-detail) 전체를 실제 인쇄 콘텐츠 폭(A4 세로 사용 폭
+	   194mm)으로 프라이밍한다 — 그 안의 50:50(또는 사진 없으면 1단) 그리드가 처음부터 이 폭
+	   기준으로 계산되므로, 지도 컨테이너는 그 칸을 그대로 width:100%로 채우기만 하면 된다(mm
+	   매직넘버 불필요, assets/js/public-flyer.js initLazyPrintMapsSequentially 참고). */
+	.hlf-print-priming {
+		display: block !important;
+		position: fixed !important;
+		top: 0 !important;
+		left: -99999px !important;
+		/* 기본값(데스크톱): @page(public.css 상단) 기본 A4 landscape의 실제 사용 폭 —
+		   297mm - margin 8mm×2 = 281mm. */
+		width: 281mm !important;
 		visibility: visible !important;
+		z-index: -1 !important;
+		pointer-events: none !important;
 	}
-	/* 요청서 4: 인쇄 직전에 지도 컨테이너를 인쇄 크기(mm, 인라인 스타일 — assets/js/public-flyer.js
+	/* 모바일 인쇄만 JS가 @page를 세로(A4 portrait)로 바꿔치기한다(applyMobilePagePortrait) — 그
+	   실제 사용 폭은 210mm - 8mm×2 = 194mm로 데스크톱과 다르다. prepareAndPrint()는 이 프라이밍보다
+	   먼저 hlf-print-mobile을 붙이므로(narrow screen일 때만) 이 시점엔 플랫폼이 이미 확정돼 있다 —
+	   여기서 데스크톱용 281mm를 그대로 쓰면(실사용 버그는 아직 없었지만) 모바일에서 지금 고치려는
+	   것과 완전히 같은 종류의 폭 불일치를 새로 만든다. */
+	body.hlf-print-mobile .hlf-print-priming { width: 194mm !important; }
+	/* 결정적인 원인: public.css에는 일반 모바일 화면 열람용 반응형 규칙
+	   (@media (max-width:700px) { .hlf-detail-hero { grid-template-columns: 1fr } })이 이미
+	   있는데, 이건 뷰포트 폭 기준이라 카드 자체를 194mm로 프라이밍해도 여전히 걸린다(프라이밍은
+	   여전히 스크린 컨텍스트에서 일어나고, 실제 모바일 기기의 뷰포트는 항상 700px 미만이므로). 그
+	   결과 relayout()이 실행되는 준비 단계에서는 그리드가 1단(칸 전체 폭)으로 계산되는데, 실제
+	   인쇄(@media print) 시점에는 print.css의 body.hlf-print-mobile .hlf-detail-hero가 2단으로
+	   강제한다 — 지도가 "자기 칸이 전체 폭인 줄 알고" 만들어진 뒤, 실제 인쇄에서는 그 절반 칸에
+	   욱여넣어지면서 가운데 작게 그려지고 나머지가 흰 여백으로 남았다. 프라이밍 중에도 실제 인쇄와
+	   똑같은 그리드(사진 있으면 2단, 없으면 1단)를 쓰도록 강제해 이 불일치를 없앤다. */
+	.hlf-print-priming .hlf-detail-hero { grid-template-columns: 1fr 1fr !important; }
+	.hlf-print-priming .hlf-detail-hero--map-only { grid-template-columns: 1fr !important; }
+	/* 요청서 4: 인쇄 직전에 항상 화면에 떠 있던 지도(위치 확인 비교 지도·매물 상세 단독 페이지
+	   자체 지도)의 컨테이너를 인쇄 크기(mm, 인라인 스타일 — assets/js/public-flyer.js
 	   applyPrintMapSizing)로 못박는 짧은 구간에만 붙는 클래스. 그 크기는 모바일 뷰포트보다 훨씬
 	   넓어서 그대로 두면 인쇄 대화상자가 뜨기 전 1초 남짓 동안 지도가 화면 밖으로 삐져나온다 —
 	   화면에서만 흐름 밖으로 빼서 안 보이게 한다(카카오 지도는 offsetWidth/Height로 크기를 재므로
@@ -360,6 +386,20 @@ body.hlf-public {
 		z-index: -1;
 		opacity: 0;
 		pointer-events: none;
+	}
+	/* 요청서 3: 목록 인쇄용 매물 카드(.hlf-print-priming) 안의 지도 패널은 위 규칙(패널 단독 고정
+	   위치 분리) 대상에서 뺀다 — 카드 전체가 이미 위에서 한 번에 화면 밖으로 빠져 있으므로, 패널을
+	   또 따로 그 흐름에서 분리하면 지도 div가 카드 내부의 정상 문서 흐름/그리드를 벗어나 별도
+	   스택 컨텍스트에 놓인다(=지도가 자기 부모의 50:50 칸 폭을 더는 신뢰할 수 없게 된다). 위
+	   규칙(body.hlf-print-map-sizing .hlf-detail-map-panel)보다 명시도가 높아야 이긴다. */
+	body.hlf-print-map-sizing .hlf-print-priming .hlf-detail-map-panel,
+	body.hlf-print-map-sizing .hlf-print-priming .hlf-comparison-map-panel {
+		position: static;
+		top: auto;
+		left: auto;
+		z-index: auto;
+		opacity: 1;
+		pointer-events: auto;
 	}
 }
 
