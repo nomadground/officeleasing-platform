@@ -797,6 +797,38 @@ Pretendard 폰트가 더 조밀해 여유가 있을 수 있다는 점은 이전 
 `node --check` 통과. Playwright로 2단 레이아웃 실제 렌더링(스크린샷)과 헤더 고아 버그 재현 여부를
 확인했다.
 
+## 요청서 반영 — v0.4.0-beta.33 (데스크톱 전체 인쇄 지도 깜빡임 버그 + 개별 상세 인쇄 사진·지도 확대)
+
+### 1. 데스크톱 "전체 인쇄" 매물 카드 지도가 나왔다 안 나왔다 함(실사용 버그)
+데스크톱 리스트 페이지에서 "전체 인쇄"를 누르면 매물별 상세 카드의 지도가 인쇄할 때마다 온전히
+나오거나 일부만 나오는 등 들쭉날쭉했다 — 개별 매물 상세 페이지 단독 인쇄에서는 항상 정상이었다.
+
+**원인**: `prepareAndPrint()`가 매물별 인쇄 지도를 만들고 타일 로딩까지 다 기다린 뒤에야
+`window.print()`를 부르는데, `window.print()` 호출 자체가 네이티브 `beforeprint`를 동기로
+발생시킨다. `bindPrintMapRelayout()`이 등록해 둔 `beforeprint`/`matchMedia('print')` 리스너는
+원래 "인쇄 버튼을 거치지 않은 인쇄(Ctrl+P 등)"를 위한 보완용인데, 버튼으로 들어온 인쇄에서도
+똑같이 발동해 `relayoutMapsForPrint()`를 또 한 번 불렀다 — 이 두 번째 relayout이
+`map.relayout()`으로 지도를 다시 흔들면서 새 타일 로딩이 시작되는데, 이게 실제 인쇄 스냅샷이
+찍히는 시점과 경쟁해 인쇄할 때마다 결과가 달라졌다(안 그래도 이전 안정성 점검에서 이 리스너
+중복 호출 자체는 발견했었는데, 이번에 실사용으로 확인된 구체적 증상과 함께 고친다).
+
+**수정**: `printPreparedByUs` 플래그를 추가해, 버튼발 인쇄가 이미 `relayoutMapsForPrint()`를
+마치고 `window.print()`를 부른 경우 저 두 리스너가 조용히 건너뛰게 했다. `restoreAfterPrint()`가
+인쇄 사이클이 완전히 끝났을 때 다시 내려, 다음 인쇄부터 정확히 판단한다. Ctrl+P 등 버튼을 거치지
+않은 인쇄에서는 이 플래그가 계속 꺼져 있으므로 기존 보완 동작 그대로 유지된다.
+
+### 2. 개별 매물 상세 페이지 데스크톱 인쇄 — 사진·지도 세로 높이 20% 확대
+`assets/css/print.css`의 `.hlf-gallery-main { max-height: 76mm; }`은 리스트 인쇄에 끼워 넣는 매물
+상세 카드(`body.hlf-list`, 1건/페이지 예산이 이미 76mm 기준으로 빠듯하게 맞춰져 있음)와 개별 매물
+상세 단독 인쇄(`body.hlf-detail`, 항상 매물 1건뿐이라 그 예산 제약이 없음) 양쪽에 공용으로 쓰이고
+있었다 — `body.hlf-detail` 쪽에만 20% 큰 값(91mm)을 주는 더 구체적인 규칙을 추가해, 단독 인쇄만
+사진·지도가 커지고 리스트 인쇄의 1건/페이지 예산에는 영향이 없게 했다.
+
+### 검증
+`php tests/test-calculations.php`, `php tests/test-display-helpers.php` 통과, `node --check
+assets/js/public-flyer.js` 통과. Playwright로 두 컨텍스트(`body.hlf-detail`/`body.hlf-list`)에서
+갤러리 높이가 서로 다른 값(확대/기존 유지)으로 각각 적용됨을 확인했다.
+
 ## 후속 단계에서 제외
 AI 이미지 적합성 판별, 워터마크 제거/자동 보정, 얼굴·번호판 블러, 이미지 Drag & Drop/크롭 편집기,
 이미지 순서 변경(위/아래) UI, officeleasing 원본 이미지 자동 동기화, PDF 생성, 인쇄 밀도별 레이아웃,

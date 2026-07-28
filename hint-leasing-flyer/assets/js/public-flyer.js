@@ -467,6 +467,17 @@
 	// 지도·상세 페이지 자체 지도)는 인쇄 레이아웃 크기로 다시 맞춘다 — 이 세 가지가 전부 끝난(사진
 	// 로드 완료 + 지도 타일 로드 완료) 뒤에야 인쇄를 시작한다. 인쇄 선택 패널이 있는 목록 페이지와
 	// 패널이 없어 곧장 인쇄하는 상세 페이지 둘 다 이 함수 하나를 그대로 쓴다.
+	// 요청서(실사용 버그 — 데스크톱 "전체 인쇄"에서 매물 카드 지도가 나왔다 안 나왔다 함): 인쇄
+	// 버튼으로 들어온 인쇄는 이 플래그를 세운 뒤 window.print()를 부른다 — window.print()는 호출
+	// 즉시 네이티브 beforeprint를 동기로 발생시키는데, bindPrintMapRelayout()의 beforeprint/
+	// matchMedia('print') 리스너가 원래 "Ctrl+P 등 버튼을 거치지 않은 인쇄"를 위한 보완으로 또
+	// relayoutMapsForPrint()를 불러, 이 함수가 방금 기다려서 완성해 둔 타일 로딩 상태를 다시
+	// 흔들었다(map.relayout()이 타일을 다시 받아오게 만듦) — 그 두 번째 relayout의 타일 도착과
+	// 실제 인쇄 스냅샷 시점이 경쟁해, 인쇄할 때마다 지도가 온전히 나왔다 일부만 나왔다 했다. 이
+	// 플래그가 서 있으면(=이 함수가 이미 최신 상태로 준비를 마쳤다는 뜻) 그 두 리스너는 조용히
+	// 건너뛴다. restoreAfterPrint()에서 인쇄 사이클이 완전히 끝났을 때만 다시 내린다.
+	var printPreparedByUs = false;
+
 	function prepareAndPrint() {
 		// 요청서(실사용 버그): 인쇄 버튼을 누르기 전에 리스트 행/NOC 막대/지도 마커 중 하나에라도
 		// 마우스가 지나간 적이 있으면, 그 매물의 하이라이트(.is-active — 리스트 베이지 줄, 막대,
@@ -498,6 +509,7 @@
 			// 콘텐츠 형태로 페이지 방향을 잘못 판단해 세로로 인쇄되는 회귀가 있었다(요청서). 이
 			// 클래스는 어차피 실제 인쇄에서는 @media print 규칙(display:block !important)이 항상
 			// 이기므로 켜져 있어도 무해하다 — 인쇄가 끝난 뒤(afterprint)에만 정리한다.
+			printPreparedByUs = true;
 			window.print();
 		} );
 	}
@@ -941,6 +953,9 @@
 		clearPrintMapSizing();
 		unprimePrintDetails();
 		relayoutMapsForPrint();
+		// 이 인쇄 사이클이 완전히 끝났다 — 다음 인쇄(버튼이든 Ctrl+P든)부터 다시 정확히 판단할 수
+		// 있게 내린다.
+		printPreparedByUs = false;
 	}
 
 	// 요청서(실사용 인쇄물로 원인 확정): 안드로이드에서는 window.print()가 즉시 반환하고 실제 인쇄
@@ -970,7 +985,14 @@
 	// 들어가는 경우를 위한 최소한의 보완 — window.print()를 우리가 가로챌 수 없으므로 로드 완료를
 	// 보장하진 못하지만, beforeprint에서라도 relayout을 걸어두면 완전히 빈 지도보다는 낫다.
 	function bindPrintMapRelayout() {
-		window.addEventListener( 'beforeprint', function () { ListingSync.clearActive(); relayoutMapsForPrint(); } );
+		window.addEventListener( 'beforeprint', function () {
+			ListingSync.clearActive();
+			// prepareAndPrint()가 이미 준비를 마치고 window.print()를 부른 경우(printPreparedByUs) —
+			// 여기서 또 relayout하면 방금 기다려 완성해 둔 타일 로딩 상태와 경쟁한다(위 printPreparedByUs
+			// 선언부 주석 참고). 진짜 필요한 경우(Ctrl+P 등 버튼을 거치지 않은 인쇄)만 여기서 처리한다.
+			if ( printPreparedByUs ) { return; }
+			relayoutMapsForPrint();
+		} );
 		window.addEventListener( 'afterprint', function () {
 			// 모바일은 afterprint가 인쇄 스냅샷보다 먼저 올 수 있다(위 scheduleDeferredRestore 주석) —
 			// 여기서 바로 정리하면 인쇄물이 깨진다. 화면으로 돌아온 시점이나 타임아웃까지 미룬다.
@@ -992,7 +1014,9 @@
 		} );
 		if ( window.matchMedia ) {
 			var mql = window.matchMedia( 'print' );
-			var handler = function ( e ) { if ( e.matches ) { relayoutMapsForPrint(); } };
+			// 같은 이유(printPreparedByUs)로 버튼발 인쇄에서는 건너뛴다 — beforeprint와 마찬가지로
+			// 이 이벤트도 버튼을 거치지 않은 인쇄(Ctrl+P 등)를 위한 보완일 뿐이다.
+			var handler = function ( e ) { if ( e.matches && ! printPreparedByUs ) { relayoutMapsForPrint(); } };
 			if ( mql.addEventListener ) { mql.addEventListener( 'change', handler ); }
 			else if ( mql.addListener ) { mql.addListener( handler ); }
 		}
