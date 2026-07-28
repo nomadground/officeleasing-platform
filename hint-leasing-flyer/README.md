@@ -857,6 +857,22 @@ beta.33에서 20% 키운(76mm→91mm) 뒤 실제 인쇄에서 하단 문의처 �
 assets/js/public-flyer.js` 통과. Playwright로 보증금 칸 텍스트 위치 이동과 개별 상세 페이지 높이
 재측정을 확인했다.
 
+## 요청서 반영 — v0.4.0-beta.35 (데스크톱 인쇄 사진·지도 높이 통일)
+
+리스트 페이지 "전체 인쇄"에 끼워 넣는 매물 상세 카드(76mm)와 개별 매물 상세 페이지 단독 인쇄
+(82mm)의 사진·지도 세로 높이가 서로 달라 인쇄 화면이 다르게 보인다는 요청 — 82mm(상세 페이지
+기준, 사용자 선택)로 통일했다. `body.hlf-detail`/`body.hlf-list` 구분 없이 `.hlf-gallery-main`
+공용 규칙 하나로 되돌렸다.
+
+**알아둘 점**: 리스트 인쇄 쪽은 원래 76mm 기준으로 1건/페이지 예산에 ~45px 여유를 두고 맞춰져
+있었는데, 82mm로 커지면서 그 여유가 줄었다 — 매물 내용(사진 유무, 문의처 길이 등)에 따라 일부
+항목이 1건/페이지를 못 채우고 다음 페이지로 밀릴 수 있다. 재현되면 알려달라고 안내했다.
+
+### 검증
+`php tests/test-calculations.php`, `php tests/test-display-helpers.php` 통과, `node --check
+assets/js/public-flyer.js` 통과. Playwright로 두 컨텍스트(`body.hlf-detail`/`body.hlf-list`)의
+갤러리 높이가 82mm로 동일하게 나옴을 확인했다.
+
 ## 후속 단계에서 제외
 AI 이미지 적합성 판별, 워터마크 제거/자동 보정, 얼굴·번호판 블러, 이미지 Drag & Drop/크롭 편집기,
 이미지 순서 변경(위/아래) UI, officeleasing 원본 이미지 자동 동기화, PDF 생성, 인쇄 밀도별 레이아웃,
