@@ -676,8 +676,11 @@ body.hlf-public {
 	.hlf-listing-main .hlf-lease-metrics { grid-area: metrics; display: grid; grid-template-columns: var(--hlf-mobile-cols); column-gap: 4px; }
 	/* 요청서 4: 보증금 칸은 이 줄의 첫 칸이라 왼쪽에 구분할 대상이 없다 — 세로선을 없앤다(기본
 	   .hlf-lease-metric에는 항상 border-left가 있는데, 데스크톱에서는 전용면적 다음 칸이라 필요하지만
-	   모바일에서는 독립된 줄의 첫 칸이라 불필요). */
-	.hlf-listing-main .hlf-lease-metric:first-child { border-left: 0; }
+	   모바일에서는 독립된 줄의 첫 칸이라 불필요).
+	   요청서: 이 칸은 위 줄의 지번주소 칸 폭(--hlf-mobile-cols의 1.3fr)을 그대로 물려받아 임대료/
+	   관리비/환산임대료보다 넓다 — 칸 폭(그리드)은 그대로 두고, 가운데 정렬된 텍스트만 오른쪽으로
+	   살짝 밀어 옆 세 칸과 비슷한 느낌으로 맞춘다. */
+	.hlf-listing-main .hlf-lease-metric:first-child { border-left: 0; padding-left: 14px; }
 	.hlf-listing-main .hlf-lease-metric { padding: 2px; }
 	.hlf-listing-main .hlf-lease-metric-label { font-size: 9px; line-height: 1.15; }
 	.hlf-listing-main .hlf-lease-metric-value { margin-top: 1px; font-size: 12px; line-height: 1.15; }

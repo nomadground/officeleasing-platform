@@ -829,6 +829,34 @@ Pretendard 폰트가 더 조밀해 여유가 있을 수 있다는 점은 이전 
 assets/js/public-flyer.js` 통과. Playwright로 두 컨텍스트(`body.hlf-detail`/`body.hlf-list`)에서
 갤러리 높이가 서로 다른 값(확대/기존 유지)으로 각각 적용됨을 확인했다.
 
+## 요청서 반영 — v0.4.0-beta.34 (전체 인쇄 지도 깨짐 진짜 원인 + 상세 인쇄 재조정 + 모바일 보증금 텍스트 위치)
+
+### 1. 데스크톱 "전체 인쇄" 두 번째부터 매물 카드 지도가 깨지는 진짜 원인
+beta.33에서 버튼발 인쇄의 중복 relayout(beforeprint/matchMedia)은 막았는데도 재현됐다 — 진짜
+원인은 `restoreAfterPrint()`의 순서였다. 이 함수는 `unprimePrintDetails()`로 매물별 인쇄 전용 지도
+컨테이너를 다시 `display:none`으로 숨긴 **다음에** `relayoutMapsForPrint()`로 그 지도까지 포함해
+`map.relayout()`을 걸고 있었다 — 컨테이너가 이미 숨겨져 크기가 0인 채로 relayout()을 부르면
+카카오 지도가 그 0 크기를 내부에 기억해 버린다(`initLazyPrintMaps()`가 애초에 "생성 시점에 크기가
+0이면 지도가 빈 채로 굳는다"고 경고하던 것과 정확히 같은 함정을 복구 단계에서 반대로 밟은 것).
+이 지도는 `data-hlf-map-initialized`로 다음 인쇄 때 다시 만들어지지 않고 이 "굳은" 상태 그대로
+재사용돼, 두 번째 인쇄부터 지도가 깨져 보였다. `relayoutMapsForPrint()`를 `unprimePrintDetails()`
+**앞으로** 옮겨, 아직 보이는 상태에서 relayout을 끝낸 뒤에 숨기도록 순서를 바꿨다.
+
+### 2. 개별 매물 상세 단독 인쇄 사진·지도 높이 재조정
+beta.33에서 20% 키운(76mm→91mm) 뒤 실제 인쇄에서 하단 문의처 버튼이 다음 페이지로 밀렸다는
+요청 — 10% 낮춰 82mm로 재조정했다(91 x 0.9 = 81.9 반올림). 리스트 인쇄에 끼워 넣는 매물 카드
+(76mm)는 이번에도 영향받지 않는다.
+
+### 3. 모바일 리스트 보증금 칸 텍스트 위치
+보증금 칸은 위 줄의 지번주소 칸 폭을 그대로 물려받아 임대료/관리비/환산임대료보다 넓다(beta.31에서
+정렬을 우선해 되돌린 트레이드오프) — 요청대로 칸 폭(그리드)은 그대로 두고, 가운데 정렬된 텍스트만
+`padding-left`를 살짝 늘려(2px → 14px) 오른쪽으로 밀어 옆 세 칸과 비슷한 느낌으로 맞췄다.
+
+### 검증
+`php tests/test-calculations.php`, `php tests/test-display-helpers.php` 통과, `node --check
+assets/js/public-flyer.js` 통과. Playwright로 보증금 칸 텍스트 위치 이동과 개별 상세 페이지 높이
+재측정을 확인했다.
+
 ## 후속 단계에서 제외
 AI 이미지 적합성 판별, 워터마크 제거/자동 보정, 얼굴·번호판 블러, 이미지 Drag & Drop/크롭 편집기,
 이미지 순서 변경(위/아래) UI, officeleasing 원본 이미지 자동 동기화, PDF 생성, 인쇄 밀도별 레이아웃,

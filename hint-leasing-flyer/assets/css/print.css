@@ -127,13 +127,15 @@
 	   그대로 물려받는다. */
 	.hlf-gallery-main { max-height: 76mm; }
 	/* 요청서: 개별 매물 상세 페이지(단독 인쇄, body.hlf-detail — public-flyer-detail.php)에서만
-	   사진·지도 세로 높이를 20% 키운다(76mm -> 91mm). 리스트 인쇄에 끼워 넣는 매물 상세 카드
+	   사진·지도 세로 높이를 키운다(76mm -> 91mm, +20%). 리스트 인쇄에 끼워 넣는 매물 상세 카드
 	   (body.hlf-list, templates/public/partials/print-item-detail.php)는 바로 위 주석대로 76mm
 	   기준 1건/페이지 예산이 이미 빠듯하게(~45px 여유) 맞춰져 있어 그대로 20% 키우면 다시 2페이지로
 	   밀리는 회귀가 날 수 있다 — 단독 페이지는 항상 매물 1건뿐이라 그 예산 제약이 없으므로 안전하게
-	   키울 수 있다. 지도 패널은 grid align-items:stretch로 이 값을 그대로 물려받는다. */
-	body.hlf-detail .hlf-gallery-main { max-height: 91mm; }
-	body.hlf-detail .hlf-detail-hero--map-only .hlf-detail-map { min-height: 91mm; }
+	   키울 수 있다. 지도 패널은 grid align-items:stretch로 이 값을 그대로 물려받는다.
+	   요청서(재조정): 91mm에서는 실제 인쇄 시 페이지 세로 예산(A4 landscape)을 넘어 하단 문의처
+	   버튼이 다음 페이지로 밀렸다는 요청 — 10% 낮춰 82mm로(91 x 0.9 = 81.9 반올림). */
+	body.hlf-detail .hlf-gallery-main { max-height: 82mm; }
+	body.hlf-detail .hlf-detail-hero--map-only .hlf-detail-map { min-height: 82mm; }
 	.hlf-panel { margin: 3px 0; padding: 5px 10px 4px; }
 	/* 지도 패널은 이전에는 인쇄에서 통째로 숨어 있어 밀도 조정 대상이 아니었다 — 이제 실제로 보이면서
 	   갤러리 카드와 grid align-items:stretch로 높이가 맞춰지므로, 이 패널(과 짝을 이루는 갤러리

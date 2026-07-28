@@ -943,6 +943,16 @@
 	// 인쇄(또는 인쇄 다이얼로그 취소)가 끝난 뒤의 원상복구 — initLazyPrintMaps()가 지도를 만들려고
 	// 잠깐 보이게 해뒀던 .hlf-print-item-detail을 다시 화면 전용(display:none)으로 되돌리고,
 	// applyPrintMapSizing()이 못박아둔 지도 크기도 화면용으로 풀어준 뒤 다시 relayout한다.
+	//
+	// 요청서(실사용 버그 — 데스크톱 "전체 인쇄"에서 두 번째 인쇄부터 매물 카드 지도가 깨짐): 예전
+	// 순서는 unprimePrintDetails()로 매물별 인쇄 지도 컨테이너를 먼저 display:none으로 숨긴 "다음에"
+	// relayoutMapsForPrint()가 initializedMaps 전체(그 lazy 지도까지 포함)에 map.relayout()을
+	// 걸었다 — 컨테이너가 이미 숨겨져 크기가 0인 상태로 relayout()을 부르면 카카오 지도가 그 0 크기를
+	// 내부에 그대로 기억해 버린다(initLazyPrintMaps() 자체가 "생성 시점에 컨테이너가 0 크기면 지도가
+	// 빈 채로 굳어버린다"고 이미 경고하던 것과 같은 함정을 복구 단계에서 반대로 밟은 것). 이 지도는
+	// data-hlf-map-initialized 때문에 다음 인쇄에서 다시 만들어지지 않고 이 "굳은" 상태 그대로
+	// 재사용돼, 두 번째 인쇄부터 지도가 깨져 보였다 — 순서를 뒤집어 아직 보이는 상태에서 먼저
+	// relayout을 끝내고, 그 다음에 숨긴다.
 	function restoreAfterPrint() {
 		if ( deferredRestoreTimer ) {
 			clearTimeout( deferredRestoreTimer );
@@ -951,8 +961,8 @@
 		document.body.classList.remove( 'hlf-print-mobile' );
 		clearMobilePagePortrait();
 		clearPrintMapSizing();
-		unprimePrintDetails();
 		relayoutMapsForPrint();
+		unprimePrintDetails();
 		// 이 인쇄 사이클이 완전히 끝났다 — 다음 인쇄(버튼이든 Ctrl+P든)부터 다시 정확히 판단할 수
 		// 있게 내린다.
 		printPreparedByUs = false;
