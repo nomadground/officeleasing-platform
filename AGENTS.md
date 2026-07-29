@@ -1,5 +1,13 @@
 # Agent Instructions — OFFICE LEASING
 
+## Required reading
+
+Before repository migration or branch integration work, read:
+
+1. `README.md`
+2. `docs/MIGRATION_HANDOFF.md`
+3. this file
+
 ## Scope
 
 This repository contains only:
@@ -23,6 +31,16 @@ The NMD project remains in its existing repository and must not be moved or modi
 - Use WordPress APIs and existing project helpers.
 - Run available syntax and regression checks.
 - Report changed files, test evidence, assumptions, and unresolved risks.
+
+## Migration-specific rule
+
+When asked to migrate branches from `nomadground/nmd-company-os`, follow `docs/MIGRATION_HANDOFF.md` exactly. Copy and verify only these branches:
+
+- `officeleasing`
+- `claude/leasing-flyer-mvp-analysis-wt2g7k`
+- `claude/mobile-layout-print-fixes-tfils7`
+
+Do not modify the source repository, merge the branches, remove NMD data, clean mixed-scope files, or begin feature development during the migration task.
 
 ## OFFICE LEASING conventions
 
