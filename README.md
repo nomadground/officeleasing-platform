@@ -4,6 +4,20 @@ Private WordPress platform repository for **officeleasing.co.kr**.
 
 This repository is intended to contain only the OFFICE LEASING website and Leasing Flyer code extracted from the existing NMD workspace. The NMD project remains in its current repository and is not migrated here.
 
+## Required migration document
+
+Before copying, comparing, or integrating the OfficeLeasing branches, read:
+
+- `docs/MIGRATION_HANDOFF.md`
+
+The requested source branches are:
+
+- `officeleasing`
+- `claude/leasing-flyer-mvp-analysis-wt2g7k`
+- `claude/mobile-layout-print-fixes-tfils7`
+
+They must be copied from `nomadground/nmd-company-os` into this repository without modifying or deleting any NMD data in the source repository.
+
 ## Scope
 
 - `officeleasing-core` WordPress plugin
@@ -48,4 +62,4 @@ officeleasing-platform/
 
 ## Migration status
 
-The target repository has been initialized. Source code migration is pending confirmation of the exact source branch and paths containing OFFICE LEASING and Leasing Flyer.
+The target repository and its instruction documents have been initialized. The three requested source branches still need to be copied and verified according to `docs/MIGRATION_HANDOFF.md`.
