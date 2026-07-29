@@ -1257,6 +1257,28 @@ Playwright로 1~4번을 각각 실측/스크린샷 확인했다. `php tests/test
 `php tests/test-display-helpers.php`, `node --check assets/js/public-flyer.js`,
 `node --check assets/js/admin-listup.js`, `node --check assets/js/portal.js` 통과.
 
+## 요청서 반영 — v0.4.0-beta.47 (모바일 인쇄 NOC 비교 차트 — 막대가 아래 동/지번 라벨을 가림)
+
+### 원인
+모바일 인쇄에서 매물 상세 카드 예산을 줄이며(beta.26 계열) NOC 비교 차트 항목의 세로 폭도
+`.hlf-noc-chart-item { height:78px; grid-template-rows: 13px 1fr 20px }`로 압축했다 — 값(13px) /
+막대(1fr=45px) / 동·지번 라벨(20px) 세 칸이다. 그런데 라벨(`.hlf-noc-chart-label`)은 동/지번이
+길면 `<br>`로 두 줄인데, 이 압축 폭에서 쓰는 9px 글자·11.7px 줄간격 기준 두 줄이면 실제로 약
+23.4px가 필요하다 — 20px 칸에 안 들어가는 약 3.4px만큼(Playwright 실측) `align-items:end` 때문에
+칸 위쪽으로 넘쳤고, 마침 칸 끝까지 닿는 막대(값이 가장 큰 매물, 거의 항상 하나는 이 근처까지
+찬다)와 겹쳐 보였다.
+
+### 수정
+막대 칸을 4px 줄이고(45px → 41px) 그만큼 라벨 칸을 늘려(20px → 24px, 항목 전체 높이 78px는
+그대로) 라벨이 두 줄이어도 더는 넘치지 않게 하면서, 막대는 그만큼 위로 올라가 라벨과 겹치지 않는다.
+
+### 검증
+Playwright로 실제 마크업(`.hlf-noc-chart-item`/`.hlf-noc-chart-bar`/`.hlf-noc-chart-label`)과
+인쇄 CSS를 그대로 로드해 측정 — 수정 전에는 최댓값 막대(높이 90.9%, 실제 차트 최댓값 배율과 동일)
+기준 막대 바닥과 2줄 라벨 상단이 약 3.4px 겹쳤고, 수정 후에는 막대가 100% 높이여도 겹치지 않음을
+확인했다(막대 바닥 120px, 라벨 상단 120.625px). `php tests/test-calculations.php`,
+`php tests/test-display-helpers.php` 통과(이번 라운드는 CSS만 변경).
+
 ## 후속 단계에서 제외
 AI 이미지 적합성 판별, 워터마크 제거/자동 보정, 얼굴·번호판 블러, 이미지 Drag & Drop/크롭 편집기,
 이미지 순서 변경(위/아래) UI, officeleasing 원본 이미지 자동 동기화, PDF 생성, 인쇄 밀도별 레이아웃,

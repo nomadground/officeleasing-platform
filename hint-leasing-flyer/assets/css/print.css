@@ -199,11 +199,17 @@
 	body.hlf-print-mobile [data-hlf-print-section="chart-map"] .hlf-noc-chart {
 		min-height: 88px;
 	}
+	/* 요청서(실사용 버그 — 막대가 아래 동/지번 라벨을 가림): 라벨(.hlf-noc-chart-label)은 동+번지가
+	   길면 두 줄(<br>)인데, 9px/line-height 11.7px 두 줄이면 실제로 약 23.4px가 필요하다 — 라벨
+	   칸을 20px로만 잡아 뒀더니 부족한 만큼(Playwright 실측 약 3.4px)이 align-items:end 때문에
+	   칸 위쪽으로 넘쳐, 마침 칸 끝까지 닿는 막대(값이 가장 큰 매물)와 겹쳤다. 막대 칸을 4px 줄이고
+	   그만큼 라벨 칸을 늘려(41px/24px, 합은 그대로 78px) 라벨이 두 줄이어도 넘치지 않게 하면서
+	   막대는 그만큼 위로 올라가 라벨과 겹치지 않는다. */
 	body.hlf-print-mobile [data-hlf-print-section="chart-map"] .hlf-noc-chart-item {
 		height: 78px;
-		grid-template-rows: 13px 1fr 20px;
+		grid-template-rows: 13px 1fr 24px;
 	}
-	body.hlf-print-mobile [data-hlf-print-section="chart-map"] .hlf-noc-chart-bar-wrap { height: 45px; }
+	body.hlf-print-mobile [data-hlf-print-section="chart-map"] .hlf-noc-chart-bar-wrap { height: 41px; }
 	body.hlf-print-mobile [data-hlf-print-section="chart-map"] .hlf-noc-chart-panel,
 	body.hlf-print-mobile [data-hlf-print-section="chart-map"] .hlf-comparison-map-panel {
 		margin: 10px 0;
