@@ -2,37 +2,47 @@
 
 These instructions apply to **GPT, Claude, Claude Code, Codex, and any other agent** working with this repository.
 
-## Agent role source of truth
+## Product source of truth
 
-Read `docs/AGENT_ROLES.md` before planning, implementation, review, or handoff work.
+Before planning, implementation, review, or handoff work, read:
+
+1. `docs/PROJECT_PRINCIPLES.md`
+2. `docs/AGENT_ROLES.md`
+3. only the task-specific planning and implementation documents relevant to the request.
 
 Default role assignment:
 
 - **GPT**: product planning, requirements, priorities, SEO/AIO/GEO/UX, and acceptance criteria.
-- **Claude**: planning review, architecture review, UX/design consistency, milestone planning, and overall review for large changes.
+- **Claude**: planning review, architecture review, UX/design consistency, content analysis and writing, milestone planning, and overall review for large changes.
 - **Claude Code**: primary implementation agent for WordPress PHP, `officeleasing-core`, GeneratePress child theme, CSS, JavaScript, Leasing Flyer, tests, commits, and pushes.
 - **Codex**: secondary implementation, focused code review, security/performance/WordPress review, regression validation, tests, and corrective patches.
 
 The user's latest direct instruction overrides these defaults.
 
-Do not duplicate work by having multiple agents independently redesign or reimplement the same feature. Parallel coding is allowed only when file ownership and scope are explicitly separated.
+Do not duplicate work by having multiple agents independently redesign, reanalyze, rewrite, or reimplement the same scope. Parallel work is allowed only when ownership and file boundaries are explicitly separated.
 
-## Required reading
+## Required reading by task type
 
-Before repository migration or branch integration work, read:
+### Repository migration or branch integration
+
+Read:
 
 1. `README.md`
-2. `docs/AGENT_ROLES.md`
-3. `docs/MIGRATION_HANDOFF.md`
-4. `CLAUDE.md` when running in Claude Code
-5. this file
+2. `docs/PROJECT_PRINCIPLES.md`
+3. `docs/AGENT_ROLES.md`
+4. `docs/MIGRATION_HANDOFF.md`
+5. `CLAUDE.md` when running in Claude Code
+6. this file
 
-For ordinary feature or fix work:
+### Ordinary feature or fix work
 
-- GPT and Claude should read `docs/AGENT_ROLES.md` and only the project documents relevant to the requested planning or review;
-- Claude Code must read `CLAUDE.md`, `AGENTS.md`, and `docs/AGENT_ROLES.md` first;
-- Codex and other coding agents must read `AGENTS.md` and `docs/AGENT_ROLES.md` first;
-- then read only task-relevant files and specifically referenced documentation.
+- GPT and Claude: read `docs/PROJECT_PRINCIPLES.md`, `docs/AGENT_ROLES.md`, and only the relevant planning documents.
+- Claude Code: read `docs/PROJECT_PRINCIPLES.md`, `CLAUDE.md`, `AGENTS.md`, `docs/AGENT_ROLES.md`, then only task-relevant files.
+- Codex and other coding agents: read `docs/PROJECT_PRINCIPLES.md`, `AGENTS.md`, `docs/AGENT_ROLES.md`, then the relevant diff and files.
+
+### Insight or content-system work
+
+Also read the relevant files under `docs/content/`. Claude owns existing-content analysis, topic clustering, migration strategy, cross-checking, and new Insight writing unless the user assigns another agent.
 
 ## Project scope
 
@@ -49,9 +59,9 @@ The NMD project remains in its existing repository and must not be moved or modi
 ## Resource-efficient behavior
 
 - Do not reread or rescan the entire repository at the beginning of every task.
-- Start from the task, the latest relevant commit or diff, and only the directly related files.
-- Expand the inspection scope only when a real dependency is found.
-- Do not repeatedly restate the full project background when repository documentation already contains it.
+- Start from the task, the latest relevant commit or diff, and only directly related files.
+- Expand inspection scope only when a real dependency is found.
+- Do not repeatedly restate the full project background when repository documents already contain it.
 - Do not create, compare, or inspect full ZIP packages during normal development.
 - Work from tracked source files and Git diffs.
 - Create ZIP packages only for an explicit release, deployment, or user-requested handoff.
@@ -62,21 +72,37 @@ The NMD project remains in its existing repository and must not be moved or modi
 
 ## Implementation and review rules
 
+- Follow `docs/PROJECT_PRINCIPLES.md` as the product-principle source of truth.
 - Claude Code is the default primary coder unless the user assigns another agent.
 - Codex should normally review a completed milestone or implement a narrow, non-overlapping task.
 - Codex should review relevant diffs rather than restart repository discovery.
-- Claude should review large, structural, risky, or ambiguous plans; it is optional for small fixes.
+- Claude should review large, structural, risky, ambiguous, or content-intensive plans; it is optional for small fixes.
 - GPT owns the approved product requirement and final user-facing acceptance criteria.
 - Do not silently redesign approved requirements during implementation.
 - Preserve the Core/Theme responsibility boundary.
 - Prefer small, reviewable commits.
-- Do not invent ACF field names, taxonomy terms, URLs, helper functions, or data.
+- Do not invent ACF field names, taxonomy terms, URLs, helper functions, facts, or data.
 - Confirm actual implementation before changing architecture.
 - Use WordPress APIs and existing project helpers.
-- Run available syntax and regression checks.
+- Run available syntax, regression, responsive, and relevant performance checks.
 - Report changed files, test evidence, assumptions, and unresolved risks.
 - Do not work directly on `main` unless explicitly requested.
 - Do not begin a second feature in the same task unless the first milestone has been committed, pushed, and reported.
+
+## Performance and search-quality gate
+
+A feature is incomplete when it works functionally but materially harms speed, stability, desktop/mobile usability, crawlability, SEO, AIO, or GEO.
+
+Do not introduce:
+
+- unbounded queries;
+- full-dataset initial loads;
+- automatic loading of all map markers;
+- N+1 or repeated meta queries;
+- duplicate schema or metadata;
+- heavy scripts, maps, charts, or AI modules on pages where they are not needed.
+
+Use bounded queries, pagination, caching, precomputed values, selective loading, responsive images, and deferred non-critical assets.
 
 ## Migration-specific rule
 
@@ -90,7 +116,10 @@ Do not modify the source repository, merge the branches, remove NMD data, clean 
 
 ## OFFICE LEASING conventions
 
-- Building is the public content unit.
+- OFFICE LEASING is a Seoul-wide prime-office leasing platform, not a Gangnam-only small-office site.
+- `사무실 임대` is the primary market keyword.
+- Public navigation should use meaningful submarket names rather than exposing `ETC` as a long-term brand label.
+- Building is the primary public content unit.
 - Listing is internal inventory data.
 - Core owns data, calculations, queries, cache, security, and permalink logic.
 - Child theme owns templates, styles, scripts, accessibility, and rendering.
