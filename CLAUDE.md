@@ -1,5 +1,13 @@
 # Claude Code Instructions — OFFICE LEASING
 
+## Required reading
+
+Before repository migration or branch integration work, read:
+
+1. `README.md`
+2. `docs/MIGRATION_HANDOFF.md`
+3. this file
+
 ## Project boundary
 
 Work only on OFFICE LEASING and Leasing Flyer in this repository. Do not import, modify, or recreate unrelated NMD files.
@@ -23,6 +31,10 @@ Work only on OFFICE LEASING and Leasing Flyer in this repository. Do not import,
 8. Do not commit secrets, `wp-config.php`, `.env`, database exports, generated ZIPs, caches, logs, or unrelated backups.
 9. Avoid unrelated formatting changes and broad renames.
 10. Finish with syntax checks, changed-file summary, test results, risks, and remaining work.
+
+## Migration-specific rule
+
+When asked to migrate the three OfficeLeasing branches from `nomadground/nmd-company-os`, follow `docs/MIGRATION_HANDOFF.md` exactly. The operation is copy-and-verify only. Do not modify the source repository, merge the branches, clean mixed files, or begin feature work in the same task.
 
 ## Branch policy
 
