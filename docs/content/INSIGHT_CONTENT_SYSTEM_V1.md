@@ -247,11 +247,14 @@ NOC 개념
 
 ## 10. 단계별 작업 순서
 
-### Phase 1 — 기획
+### Phase 1 — 기획 및 기존 콘텐츠 분석
 
 브랜치: `planning/insight-content-system-v1`
 
-- 기존 콘텐츠 인벤토리 작성
+주 담당: **Claude**
+
+- 기존 `hintoffice.com` 콘텐츠 전수 분석
+- 콘텐츠 인벤토리 작성
 - 중복·유사·충돌 개념 검토
 - Topic Cluster 확정
 - 콘텐츠별 이전 전략 확정
@@ -259,27 +262,49 @@ NOC 개념
 - SEO·AIO·GEO 작성 기준 확정
 - 우선순위 및 발행 로드맵 확정
 
-### Phase 2 — 원고
+GPT는 목표, 우선순위, 완료 기준을 제시한다. Claude는 실제 문서 분석과 전체 콘텐츠 계획 수립을 담당한다.
+
+### Phase 2 — 신규 콘텐츠 원고 작성
 
 브랜치: `content/insight-v1`
 
+주 담당: **Claude**
+
 - 허브 원고 작성
 - 우선순위 콘텐츠부터 개별 작성
+- 기존 콘텐츠를 그대로 복제하지 않고 신규 검색 의도에 맞게 재구성
 - 메타데이터 입력
 - 개념·내부링크 교차 검토
-- 기존 hintoffice.com 콘텐츠와 검색 의도 중복 확인
+- 기존 `hintoffice.com` 콘텐츠와 검색 의도 중복 확인
+- 콘텐츠 간 정의·수치·계약 개념 일관성 검토
 
-### Phase 3 — 구현
+Claude Code와 Codex는 이 단계에서 대량 원고를 새로 작성하지 않는다. 템플릿 구조, 파일 형식, 자동화 스크립트처럼 구현이 필요한 부분만 지원한다.
+
+### Phase 3 — WordPress 구현
 
 브랜치: `feature/insight-content-hub-v1`
+
+주 담당: **Claude Code**
 
 - CPT·Taxonomy 또는 기존 구조 확인
 - 템플릿 구현
 - 내부링크·CTA 구현
 - 스키마 구현
+- 콘텐츠 입력·관리 필드 구현
 - 모바일·접근성·성능 검증
 
+Codex는 diff 검토, 보안·성능·회귀 검증 및 좁은 범위의 보완 패치를 담당한다.
+
 ### Phase 4 — 발행 검증
+
+공동 검토:
+
+- Claude: 콘텐츠 구조·검색 의도·내부링크·문맥 검토
+- Claude Code: 실제 구현·출력·링크·스키마 확인
+- Codex: 기술 검증과 회귀 확인
+- GPT: 사용자 관점·사업 목적·완료 기준 확인
+
+검증 항목:
 
 - URL·canonical·redirect 검토
 - Search Intent 중복 검토
@@ -289,10 +314,37 @@ NOC 개념
 
 ## 11. AI 에이전트 역할
 
-- GPT: 콘텐츠 전략, 구조, 검색 의도, 우선순위, 완료 기준
-- Claude: 기획 누락·충돌·복잡도 및 전체 계획 검토
-- Claude Code: 문서·WordPress·템플릿·필드·내부링크 기능 구현
-- Codex: diff 검토, 구조·보안·성능·회귀 검증, 좁은 범위 패치
+### GPT — 기획 책임
+
+- 콘텐츠 사업 목적과 사용자 가치 정의
+- 검색 의도와 우선순위 설정
+- SEO·AIO·GEO·UX 방향 설정
+- 완료 기준과 의사결정 기준 확정
+
+### Claude — 콘텐츠 분석·작성 및 계획 총괄
+
+- 기존 `hintoffice.com` 콘텐츠 문서 분석
+- 콘텐츠 인벤토리·분류·중복·충돌 검토
+- Topic Cluster 및 내부링크 구조 설계
+- 콘텐츠 이전 전략 수립
+- 신규 OFFICE LEASING 콘텐츠 원고 작성
+- 원고 간 개념·정의·수치·검색 의도 교차 검토
+- 전체 콘텐츠 계획과 발행 로드맵 총괄 검토
+
+### Claude Code — 주 구현
+
+- WordPress 구조 및 기능 구현
+- Insight 허브와 템플릿 구현
+- ACF·내부링크·CTA·Schema 기능 구현
+- CSS·JavaScript·PHP 구현
+- 테스트, 단계별 커밋·push, 결과 보고
+
+### Codex — 서브 구현·기술 검증
+
+- Claude Code diff 검토
+- WordPress 보안·성능·쿼리·회귀 검토
+- 테스트 보강
+- 좁은 범위의 보완 패치
 
 모든 에이전트는 `AGENTS.md`, `CLAUDE.md`, `docs/AGENT_ROLES.md`의 리소스 절약 원칙을 따른다.
 
@@ -303,6 +355,8 @@ NOC 개념
 - 두 사이트에 동일 검색 의도의 콘텐츠를 무계획하게 중복 게시
 - 모든 글에 같은 링크를 기계적으로 반복
 - 존재하지 않는 매물·지역·URL을 임의 생성
+- Claude Code나 Codex가 Claude의 콘텐츠 분석·작성 역할을 중복 수행
+- 동일 콘텐츠를 여러 에이전트가 각각 처음부터 다시 작성
 - 일반 개발 중 매번 ZIP 생성
 - 저장소 전체를 매 작업마다 재탐색
 - 콘텐츠 기획과 WordPress 구조 변경을 한 작업에 혼합
@@ -317,7 +371,7 @@ NOC 개념
 - 내부링크 지도
 - SEO·AIO·GEO 작성 가이드
 - 우선 발행 콘텐츠 목록
-- hintoffice.com과 officeleasing.co.kr 역할 구분
+- `hintoffice.com`과 `officeleasing.co.kr` 역할 구분
 - 구현 요구사항 및 완료 조건
 
 각 단계 완료 시 관련 diff를 검토하고, 작은 단위로 커밋·push한 뒤 완료 범위와 남은 작업을 보고한다.
