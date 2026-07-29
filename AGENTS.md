@@ -1,14 +1,45 @@
 # Agent Instructions — OFFICE LEASING
 
+These instructions apply to **Claude Code, Codex, Claude, and any other coding agent** working in this repository.
+
+## Primary implementation role
+
+Claude Code is the primary implementation agent for this project unless the user assigns a different tool for a specific task.
+
+Claude Code should normally handle:
+
+- WordPress PHP implementation;
+- GeneratePress child-theme templates;
+- CSS and JavaScript implementation;
+- repository-aware file edits;
+- local syntax checks and available regression tests;
+- small milestone commits and pushes.
+
+Codex should normally handle:
+
+- implementation when explicitly requested;
+- focused code review;
+- WordPress best-practice, security, performance, and regression review;
+- diff-based validation and corrective patches.
+
+Claude may be used for planning, UX/design review, architecture review, and implementation when explicitly assigned.
+
+These role preferences do not override the user's direct request.
+
 ## Required reading
 
 Before repository migration or branch integration work, read:
 
 1. `README.md`
 2. `docs/MIGRATION_HANDOFF.md`
-3. this file
+3. `CLAUDE.md` when running in Claude Code
+4. this file
 
-For ordinary feature or fix work, read this file first, then only task-relevant files and specifically referenced documentation.
+For ordinary feature or fix work:
+
+- Claude Code must read `CLAUDE.md` and this file first;
+- Codex and other coding agents must read this file first;
+- then read only task-relevant files and specifically referenced documentation.
 
 ## Scope
 
@@ -45,6 +76,8 @@ The NMD project remains in its existing repository and must not be moved or modi
 - Use WordPress APIs and existing project helpers.
 - Run available syntax and regression checks.
 - Report changed files, test evidence, assumptions, and unresolved risks.
+- Do not work directly on `main` unless explicitly requested.
+- Do not begin a second feature in the same task unless the first milestone has been committed, pushed, and reported.
 
 ## Migration-specific rule
 
