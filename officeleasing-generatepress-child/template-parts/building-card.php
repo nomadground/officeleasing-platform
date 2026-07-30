@@ -33,7 +33,7 @@ $district    = $regions['child'] ? $regions['child']->name : '';
 $line    = get_field( 'building_subway1_line', $building_id );
 $station = get_field( 'building_subway1_station', $building_id );
 
-$images = olt_collect_images( $building_id, 'building_image_', 8 );
+$images = olt_collect_images( $building_id, 'building_image_', 8, 'ol-building-thumb' );
 $img    = $images[0] ?? null;
 
 $active_count = (int) get_field( 'building_active_listing_count', $building_id );
@@ -56,7 +56,8 @@ $min_rent     = (float) get_field( 'building_min_rent', $building_id );
 			if ( ! empty( $img['id'] ) ) {
 				// 첨부 ID가 있으면 wp_get_attachment_image()로 출력한다 -
 				// srcset/width/height가 자동으로 붙어 CLS와 모바일 과다전송을 함께 막는다(원본 직접 출력 금지 원칙).
-				echo wp_get_attachment_image( (int) $img['id'], 'medium_large', false, $attr );
+				// ol-building-thumb(480x640 hard crop) - docs/IMAGE_PERFORMANCE_GUIDELINES.md 기준.
+				echo wp_get_attachment_image( (int) $img['id'], 'ol-building-thumb', false, $attr );
 			} elseif ( ! empty( $img['url'] ) ) {
 				printf(
 					'<img src="%s" alt="%s" loading="%s" decoding="async">',

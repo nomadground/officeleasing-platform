@@ -28,10 +28,10 @@ $total_floors   = get_field( 'building_ground_floors', $building_id );
 $floor_display  = get_field( 'floor_display', $listing_id );
 $status         = get_field( 'listing_status', $listing_id );
 
-// 대표 이미지: 매물 사진 우선, 없으면 빌딩 사진
-$card_images = olt_collect_images( $listing_id, 'listing_image_', 6 );
+// 대표 이미지: 매물 사진 우선, 없으면 빌딩 사진. 카드 그리드용 크기(ol-building-thumb, 480x640 hard crop).
+$card_images = olt_collect_images( $listing_id, 'listing_image_', 6, 'ol-building-thumb' );
 if ( empty( $card_images ) ) {
-	$card_images = olt_collect_images( $building_id, 'building_image_', 8 );
+	$card_images = olt_collect_images( $building_id, 'building_image_', 8, 'ol-building-thumb' );
 }
 $img = $card_images[0] ?? null;
 
@@ -41,9 +41,28 @@ $station = get_field( 'building_subway1_station', $building_id );
 ?>
 <a class="olx-card" href="<?php echo esc_url( $building_link ); ?>">
 	<div class="olx-card-img">
-		<?php if ( $img && ! empty( $img['url'] ) ) : ?>
-			<img src="<?php echo esc_url( $img['url'] ); ?>" alt="<?php echo esc_attr( $img['alt'] ?: $building_name . ' 오피스 이미지' ); ?>" loading="lazy" decoding="async">
-		<?php endif; ?>
+		<?php
+		if ( $img ) {
+			$alt = $img['alt'] ? $img['alt'] : $building_name . ' 오피스 이미지';
+			$attr = array(
+				'alt'      => $alt,
+				'decoding' => 'async',
+				'loading'  => 'lazy',
+				// 카드 실폭: 데스크탑 4열 ≈ 272px, 모바일 2열 ≈ 화면의 45%(building-card.php와 동일 기준).
+				'sizes'    => '(max-width: 700px) 45vw, 280px',
+			);
+			if ( ! empty( $img['id'] ) ) {
+				// wp_get_attachment_image()로 출력 - srcset/width/height 자동 부여, 원본 직접 출력 금지.
+				echo wp_get_attachment_image( (int) $img['id'], 'ol-building-thumb', false, $attr );
+			} elseif ( ! empty( $img['url'] ) ) {
+				printf(
+					'<img src="%s" alt="%s" loading="lazy" decoding="async">',
+					esc_url( $img['url'] ),
+					esc_attr( $alt )
+				);
+			}
+		}
+		?>
 		<span class="olx-card-status"><i></i><?php echo esc_html( olt_status_label( $status ) ); ?></span>
 	</div>
 	<div class="olx-card-body">

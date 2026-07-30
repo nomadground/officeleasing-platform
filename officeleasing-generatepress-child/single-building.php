@@ -38,10 +38,12 @@ $basement_floors = get_field( 'building_basement_floors', $building_id );
 $ground_floors   = get_field( 'building_ground_floors', $building_id );
 $total_floors  = $ground_floors; // "해당층/총층" 등 기존 표기에서 총층은 지상층수를 가리킨다
 
-// 갤러리: 매물 사진 우선(1개 매물 케이스), 없으면 빌딩 사진
-$gallery = $primary_id ? olt_collect_images( $primary_id, 'listing_image_', 6 ) : array();
+// 갤러리: 매물 사진 우선(1개 매물 케이스), 없으면 빌딩 사진.
+// 'ol-interior'(600x400)는 썸네일 스트립(olx-gallery-thumbs)용 크기 - 대표 Hero 이미지는
+// 'id'로 별도 조회해 ol-hero-desktop/mobile 반응형 <picture>를 구성한다(아래 Hero 마크업 참고).
+$gallery = $primary_id ? olt_collect_images( $primary_id, 'listing_image_', 6, 'ol-interior' ) : array();
 if ( empty( $gallery ) ) {
-	$gallery = olt_collect_images( $building_id, 'building_image_', 8 );
+	$gallery = olt_collect_images( $building_id, 'building_image_', 8, 'ol-interior' );
 }
 $gallery_captions = array( '외관', '오피스', '라운지', '회의실', '', '', '', '' );
 ?>
@@ -101,7 +103,16 @@ $gallery_captions = array( '외관', '오피스', '라운지', '회의실', '', 
 			<div class="olx-gallery-thumbs">
 				<?php foreach ( array_slice( $gallery, 0, 4 ) as $i => $g ) : ?>
 					<button class="<?php echo 0 === $i ? 'is-active' : ''; ?>" aria-label="<?php echo esc_attr( ( $gallery_captions[ $i ] ?? '' ) . ' 이미지 보기' ); ?>">
-						<img src="<?php echo esc_url( $g['url'] ); ?>" alt="">
+						<?php
+						// ol-interior(600x400 hard crop) - docs/IMAGE_PERFORMANCE_GUIDELINES.md "내부 갤러리" 기준.
+						// single.js가 클릭 시 이 img의 src를 그대로 메인 Hero에 복사하므로, 확대 표시 화질은
+						// 이전(원본/large 유도)보다 다소 낮아진다 - 속도 우선 정책에 따른 의도된 트레이드오프.
+						if ( ! empty( $g['id'] ) ) {
+							echo wp_get_attachment_image( (int) $g['id'], 'ol-interior', false, array( 'alt' => '' ) );
+						} else {
+							printf( '<img src="%s" alt="">', esc_url( $g['url'] ) );
+						}
+						?>
 					</button>
 				<?php endforeach; ?>
 			</div>

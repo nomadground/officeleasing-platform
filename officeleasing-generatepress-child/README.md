@@ -109,7 +109,7 @@ CSS `overflow-x` + `scroll-snap`이 본체이고, `home-slider.js`는 좌우 버
 ### 성능
 - 카드는 building **캐시 필드만** 읽어 매물 재쿼리 0회. 권역당 쿼리 1번(총 4번) + 결과 transient 캐시
 - `olt_get_region_terms()`를 `wp_get_object_terms()` → **`get_the_terms()`**로 교체했습니다. 전자는 캐시를 무시하고 매번 DB를 조회해서 카드 32개면 term 쿼리 32번(N+1)이 나갑니다. 이 수정은 목록/허브 페이지 성능도 같이 개선합니다
-- 카드 이미지는 `wp_get_attachment_image()`로 출력 → `srcset`/`width`/`height` 자동(CLS 방지), `sizes="(max-width:700px) 45vw, 280px"`로 모바일에 데스크탑용 대형 이미지가 내려가지 않게 함, `medium_large` 사이즈 사용(원본 직접 출력 안 함)
+- 카드 이미지는 `wp_get_attachment_image()`로 출력 → `srcset`/`width`/`height` 자동(CLS 방지), `sizes="(max-width:700px) 45vw, 280px"`로 모바일에 데스크탑용 대형 이미지가 내려가지 않게 함, `ol-building-thumb`(480×640, hard crop) 사이즈 사용(원본 직접 출력 안 함) — `docs/IMAGE_PERFORMANCE_GUIDELINES.md` 기준
 - 첫 권역의 첫 4장만 `loading="eager"`, 나머지 전부 `lazy`. Hero에 이미지가 없으므로 `fetchpriority="high"`는 지정하지 않음
 - Home CSS/JS는 `is_front_page()`에서만 로드
 

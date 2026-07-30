@@ -209,8 +209,12 @@ function olt_get_building_listings( $building_id, $only_public = true ) {
 /**
  * 번호형 이미지 필드(building_image_1..N / listing_image_1..N)를 배열로 수집.
  * 반환: [ ['id'=>, 'url'=>, 'alt'=>], ... ] (값이 있는 것만)
+ *
+ * $size: docs/IMAGE_PERFORMANCE_GUIDELINES.md 용도별 등록 크기(ol-building-thumb 등)를 넘긴다.
+ * 'url'은 wp_get_attachment_image()를 못 쓰는 호출부(첨부 ID가 없는 예외 상황)의 fallback용으로만
+ * 남겨뒀다 - 정상 경로는 반환된 'id'로 wp_get_attachment_image()를 호출해 srcset을 받는다.
  */
-function olt_collect_images( $post_id, $prefix, $count ) {
+function olt_collect_images( $post_id, $prefix, $count, $size = 'ol-interior' ) {
 	$images = array();
 	for ( $i = 1; $i <= $count; $i++ ) {
 		$img = get_field( $prefix . $i, $post_id );
@@ -221,7 +225,7 @@ function olt_collect_images( $post_id, $prefix, $count ) {
 		if ( is_array( $img ) ) {
 			$images[] = array(
 				'id'  => $img['ID'] ?? 0,
-				'url' => $img['sizes']['large'] ?? ( $img['url'] ?? '' ),
+				'url' => $img['sizes'][ $size ] ?? ( $img['sizes']['large'] ?? ( $img['url'] ?? '' ) ),
 				'alt' => $img['alt'] ?? '',
 			);
 		}
