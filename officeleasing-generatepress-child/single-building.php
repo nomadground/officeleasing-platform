@@ -104,11 +104,12 @@ $gallery_captions = array( '외관', '오피스', '라운지', '회의실', '', 
 							<source media="(max-width: 900px)" srcset="<?php echo esc_url( $hero_mobile_src ); ?>">
 						<?php endif; ?>
 						<?php
+						// loading 키 자체를 안 넣는다(false로 넣으면 WP/브라우저에 따라 빈 속성으로 남을 여지가
+						// 있다는 지적 반영) - LCP 이미지이므로 lazy를 아예 안 쓰는 게 의도이므로 생략이 명확하다.
 						echo wp_get_attachment_image( $hero_id, 'ol-hero-desktop', false, array(
 							'alt'           => $hero_alt,
 							'fetchpriority' => 'high',
 							'decoding'      => 'async',
-							'loading'       => false,
 						) );
 						?>
 					</picture>
@@ -129,11 +130,21 @@ $gallery_captions = array( '외관', '오피스', '라운지', '회의실', '', 
 		<?php if ( count( $gallery ) > 1 ) : ?>
 			<div class="olx-gallery-thumbs">
 				<?php foreach ( array_slice( $gallery, 0, 4 ) as $i => $g ) : ?>
-					<button class="<?php echo 0 === $i ? 'is-active' : ''; ?>" aria-label="<?php echo esc_attr( ( $gallery_captions[ $i ] ?? '' ) . ' 이미지 보기' ); ?>">
+					<?php
+					// 썸네일 화면 표시는 ol-interior(600x400) 그대로. 클릭 후 Hero에 확대할 때는 이
+					// 작은 썸네일 URL을 재사용하지 않고 ol-interior-large(900x600)를 data-full에 담아둔다 -
+					// single.js가 클릭 시 이 값으로 <picture> source와 메인 img의 src/srcset을 함께 갱신한다.
+					$thumb_full_alt = ( $gallery_captions[ $i ] ?? '' ) ?: $building_name . ' 외관';
+					$thumb_full_url = ! empty( $g['id'] )
+						? wp_get_attachment_image_url( (int) $g['id'], 'ol-interior-large' )
+						: $g['url'];
+					?>
+					<button class="<?php echo 0 === $i ? 'is-active' : ''; ?>"
+						aria-label="<?php echo esc_attr( ( $gallery_captions[ $i ] ?? '' ) . ' 이미지 보기' ); ?>"
+						data-full="<?php echo esc_url( $thumb_full_url ); ?>"
+						data-full-alt="<?php echo esc_attr( $thumb_full_alt ); ?>">
 						<?php
 						// ol-interior(600x400 hard crop) - docs/IMAGE_PERFORMANCE_GUIDELINES.md "내부 갤러리" 기준.
-						// single.js가 클릭 시 이 img의 src를 그대로 메인 Hero에 복사하므로, 확대 표시 화질은
-						// 이전(원본/large 유도)보다 다소 낮아진다 - 속도 우선 정책에 따른 의도된 트레이드오프.
 						if ( ! empty( $g['id'] ) ) {
 							echo wp_get_attachment_image( (int) $g['id'], 'ol-interior', false, array( 'alt' => '' ) );
 						} else {
