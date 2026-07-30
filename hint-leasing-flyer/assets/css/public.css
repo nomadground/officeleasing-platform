@@ -1,0 +1,777 @@
+/*
+ * HLF 공개 화면 스타일 (Phase 1 최소 골격).
+ * .hlf- 네임스페이스로 테마의 .olx-* 와 완전히 격리. 실제 디자인 시스템은 Phase 4+에서
+ * MVP 최종 규칙만 골라 컴포넌트별로 재작성한다(중복 오버라이드 금지).
+ */
+/*
+ * 용지 방향(가로) 선언 — 인쇄 전용 규칙이지만 일부러 이 파일(미디어 조건 없이 항상 로드되는
+ * public.css)의 맨 위에 둔다.
+ *
+ * 요청서 3(모바일 인쇄가 항상 세로로 나오는 문제)의 원인 두 가지를 함께 없앤다.
+ * (1) 위치: @page는 원래 print.css에 있었는데, print.css는 <link media="print">로 붙는다 =
+ *     @media print { @page { ... } }와 같다. 데스크톱 크로미움은 이 중첩을 잘 해석하지만, 조건부
+ *     그룹 규칙 안의 @page를 아예 무시하는 엔진이 있다(모바일 크로미움/삼성 인터넷 계열에서 실제로
+ *     세로로 떨어졌다). @page는 어차피 인쇄에만 의미가 있으므로 미디어 조건 밖으로 꺼내면 어떤
+ *     엔진이든 확실히 보게 된다.
+ * (2) 값: 기존 값은 사용자 정의 크기(297mm 210mm)였다. 안드로이드 인쇄 프레임워크는 "알려진 용지
+ *     (ISO A4 등) + 방향 플래그" 조합으로 인쇄 작업을 만든다 — 어떤 표준 용지와도 이름이 맞지 않는
+ *     사용자 정의 크기는 매칭에 실패해 기본값(A4 세로)으로 되돌아간다(실제 인쇄 대화상자에도
+ *     "용지 크기: ISO A4"로 뜬다). A4 + landscape 키워드로 주면 그대로 ISO A4 가로로 매핑된다.
+ *     데스크톱에서는 A4 landscape == 297mm x 210mm라 지금까지의 출력과 완전히 동일하다.
+ *
+ * 참고: 이래도 방향을 무시하는 모바일 인쇄 서비스가 있다(안드로이드 프린트 서비스/드라이버가
+ * 자체적으로 "용지에 맞춤"으로 회전시키는 경우). 그때는 인쇄 대화상자에서 방향을 가로로 직접
+ * 바꿔야 한다 — 브라우저가 아니라 OS 인쇄 서비스 단계의 제약이라 CSS로 더 강제할 수단이 없다.
+ */
+@page { size: A4 landscape; margin: 8mm; }
+
+:root {
+	--hlf-primary: #355c73;
+	--hlf-primary-strong: #29485c;
+	--hlf-ink: #1d2b33;
+	--hlf-muted: #687780;
+	--hlf-line: #dfe7ec;
+	--hlf-surface: #ffffff;
+	/* 요청서: 해당층(층수의 분자)과 전용면적 평수를 각각 색으로 구분한다 — 공유 링크 복사 성공
+	   메시지(.hlf-share-status.is-success)에 이미 쓰던 초록과 톤을 맞춘 초록/파랑 한 쌍.
+	   요청서: 처음 초록(#2f7a4f)이 어두워 잘 안 보인다는 요청 — 채도/명도를 올려 더 밝고 선명한
+	   초록으로. */
+	--hlf-accent-green: #1c9a52;
+	--hlf-accent-blue: #2f6fd6;
+}
+
+* { box-sizing: border-box; }
+body.hlf-public {
+	margin: 0;
+	color: var(--hlf-ink);
+	background: #eef2f5;
+	font-family: Pretendard, "Noto Sans KR", system-ui, -apple-system, sans-serif;
+	line-height: 1.5;
+	/* 한글 주소/건물명은 공백 없이 숫자·영문이 섞이는 경우가 많다(예: "테헤란로 152") —
+	   word-break:break-all을 쓰면 그 안에서도 아무 데서나 끊겨 가독성이 떨어지므로 공백 단위로만
+	   줄바꿈한다. */
+	word-break: keep-all;
+}
+.hlf-shell { width: min(1100px, calc(100% - 32px)); margin: 0 auto; padding: 24px 0 48px; }
+/* 헤더는 색반전(배경 채우고 텍스트 화이트) — 목록 페이지는 브랜드명, 상세 페이지는 목록 링크/번호
+   배지/주소를 한 줄에 모아 공유·인쇄 버튼과 함께 페이지 최상단에서 바로 식별할 수 있게 한다. */
+.hlf-header {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	margin: 0 0 8px;
+	padding: 12px 18px;
+	color: #fff;
+	background: var(--hlf-primary);
+	border-radius: 10px;
+}
+.hlf-header-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+/* 요청서 8: 화면에서는 매물 수 문구 자체를 완전히 없앤다 — 인쇄에서만 헤더 우측(공유/인쇄 버튼
+   빈자리)에 보이는 문구다(print.css). */
+.hlf-print-result-count { display: none; }
+.hlf-brand { display: flex; align-items: baseline; gap: 6px; color: #fff; margin: 0; font-size: inherit; font-weight: inherit; }
+.hlf-brand-main { font-size: 20px; font-weight: 900; letter-spacing: .02em; }
+.hlf-brand-sub { font-size: 12px; font-weight: 600; color: rgba(255, 255, 255, .85); }
+.hlf-header-address { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.hlf-header-address-main { display: block; margin: 0; color: #fff; font-weight: 800; font-size: 15px; }
+.hlf-header-address-sub { color: rgba(255, 255, 255, .8); font-size: 12px; }
+/* 건물명(선택 입력, 요청서) — 도로명주소 바로 오른쪽에 같은 줄로 붙인다. 배경색이 다른 두 곳(색반전
+   헤더/흰 카드)에서 각각 어울리는 색으로 오버라이드한다. */
+.hlf-header-address-subrow { display: flex; align-items: baseline; gap: 4px; }
+.hlf-building-name { font-size: 11px; font-weight: 600; }
+.hlf-building-name-sep { font-size: 10px; opacity: .6; }
+.hlf-header-address .hlf-building-name,
+.hlf-header-address .hlf-building-name-sep { color: rgba(255, 255, 255, .75); }
+.hlf-flyer-number { color: var(--hlf-muted); font-size: 13px; }
+.hlf-detail-badge { width: 22px; height: 20px; margin-right: 0; font-size: 10px; vertical-align: middle; }
+/* padding으로 탭 영역을 넓혀 모바일에서 오터치 없이 누르기 쉽게 한다(시각적 크기는 거의 그대로). */
+.hlf-back { display: inline-block; padding: 6px 4px; margin: -6px -4px; color: #fff; text-decoration: none; font-weight: 700; }
+/* 요청서: 상세페이지 좌측 상단 "← 목록" 버튼을 없애고, 리스트페이지 헤더와 같은 "HINT" 글자를
+   눌러 목록으로 돌아가게 한다 — .hlf-brand-main과 같은 크기/굵기를 쓰되(.hlf-back의 font-weight는
+   나중에 정의돼 있어 그대로 두면 이겨버리므로 이 규칙에서 다시 명시), 상세페이지 h1은 이미
+   매물 주소가 맡고 있어(접근성: 페이지당 h1 하나) 이 링크는 h1이 아니라 일반 링크로 둔다. */
+.hlf-back.hlf-brand-main { font-weight: 900; }
+.hlf-badge { margin-left: auto; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; }
+.hlf-badge--draft { color: #8a6100; background: #fff4c9; }
+.hlf-badge--archived { color: #55705a; background: #edf2ea; }
+.hlf-title { margin: 20px 0 4px; color: var(--hlf-primary-strong); font-size: clamp(24px, 4vw, 34px); letter-spacing: -.04em; }
+.hlf-subaddress { margin: 0; color: var(--hlf-muted); font-size: 13px; font-weight: 700; }
+.hlf-empty { padding: 40px; text-align: center; color: var(--hlf-muted); border: 1px dashed var(--hlf-line); border-radius: 12px; }
+
+/* 헤더 안 공유/인쇄 버튼 — 기본은 화이트(색반전된 배경 위에서 잘 보임), 마우스 오버 시 색반전
+   (배경↔글자색 반전)으로 강조한다(assets/js/public-flyer.js — 공유는 Clipboard API, 인쇄는
+   window.print()). */
+/* 요청서 15: 리스트/상세 공통 헤더의 공유·인쇄 버튼을 전체적으로 한 단계 줄인다(높이/좌우 여백/글자
+   모두). */
+.hlf-share-button, .hlf-print-button {
+	display: inline-flex;
+	align-items: center;
+	gap: 0;
+	min-height: 26px;
+	padding: 0 9px;
+	color: var(--hlf-primary);
+	background: #fff;
+	border: 1px solid #fff;
+	border-radius: 7px;
+	font: inherit;
+	font-weight: 700;
+	font-size: 11px;
+	cursor: pointer;
+	white-space: nowrap;
+	transition: background .15s, color .15s;
+}
+.hlf-share-button:hover, .hlf-print-button:hover { color: #fff; background: var(--hlf-primary-strong); border-color: var(--hlf-primary-strong); }
+.hlf-share-status { color: var(--hlf-muted); font-size: 11px; font-weight: 500; }
+/* 상태 텍스트가 비어 있을 때는 여백을 두지 않는다 — "공유" 뒤에 빈 span만 있어도 항상 한 칸씩
+   떨어져 보이던(끝에 공백이 남는) 문제 수정. */
+.hlf-share-status:not(:empty) { margin-left: 4px; }
+.hlf-share-button:hover .hlf-share-status { color: rgba(255, 255, 255, .85); }
+.hlf-share-status.is-success { color: #2f7a4f; }
+.hlf-share-status.is-error { color: #aa433f; }
+.hlf-share-button:hover .hlf-share-status.is-success { color: #baf0c8; }
+.hlf-share-button:hover .hlf-share-status.is-error { color: #ffc7c2; }
+
+/* 요청서 8: 매물 수 문구를 없앤 자리를 그대로 남겨두지 않고, 헤더 바로 아래 공백 없이 리스트가
+   시작하게 top margin을 없앤다. 리스트 페이지에서만 헤더 자체의 margin-bottom(공통 규칙 8px)도
+   0으로 줄인다(상세 페이지는 그대로 8px 유지). */
+.hlf-list .hlf-header { margin-bottom: 0; }
+.hlf-listing-grid { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.hlf-listing-card { background: var(--hlf-surface); border: 1px solid var(--hlf-line); border-radius: 10px; }
+.hlf-listing-link { display: flex; flex-direction: column; gap: 2px; padding: 5px 14px; color: inherit; text-decoration: none; }
+/* :hover와 .is-active(리스트·차트·지도 3자 연동, assets/js/public-flyer.js ListingSync)는 같은
+   강조 색을 쓴다 — 어느 쪽에서 시작된 강조인지와 무관하게 항상 같은 시각 언어로 보이게 한다. */
+.hlf-listing-link:hover, .hlf-listing-link.is-active { background: #fffdf4; }
+/* 한 줄 비교 — 순번·주소·층·임대면적·전용면적·보증금/임대료/관리비/NOC를 한 행에 나란히 둔다.
+   .hlf-listing-idaddr(순번+주소)/.hlf-listing-meta(층/임대/전용)/.hlf-lease-metrics(보증금~NOC)는
+   desktop에서 display:contents로 이 grid에 직접 합류시켜(따로 중첩 grid를 만들지 않음) 한 줄에
+   정렬된다. 층부터 NOC까지 7칸은 폭을 맞추고(repeat(7, ...)) 세로 구분선으로 표를 보는 느낌을 준다. */
+/* 요청서 7: 지번/도로명주소 칸을 조금 더 넓히고, 바로 다음 칸인 층 칸을 그만큼 줄인다 — 나머지
+   6칸(임대면적~환산임대료)은 그대로 둬서 아래 임대료 등 값 행과 세로 구분선이 그대로 맞는다(칸
+   개수·순서는 그대로, 폭만 조정). */
+.hlf-listing-main {
+	display: grid;
+	grid-template-columns: 26px minmax(160px, 1.35fr) minmax(56px, .75fr) repeat(6, minmax(70px, .95fr));
+	align-items: center;
+	gap: 0;
+	column-gap: 8px;
+}
+.hlf-listing-main .hlf-listing-idaddr { display: contents; }
+.hlf-listing-main .hlf-listing-meta { display: contents; }
+.hlf-listing-main .hlf-lease-metrics { display: contents; }
+/* 매물별 accent color(--hlf-item-accent, 각 요소의 inline style로 설정) — 리스트 번호 배지 /
+   NOC 차트 막대 / 지도 마커 / 상세 번호 배지가 전부 이 하나의 base 클래스를 공유해 같은 매물이면
+   항상 같은 색이 나온다. --hlf-item-accent가 없으면(구버전 캐시 등) 기존 단색으로 안전하게 대체. */
+.hlf-item-badge { display: inline-flex; align-items: center; justify-content: center; color: #fff; background: var(--hlf-item-accent, var(--hlf-primary)); border-radius: 6px; font-weight: 700; }
+.hlf-listing-index { width: 26px; height: 22px; font-size: 11px; }
+.hlf-listing-address-block { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+/* 긴 주소를 한 줄로 자르면 정작 필요한 동/건물명이 잘려나가는 경우가 많다 — 2줄까지는 그대로
+   보여주고, 그 이상만 말줄임(line-clamp)한다. */
+.hlf-listing-address {
+	display: -webkit-box;
+	overflow: hidden;
+	font-weight: 800;
+	color: var(--hlf-primary-strong);
+	-webkit-line-clamp: 2;
+	line-clamp: 2;
+	-webkit-box-orient: vertical;
+}
+.hlf-listing-subaddress { overflow: hidden; color: var(--hlf-muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+/* 요청서: 건물명은 도로명주소 오른쪽에 같은 줄로. */
+.hlf-listing-subaddress-row { display: flex; align-items: baseline; gap: 4px; min-width: 0; }
+.hlf-listing-address-block .hlf-building-name,
+.hlf-listing-address-block .hlf-building-name-sep { color: var(--hlf-muted); flex: 0 0 auto; }
+/* 지번주소에 노란 형광펜 효과 — 텍스트 전체가 아니라 글자 높이의 아래 절반에만 배경이 걸치는
+   "형광펜 밑줄" 느낌(위 절반은 투명, 아래 절반만 노란색). inline 요소라 텍스트 폭에 딱 맞게
+   붙는다(box-decoration-break로 줄바꿈되어도 줄마다 각각 칠해지도록). */
+.hlf-address-highlight {
+	background-image: linear-gradient(transparent 50%, #ffe066 50%);
+	background-repeat: no-repeat;
+	box-decoration-break: clone;
+	-webkit-box-decoration-break: clone;
+}
+/* 층~NOC 7칸은 표처럼 세로 구분선으로 나눈다 — 층은 주소 바로 다음이라 왼쪽 선을 넣지 않는다. */
+.hlf-listing-floor, .hlf-listing-lease-area, .hlf-listing-area { padding: 2px 8px; text-align: center; border-left: 1px solid var(--hlf-line); }
+.hlf-listing-floor { border-left: 0; }
+.hlf-listing-floor-value, .hlf-listing-area-value { display: block; margin-top: 1px; color: var(--hlf-ink); font-weight: 800; font-size: 12px; line-height: 1.2; white-space: nowrap; }
+/* 건물명은 데스크톱에서 도로명주소 옆에 이미 보이므로(hlf-listing-address-block .hlf-building-name),
+   층 칸의 이 대체 라벨은 데스크톱에서 숨긴다 — 모바일(700px 이하)에서만 "층"이라는 라벨 대신
+   건물명을 보여준다(요청서: 자리가 좁은 모바일에서 도로명주소 옆줄을 또 쓰지 않고 이미 있는 "층"
+   라벨 자리를 재활용). */
+.hlf-listing-floor .hlf-listing-floor-building { display: none; }
+/* 임대/전용면적: 제곱미터를 먼저(크게), 평수는 평당가처럼 그 아래 작게. */
+.hlf-listing-area-sub { display: block; margin-top: 0; color: var(--hlf-muted); font-size: 10px; font-weight: 500; line-height: 1.2; white-space: nowrap; }
+/* 요청서: 전용면적 평수만 어울리는 파란색으로 구분한다 — .hlf-listing-area-sub 클래스 자체는
+   임대면적(.hlf-listing-lease-area)과 전용면적(.hlf-listing-area) 둘 다 같이 쓰므로, 전용면적
+   칸(.hlf-listing-area)에 들어있을 때만 이기도록 부모 클래스로 한정한다. */
+.hlf-listing-area .hlf-listing-area-sub { color: var(--hlf-accent-blue); font-weight: 700; }
+/* 요청서: 층수의 해당층(분자)만 눈에 띄는 초록으로 구분한다. */
+.hlf-floor-current { color: var(--hlf-accent-green); }
+/* 환산임대료(NOC) 개별 리스트 행 값은 블랙으로, 크기는 임대면적·전용면적 데이터값(12px)과 맞춘다
+   (임대료/관리비의 15px과는 다르게). .hlf-listing-main 안에서만 적용해 상세 페이지 Leasing Info
+   카드의 NOC 값(기존 강조색·15px)에는 영향을 주지 않는다. */
+.hlf-listing-main .hlf-lease-metric--noc .hlf-lease-metric-value { color: var(--hlf-ink); font-size: 12px; }
+/* 매물특징(자유 텍스트)은 나머지 숫자 칸과 폭을 다투면 다 같이 뭉개지므로, 한 줄 비교 grid
+   바깥에 전체 너비 캡션 줄로 따로 둔다 — 길면 말줄임(한 줄만 미리보기, 전체는 상세페이지에서). */
+.hlf-listing-features { overflow: hidden; padding-top: 8px; border-top: 1px dashed var(--hlf-line); color: var(--hlf-muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+
+/* 상세 화면 히어로: 좌측 사진 갤러리 / 우측 지도, 가로 50:50 동일폭 + 높이도 맞춘다(align-items:
+   stretch로 두 카드를 같은 행 높이로 늘리고, 각 카드 내부는 flex column으로 대표 이미지/지도가
+   flex:1로 남는 높이를 채우게 한다 — 사진 비율과 지도 최소높이가 서로 달라도 카드 높이는 항상
+   같다). 지도 쪽은 좌표가 없어도 안내 문구가 대신 렌더링되므로 오른쪽 칸이 항상 채워진다 — 사진이
+   없을 때만 1열로 넓어진다. */
+.hlf-detail-hero { display: grid; grid-template-columns: 1fr 1fr; align-items: stretch; gap: 16px; margin: 16px 0; }
+.hlf-detail-hero--map-only { grid-template-columns: 1fr; }
+.hlf-detail-hero .hlf-gallery,
+.hlf-detail-hero .hlf-detail-map-panel,
+.hlf-detail-hero .hlf-map-unavailable { margin: 0; }
+
+/* 상세 화면 갤러리 — 대표 이미지 하나를 크게, 나머지는 가로 스크롤 썸네일 스트립으로. 제목/코멘트
+   없이 사진만 담되, 옆의 위치 카드와 톤을 맞추기 위해 같은 카드 스타일(배경/보더/라운드/패딩)을
+   쓴다. */
+.hlf-gallery {
+	display: flex;
+	flex-direction: column;
+	/* grid/flex 아이템은 기본값이 min-width:auto라, 자식(.hlf-gallery-thumbs)의 스크롤 안 한 콘텐츠
+	   원래 너비가 이 카드가 속한 grid 트랙(.hlf-detail-hero)보다 넓어지면 트랙 자체가 그만큼
+	   늘어나 버린다 — 사진이 몇 장 안 될 때는 원래 너비 안에 다 들어가 문제가 없다가, 딱 트랙
+	   너비를 넘는 장수(모바일 좁은 화면에서는 4장 안팎)부터 갑자기 카드 전체(갤러리+지도) 가로폭이
+	   깨지는 이유다(요청서: 실제로 확인됨). min-width:0으로 트랙 크기를 카드 자체 너비로 고정하고,
+	   overflow-x:auto가 있는 자식이 그 안에서 스크롤(=슬라이드)하게 한다. */
+	min-width: 0;
+	margin: 16px 0;
+	padding: 16px 18px 14px;
+	background: var(--hlf-surface);
+	border: 1px solid var(--hlf-line);
+	border-radius: 10px;
+}
+/* 대표 사진은 가로형 3:2(약 600x400) 비율로 고정한다 — object-fit:cover가 있어도 컨테이너 자체의
+   높이가 flex-grow로 정해지면(이전 방식) 세로형(인물) 사진이 올라올 때 카드 전체가 함께 길어지는
+   문제가 있었다(실제로 확인됨). aspect-ratio로 폭 기준 높이를 고정해 어떤 원본 비율의 사진이
+   올라와도 항상 같은 가로형 박스 크기를 유지한다. */
+.hlf-gallery-main { position: relative; aspect-ratio: 3 / 2; overflow: hidden; border-radius: 12px; background: var(--hlf-line); }
+/* 대표 사진 중앙에 워터마크(요청서) — 블러 처리한 알약 배경 위에 브랜드 색(반투명) 글자를 얹는다.
+   클릭/포커스를 가로채면 안 되므로(사진 확대 버튼이 바로 아래 겹쳐 있음) pointer-events:none.
+   요청서 1: top을 정확히 50%로 맞춰 사진 중앙에 오게 하고(기존 58%는 살짝 아래로 치우쳐 있었다),
+   블러 박스는 가로로 더 길게, 글자는 더 크게. 라이트박스에서도 같은 블러가 그대로 보인다(아래
+   --lightbox 변형은 크기만 확대할 뿐, top/left/transform은 이 기본 규칙을 그대로 물려받는다). */
+/* 요청서: 블러 박스를 아래쪽으로만 조금 더 키운다 — 위쪽 padding은 그대로 두고 아래쪽 padding만
+   늘리면 top:50%+translate(-50%,-50%)의 중앙정렬 특성상 박스 전체가 늘어난 만큼의 절반만큼 위/아래로
+   같이 밀린다(늘어난 높이의 중앙이 계속 anchor를 유지하려 하므로). 늘어난 padding-bottom의 절반만큼
+   translateY를 추가로 더해 위쪽 경계는 원래 자리에 그대로 남고 아래쪽 경계만 늘어난 만큼 내려가게
+   보정한다. */
+.hlf-gallery-watermark {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, calc(-50% + 4px));
+	padding: 8px 34px 16px;
+	color: rgba(53, 92, 115, .55);
+	font-size: 18px;
+	font-weight: 800;
+	letter-spacing: .12em;
+	border-radius: 8px;
+	backdrop-filter: blur(8px);
+	-webkit-backdrop-filter: blur(8px);
+	pointer-events: none;
+	user-select: none;
+}
+/* 라이트박스(확대 보기)는 캔버스가 훨씬 커서 같은 크기로는 잘 안 보인다 — 글자/블러 박스를 키운다. */
+.hlf-gallery-watermark--lightbox { transform: translate(-50%, calc(-50% + 6px)); padding: 12px 46px 24px; font-size: 26px; border-radius: 10px; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.hlf-gallery-main img { display: block; width: 100%; height: 100%; object-fit: cover; transition: opacity .12s ease; }
+/* 요청서: 매물당 사진이 최대 4장(대표 1 + 슬라이드 최대 3, HLF_MAX_IMAGES)뿐이라 스크롤 슬라이드가
+   필요 없다 — 가로 스크롤 대신 남은 칸에 똑같이 나눠(25%씩) 항상 한 줄에 다 보이게 한다. */
+.hlf-gallery-thumbs { display: flex; gap: 8px; min-width: 0; margin-top: 8px; }
+.hlf-gallery-thumbs img { display: block; width: 100%; height: 60px; object-fit: cover; border-radius: 8px; transition: transform .12s ease; }
+.hlf-photo-open { display: block; width: 100%; height: 100%; padding: 0; border: 0; background: transparent; cursor: pointer; }
+.hlf-gallery-thumbs .hlf-photo-open { flex: 1 1 0; min-width: 0; }
+.hlf-photo-open:focus-visible { outline: 2px solid var(--hlf-primary); outline-offset: 2px; }
+/* 썸네일에 마우스오버하면 위 대표 사진 자리에 그 사진이 커져서 나타난다(assets/js/public-flyer.js
+   bindGalleryHoverSwap) — 썸네일 자체도 살짝 커져서 지금 어떤 사진이 크게 보이는지 알려준다. */
+.hlf-gallery-thumbs .hlf-photo-open:hover img,
+.hlf-gallery-thumbs .hlf-photo-open.hlf-gallery-thumb-active img { transform: scale(1.08); box-shadow: 0 0 0 2px var(--hlf-primary); }
+
+/* 사진 라이트박스(이전/다음) — JS(assets/js/public-flyer.js)가 hidden 속성만 토글한다. */
+.hlf-lightbox[hidden] { display: none; }
+.hlf-lightbox { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 24px; background: rgba(20, 33, 42, .9); }
+/* 이전엔 width가 96vw로 고정돼 있어, .hlf-lightbox 자신의 좌우 padding(24px씩, 총 48px)을 빼지 않고
+   계산했다 — 화면이 좁을수록 96vw가 실제로 남는 폭(100vw-48px)보다 커져 오른쪽으로 삐져나갔다
+   (모바일에서 특히 눈에 띔). 항상 실제로 남는 공간을 넘지 않도록 calc로 직접 뺀다. */
+.hlf-lightbox-content { position: relative; display: grid; place-items: center; width: min(1400px, calc(100vw - 48px)); height: min(92vh, calc(100vh - 48px)); }
+.hlf-lightbox-image { width: auto; height: auto; max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px; }
+.hlf-lightbox-button { position: absolute; display: grid; width: 40px; height: 40px; place-items: center; color: #fff; background: rgba(53, 92, 115, .9); border: 0; border-radius: 50%; font-size: 20px; line-height: 1; cursor: pointer; }
+.hlf-lightbox-button:hover { background: var(--hlf-primary-strong); }
+.hlf-lightbox-close { top: -6px; right: -6px; }
+.hlf-lightbox-prev { top: 50%; left: -6px; transform: translateY(-50%); }
+.hlf-lightbox-next { top: 50%; right: -6px; transform: translateY(-50%); }
+
+/* 인쇄 전용 매물 상세 블록(요청서 6) — 화면에서는 항상 숨어 있고 인쇄에서만 보인다(print.css). */
+.hlf-print-item-detail { display: none; }
+/* 인쇄 확정 직후, 실제 인쇄가 시작되기 전 짧은 준비 구간에만 붙는 클래스(assets/js/public-flyer.js
+   initLazyPrintMaps) — display:none 컨테이너 안에서 카카오 지도를 만들면 생성 시점의 컨테이너
+   크기가 0이라 지도가 안 그려진 채로 굳어버린다(실사용 버그: 인쇄 시 지도 안 나옴). 지도를 만들기
+   전에 잠깐 실제 레이아웃 크기를 갖게 하되(display:block), 인쇄 다이얼로그가 뜨기 전까지 화면에
+   눈에 띄게 나타나지는 않도록(visibility:hidden — display:none과 달리 자리는 차지해 카카오 지도가
+   올바른 크기를 읽을 수 있다) 숨겨둔다. 인쇄가 끝나면(afterprint) 다시 뗀다.
+   실사용 버그(중대): 이 visibility:hidden이 @media 범위 없이 걸려 있어서 실제 인쇄(@media print)
+   중에도 그대로 적용됐다 — 이 클래스는 정리 시점이 afterprint(인쇄가 끝난 뒤)라, 인쇄가 진행되는
+   바로 그 순간에는 항상 이 클래스가 아직 붙어 있는 상태다. 그 결과 이 클래스가 붙은(=지도를
+   준비해야 했던) 매물 상세 블록은 실제 인쇄물/PDF에서 자리(높이)만 차지하고 내용은 통째로 안 보이는
+   빈 페이지로 나왔다(매물 하나만 인쇄해도 재현됨 — 화면 전용 트릭이 인쇄에 새어 들어간 것이 원인이라
+   선택한 페이지 수와 무관하다). 화면에서만 숨기고 인쇄에는 전혀 영향이 없도록 @media screen으로
+   범위를 좁힌다. */
+@media screen {
+	/* 요청서(실사용 버그 — 목록 인쇄 카드에서만 지도가 가운데 작게, 흰 여백을 남기고 그려짐. 매물
+	   상세 페이지 단독 인쇄에서는 재현 안 됨 — 사용자가 직접 비교 확인): 예전에는 이 클래스가
+	   display:block만 주고 실제 폭은 그 시점의 화면(모바일 뷰포트, ~390px)에 맡겨져 있었다 — 그
+	   상태에서 사진/지도 50:50 그리드가 계산되고, 지도 컨테이너에는 그와 무관한 별도의 mm 값(예:
+	   87mm)을 강제로 얹었다. 즉 지도를 만들 때 그 부모(그리드 칸)의 실제 폭과 지도 자체에 못박은
+	   폭이 서로 달랐다 — 카카오 지도 캔버스가 "자기 컨테이너 크기"를 어느 시점 기준으로 읽느냐에
+	   따라 어긋난 채로 굳어버린 것으로 보인다(매물 상세 단독 페이지는애초에 이런 이중 기준이 없어
+	   문제가 없었다).
+	   이제는 매물 상세 카드(.hlf-print-item-detail) 전체를 실제 인쇄 콘텐츠 폭(A4 세로 사용 폭
+	   194mm)으로 프라이밍한다 — 그 안의 50:50(또는 사진 없으면 1단) 그리드가 처음부터 이 폭
+	   기준으로 계산되므로, 지도 컨테이너는 그 칸을 그대로 width:100%로 채우기만 하면 된다(mm
+	   매직넘버 불필요, assets/js/public-flyer.js initLazyPrintMapsSequentially 참고). */
+	.hlf-print-priming {
+		display: block !important;
+		position: fixed !important;
+		top: 0 !important;
+		left: -99999px !important;
+		/* 기본값(데스크톱): @page(public.css 상단) 기본 A4 landscape의 실제 사용 폭 —
+		   297mm - margin 8mm×2 = 281mm. */
+		width: 281mm !important;
+		visibility: visible !important;
+		z-index: -1 !important;
+		pointer-events: none !important;
+	}
+	/* 모바일 인쇄만 JS가 @page를 세로(A4 portrait)로 바꿔치기한다(applyMobilePagePortrait) — 그
+	   실제 사용 폭은 210mm - 8mm×2 = 194mm로 데스크톱과 다르다. prepareAndPrint()는 이 프라이밍보다
+	   먼저 hlf-print-mobile을 붙이므로(narrow screen일 때만) 이 시점엔 플랫폼이 이미 확정돼 있다 —
+	   여기서 데스크톱용 281mm를 그대로 쓰면(실사용 버그는 아직 없었지만) 모바일에서 지금 고치려는
+	   것과 완전히 같은 종류의 폭 불일치를 새로 만든다. */
+	body.hlf-print-mobile .hlf-print-priming { width: 194mm !important; }
+	/* 결정적인 원인: public.css에는 일반 모바일 화면 열람용 반응형 규칙
+	   (@media (max-width:700px) { .hlf-detail-hero { grid-template-columns: 1fr } })이 이미
+	   있는데, 이건 뷰포트 폭 기준이라 카드 자체를 194mm로 프라이밍해도 여전히 걸린다(프라이밍은
+	   여전히 스크린 컨텍스트에서 일어나고, 실제 모바일 기기의 뷰포트는 항상 700px 미만이므로). 그
+	   결과 relayout()이 실행되는 준비 단계에서는 그리드가 1단(칸 전체 폭)으로 계산되는데, 실제
+	   인쇄(@media print) 시점에는 print.css의 body.hlf-print-mobile .hlf-detail-hero가 2단으로
+	   강제한다 — 지도가 "자기 칸이 전체 폭인 줄 알고" 만들어진 뒤, 실제 인쇄에서는 그 절반 칸에
+	   욱여넣어지면서 가운데 작게 그려지고 나머지가 흰 여백으로 남았다. 프라이밍 중에도 실제 인쇄와
+	   똑같은 그리드(사진 있으면 2단, 없으면 1단)를 쓰도록 강제해 이 불일치를 없앤다. */
+	.hlf-print-priming .hlf-detail-hero { grid-template-columns: 1fr 1fr !important; }
+	.hlf-print-priming .hlf-detail-hero--map-only { grid-template-columns: 1fr !important; }
+	/* 요청서 4: 인쇄 직전에 항상 화면에 떠 있던 지도(위치 확인 비교 지도·매물 상세 단독 페이지
+	   자체 지도)의 컨테이너를 인쇄 크기(mm, 인라인 스타일 — assets/js/public-flyer.js
+	   applyPrintMapSizing)로 못박는 짧은 구간에만 붙는 클래스. 그 크기는 모바일 뷰포트보다 훨씬
+	   넓어서 그대로 두면 인쇄 대화상자가 뜨기 전 1초 남짓 동안 지도가 화면 밖으로 삐져나온다 —
+	   화면에서만 흐름 밖으로 빼서 안 보이게 한다(카카오 지도는 offsetWidth/Height로 크기를 재므로
+	   opacity:0이어도 인쇄 크기를 정확히 읽는다. display:none이면 크기가 0이 되어 못 쓴다).
+	   인쇄에는 이 규칙이 전혀 적용되지 않고(@media screen), 인쇄가 끝나면 JS가 클래스와 인라인
+	   크기를 함께 떼어낸다(restoreAfterPrint).
+
+	   중요(실사용 회귀): 흐름에서 빼는 대상은 지도 컨테이너(.hlf-comparison-map)가 아니라 반드시
+	   그 바깥 패널이어야 한다. 카카오 지도는 컨테이너의 position이 static일 때만 relative로 바꿔
+	   놓고 내부 타일 레이어를 그 안에 absolute로 붙인다 — 지도를 만드는 순간 컨테이너가 이미
+	   position:fixed면 카카오가 손대지 않고 넘어가고, 인쇄에서 이 규칙이 빠지면서 컨테이너가 다시
+	   static이 되면 내부 레이어들이 컨테이너를 containing block으로 삼지 못해 페이지 전체 기준으로
+	   튀어나간다(= overflow:hidden도 못 막는다). beta.19에서 실제로 인쇄 1·2페이지 위에 다른 매물
+	   지도들이 겹쳐 찍히던 원인이 이것이다. 컨테이너의 position은 앞으로도 건드리지 않는다. */
+	body.hlf-print-map-sizing { overflow: hidden; }
+	body.hlf-print-map-sizing .hlf-comparison-map-panel,
+	body.hlf-print-map-sizing .hlf-detail-map-panel {
+		position: fixed;
+		top: 0;
+		left: 0;
+		z-index: -1;
+		opacity: 0;
+		pointer-events: none;
+	}
+	/* 요청서 3: 목록 인쇄용 매물 카드(.hlf-print-priming) 안의 지도 패널은 위 규칙(패널 단독 고정
+	   위치 분리) 대상에서 뺀다 — 카드 전체가 이미 위에서 한 번에 화면 밖으로 빠져 있으므로, 패널을
+	   또 따로 그 흐름에서 분리하면 지도 div가 카드 내부의 정상 문서 흐름/그리드를 벗어나 별도
+	   스택 컨텍스트에 놓인다(=지도가 자기 부모의 50:50 칸 폭을 더는 신뢰할 수 없게 된다). 위
+	   규칙(body.hlf-print-map-sizing .hlf-detail-map-panel)보다 명시도가 높아야 이긴다. */
+	body.hlf-print-map-sizing .hlf-print-priming .hlf-detail-map-panel,
+	body.hlf-print-map-sizing .hlf-print-priming .hlf-comparison-map-panel {
+		position: static;
+		top: auto;
+		left: auto;
+		z-index: auto;
+		opacity: 1;
+		pointer-events: auto;
+	}
+}
+
+/* 인쇄할 페이지 선택 패널 — 라이트박스와 같은 모달 톤. */
+.hlf-print-panel[hidden] { display: none; }
+.hlf-print-panel { position: fixed; inset: 0; z-index: 21; display: grid; place-items: center; padding: 24px; background: rgba(20, 33, 42, .55); }
+.hlf-print-panel-content { width: min(420px, 92vw); max-height: 80vh; overflow-y: auto; padding: 20px 22px; background: #fff; border-radius: 12px; }
+.hlf-print-panel-content h2 { margin: 0 0 12px; color: var(--hlf-primary); font-size: 17px; }
+.hlf-print-panel-list { display: flex; flex-direction: column; gap: 8px; margin: 0 0 16px; padding: 0; list-style: none; }
+.hlf-print-panel-list label { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--hlf-ink); }
+.hlf-print-panel-actions { display: flex; justify-content: flex-end; gap: 8px; }
+
+.hlf-lease-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+/* :first-child에서 border-left를 지우지 않는다 — 리스트 행에서는 보증금이 전용면적 다음에
+   바로 이어지므로 이 칸도 구분선이 있어야 층~NOC 7칸이 하나의 표처럼 보인다(상세 페이지 Leasing
+   Info 카드에서는 .hlf-detail-metrics .hlf-lease-metric이 아래에서 전체 border로 덮어써 이 규칙과
+   무관해진다). */
+.hlf-lease-metric { min-width: 0; padding: 2px 8px; text-align: center; border-left: 1px solid var(--hlf-line); }
+.hlf-lease-metric-label { display: block; color: var(--hlf-muted); font-size: 10px; font-weight: 700; line-height: 1.2; }
+.hlf-lease-metric-value { display: block; margin-top: 1px; color: var(--hlf-primary); font-size: 15px; font-weight: 900; line-height: 1.2; white-space: nowrap; }
+.hlf-lease-metric-sub { display: block; margin-top: 1px; color: var(--hlf-muted); font-size: 10px; font-weight: 500; line-height: 1.2; white-space: nowrap; }
+
+/* "Leasing Info"/"Property Details" 카드 — NOC 차트/지도 패널과 같은 카드 톤(배경/보더/라운드)을
+   재사용해 상세페이지 안의 모든 섹션이 하나의 시각 언어로 보이게 한다. */
+.hlf-panel { margin: 22px 0; padding: 16px 18px 14px; background: var(--hlf-surface); border: 1px solid var(--hlf-line); border-radius: 10px; }
+/* Property Details 아래 목록 버튼(요청서) — 헤더의 "← 목록" 링크와 별개로, 상세 내용을 다 본 뒤
+   다시 스크롤해 올라가지 않고도 목록으로 돌아갈 수 있게 페이지 하단에도 하나 더 둔다. 요청서: 이
+   버튼과 푸터의 위치를 서로 바꿔, 버튼이 푸터의 저작권 문구 자리(.hlf-footer-row 왼쪽)로 옮겨가
+   우측 전화번호와 같은 행에 온다 — 저작권 문구는 대신 이 자리(Property Details 바로 아래, 독립된
+   한 줄)로 옮겨온다. */
+/* 요청서 3: 목록 버튼은 왼쪽 정렬 + 지정 색상(#355c73)의 화이트 폰트 버튼으로. */
+.hlf-detail-footer-note { margin: 4px 0 22px; }
+/* 요청서: 옆의 전화번호 버튼(.hlf-footer-contact a)과 같은 느낌(살짝 둥근 사각형)으로 통일한다 —
+   완전한 알약 모양(border-radius:999px) 대신 8px로. */
+.hlf-detail-list-return-link {
+	display: inline-block;
+	padding: 8px 14px;
+	color: #fff;
+	font-weight: 700;
+	font-size: 13px;
+	text-decoration: none;
+	background: #355c73;
+	border: 1px solid #355c73;
+	border-radius: 8px;
+	transition: background .15s, color .15s;
+}
+.hlf-detail-list-return-link:hover { color: #355c73; background: #fff; }
+.hlf-panel-heading { margin: 0 0 10px; color: var(--hlf-primary); font-size: 16px; letter-spacing: -.02em; }
+/* "Leasing Info" 옆에 매물특징(자유 텍스트)을 작은 글씨로 중앙 배치한다. */
+.hlf-panel-heading-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+/* 요청서: 매물특징(옆의 .hlf-panel-note) 텍스트가 길어지면 flex-shrink 기본값(1) 때문에 "Leasing
+   Info" 제목까지 같이 눌려서 "Leasing"/"Info"가 두 줄로 쪼개졌다 — 제목은 줄어들지도 줄바꿈되지도
+   않게 고정하고(flex-shrink:0 + white-space:nowrap), 남는 폭은 전부 옆의 노트가 가져가 거기서만
+   줄바꿈되게 한다(min-width:0 없이는 flex 아이템이 내용 길이만큼 폭을 계속 요구해 오히려 줄바꿈
+   대신 컨테이너 밖으로 넘친다). */
+.hlf-panel-heading-row .hlf-panel-heading { margin-bottom: 0; flex-shrink: 0; white-space: nowrap; }
+.hlf-panel-note { margin: 0; min-width: 0; color: var(--hlf-muted); font-size: 12px; text-align: center; }
+.hlf-detail-metrics { margin: 0; }
+/* 요청서: 보증금/임대료/관리비/환산임대료 각각을 네모 박스로 감싸던 것을, 리스트페이지 한 줄
+   표기와 같은 세로 구분선 방식으로 통일한다 — .hlf-lease-metric 기본 스타일(border-left)을
+   그대로 쓰고, 이 카드에서만 필요한 여백만 지정한다. 첫 칸은 리스트페이지와 달리(거기서는 전용면적
+   칸에 바로 이어 붙는 7칸 표라 구분선이 계속 있어야 함) 앞에 붙일 다른 칸이 없으므로 구분선을 뺀다. */
+.hlf-detail-metrics .hlf-lease-metric { padding: 4px 10px; }
+.hlf-detail-metrics .hlf-lease-metric:first-child { border-left: 0; }
+.hlf-features { margin: 12px 0; color: var(--hlf-ink); font-weight: 700; line-height: 1.6; }
+.hlf-property-details { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; margin: 0; }
+.hlf-basic-item { display: flex; justify-content: space-between; gap: 10px; padding: 8px; border-top: 1px solid var(--hlf-line); transition: background .15s; }
+.hlf-basic-item:hover { background: #f5f8fa; }
+/* 값이 긴 항목(예: 매물특징이 함께 들어간 건축물용도)은 2열 grid를 깨고 전체폭을 쓴다. */
+.hlf-basic-item--wide { grid-column: 1 / -1; }
+.hlf-basic-item dt { color: var(--hlf-muted); font-size: 13px; }
+.hlf-basic-item dd { margin: 0; color: var(--hlf-ink); font-size: 14px; font-weight: 700; text-align: right; }
+.hlf-basic-item--wide dd { text-align: left; }
+/* 임대면적/전용면적: 제곱미터를 먼저(크게), 평수는 그 아래 작게. */
+.hlf-basic-value-main { display: block; }
+.hlf-basic-value-sub { display: block; margin-top: 1px; color: var(--hlf-muted); font-size: 11px; font-weight: 500; }
+/* 임대면적/전용면적 값 강조색(#355c73 = --hlf-primary) — .hlf-basic-item dd보다 명시도를 높여야
+   기본 잉크색 규칙을 이긴다. */
+.hlf-basic-item dd.hlf-basic-item--accent { color: var(--hlf-primary); }
+/* 요청서: Property Details의 전용면적 평수만 어울리는 파란색으로 구분한다 — 임대면적은 같은
+   main/sub 마크업을 쓰므로 템플릿에서 라벨로 구분해 이 항목에만 붙이는 .hlf-basic-item--exclusive로
+   한정한다. */
+.hlf-basic-item--exclusive .hlf-basic-value-sub { color: var(--hlf-accent-blue); font-weight: 700; }
+/* 요청서: Property Details의 기준층(해당층/분자)만 눈에 띄는 초록으로 구분한다. */
+.hlf-basic-item dd .hlf-floor-current { color: var(--hlf-accent-green); font-weight: 800; }
+.hlf-footer { display: flex; flex-direction: column; gap: 10px; margin-top: 28px; padding-top: 14px; border-top: 1px solid var(--hlf-line); color: var(--hlf-muted); font-size: 12px; }
+.hlf-footer-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+/* margin-left:auto가 핵심 — text-align만으로는 footer-row가 좁은 화면에서 줄바꿈되어 이 칸이
+   혼자 한 줄을 차지할 때(space-between이 한 개짜리 줄에서는 왼쪽 정렬됨) 우측으로 안 붙는다. */
+.hlf-footer-contact { margin-left: auto; text-align: right; }
+/* 고객이 실제로 누르는 핵심 행동(전화 문의)이므로 일반 텍스트 링크보다 눈에 띄고 손가락으로
+   누르기 쉬운 버튼 형태로 강조한다(44px 안팎의 터치 영역 확보). */
+.hlf-footer-contact a {
+	display: inline-block;
+	padding: 8px 14px;
+	color: #fff;
+	background: var(--hlf-primary);
+	border-radius: 8px;
+	font-weight: 700;
+	text-decoration: none;
+	white-space: nowrap;
+}
+.hlf-footer-contact a:hover { background: var(--hlf-primary-strong); text-decoration: none; }
+/* 저작권/무단 재배포 금지 고지 — 모든 공개 화면(리스트/상세) 및 인쇄물(같은 템플릿을 print.css
+   미디어쿼리로 재사용) 하단에 표시한다. */
+.hlf-footer-copyright { margin: 0; color: var(--hlf-muted); font-size: 11px; line-height: 1.6; }
+/* "© HINT"는 /listup/ 직원 포털로 가는 히든 버튼이다(요청서 10 — 기존에는 워드프레스 관리자
+   로그인 페이지로 갔었다) — 평문과 구분되지 않도록 색/밑줄을 그대로 상속만 하고, 클릭 시
+   wp_logout_url()로 기존 로그인 세션을 먼저 정리해 항상 새로 로그인하게 한다(템플릿 쪽 PHP에서
+   wp_logout_url( HLF_Portal::portal_url() )로 생성). */
+.hlf-footer-admin-link { color: inherit; text-decoration: none; }
+
+/* NOC(환산임대료) 비교 차트 — 서버가 계산한 값(hlf_calculate_item_metrics)을 그대로 막대로만
+   그린다(계산 로직 재구현 없음, assets/js/public-flyer.js 참고). */
+.hlf-noc-chart-panel { margin: 22px 0; padding: 16px 18px 14px; background: var(--hlf-surface); border: 1px solid var(--hlf-line); border-radius: 10px; }
+.hlf-noc-chart-heading { display: flex; align-items: end; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.hlf-noc-chart-heading h2 { margin: 0; color: var(--hlf-primary); font-size: 16px; letter-spacing: -.02em; }
+/* "NOC COMPARISON" 표기는 제목 바로 오른쪽에 붙인다(요청서: 우측 저 멀리 있던 걸 제목 옆으로). */
+.hlf-noc-chart-title-row { display: flex; align-items: baseline; gap: 8px; }
+/* 위치 비교 지도의 "LOCATION REVIEW" 표기와 같은 스타일(자간을 준 영문 대문자 라벨). */
+.hlf-noc-chart-eyebrow { color: var(--hlf-muted); font-size: 10px; letter-spacing: .06em; }
+/* 요청서: "단위:..." 표기는 제목 옆이 아니라 차트 하단 밑줄(.hlf-noc-chart의 border-bottom) 아래,
+   우측 정렬로 옮긴다 — 그래서 .hlf-noc-chart-heading이 아니라 .hlf-noc-chart 뒤에 형제로 둔다. */
+.hlf-noc-chart-unit { margin: 6px 0 0; text-align: right; color: var(--hlf-muted); font-size: 11px; }
+/* 요청서 5: 위아래 스크롤은 필요 없다 — overflow-x만 auto로 두면(overflow-y는 기본값 visible)
+   CSS 스펙상 브라우저가 overflow-y도 강제로 auto로 승격시켜(두 축 중 하나만 visible로 둘 수 없음)
+   실제 콘텐츠 높이가 min-height보다 몇 px만 더 커도 세로 스크롤바가 생겼다 — overflow-y:hidden을
+   명시해 그 강제 승격을 막는다. */
+.hlf-noc-chart { display: flex; align-items: end; justify-content: center; gap: 14px; min-height: 168px; padding: 14px 4px 0; overflow-x: auto; overflow-y: hidden; flex-wrap: wrap; border-bottom: 1px solid var(--hlf-line); }
+/* 값 표시줄과 막대 사이에 여유 공간을 둔다 — 막대가 호버 시 scale(1.15)로 커질 때 위 숫자와
+   겹치지 않도록. */
+.hlf-noc-chart-item { display: grid; flex: 0 0 52px; grid-template-rows: 18px 1fr 30px; align-items: end; height: 158px; color: inherit; text-align: center; text-decoration: none; }
+.hlf-noc-chart-value { margin-bottom: 5px; color: var(--hlf-ink); font-size: 11px; font-weight: 800; }
+.hlf-noc-chart-bar-wrap { display: flex; align-items: end; justify-content: center; height: 110px; }
+/* 막대 색은 --hlf-item-accent(assets/js/public-flyer.js가 .hlf-noc-chart-item에 inline style로
+   설정)를 물려받는다 — 같은 매물이면 리스트 배지·지도 마커와 항상 같은 색. hover/active는 배경색을
+   고정 강조색으로 바꾸는 대신 filter로 어둡게 해 어떤 accent color든 같은 방식으로 강조되게 한다. */
+.hlf-noc-chart-bar { position: relative; width: 24px; min-height: 10px; background: var(--hlf-item-accent, var(--hlf-primary)); border-radius: 4px 4px 0 0; transform-origin: bottom center; transition: filter .15s, transform .15s; }
+/* 요청서: 막대 안 중하단에 순번 표시(다른 배지와 달리 배경 없이 막대 색 위에 흰 글씨로 바로 얹는다). */
+.hlf-noc-chart-bar-index { position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); color: #fff; font-size: 10px; font-weight: 800; line-height: 1; }
+/* 요청서: 막대 호버 시 NOC 순위(1st/2nd/...)를 막대 상단부 바로 위에 표시한다 — bottom:100%로
+   .hlf-noc-chart-bar(position:relative) 기준 항상 그 막대의 실제 높이 바로 위에 뜬다. */
+.hlf-noc-chart-bar-rank { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%) translateY(3px); margin-bottom: 4px; padding: 2px 6px; border-radius: 4px; background: var(--hlf-ink); color: #fff; font-size: 10px; font-weight: 800; line-height: 1.4; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity .15s, transform .15s; }
+/* 지도 마커(.hlf-map-marker.is-active)가 호버/연동 시 scale(1.25)로 커지는 것과 같은 느낌을
+   막대에도 준다 — 막대는 높이 자체가 데이터를 나타내므로 bottom 기준으로만 살짝 커지게 한다. */
+.hlf-noc-chart-item:hover .hlf-noc-chart-bar,
+.hlf-noc-chart-item:focus-visible .hlf-noc-chart-bar,
+.hlf-noc-chart-item.is-active .hlf-noc-chart-bar { filter: brightness(.82); transform: scale(1.15); }
+.hlf-noc-chart-item:hover .hlf-noc-chart-bar-rank,
+.hlf-noc-chart-item:focus-visible .hlf-noc-chart-bar-rank,
+.hlf-noc-chart-item.is-active .hlf-noc-chart-bar-rank { opacity: 1; transform: translateX(-50%) translateY(0); }
+.hlf-noc-chart-label { color: var(--hlf-muted); font-size: 10px; font-weight: 700; line-height: 1.3; white-space: nowrap; }
+
+/* 위치 비교 지도 + 상세 개별 지도 — 카카오 지도 SDK가 로드되기 전까지는 안내 문구만 보인다
+   (assets/js/public-flyer.js initMapContainer, 키 미설정/SDK 로드 실패 시에도 같은 자리에 안내). */
+.hlf-comparison-map-panel, .hlf-detail-map-panel { min-width: 0; margin: 22px 0; padding: 16px 18px 14px; background: var(--hlf-surface); border: 1px solid var(--hlf-line); border-radius: 10px; }
+/* 상세 히어로 안에서는 갤러리 카드와 높이를 맞추기 위해 flex column + 지도 flex:1로 남는 높이를
+   채운다(.hlf-detail-hero의 align-items:stretch가 카드 자체의 높이를 갤러리와 맞춰준다). */
+.hlf-detail-hero .hlf-detail-map-panel { display: flex; flex-direction: column; }
+.hlf-detail-hero .hlf-detail-map { flex: 1 1 auto; min-height: 0; }
+/* 사진이 없어 지도 패널 혼자 이 grid의 한 칸을 채우는 경우(요청서 — 인쇄에서 지도가 아예 안 보이던
+   버그의 실제 원인 중 하나) — 위 min-height:0은 align-items:stretch로 옆 갤러리 카드의 높이를
+   물려받는 걸 전제로 하는데, 사진이 없으면 물려받을 대상 자체가 없어 콘텐츠 높이(0)로 찌그러진다.
+   이 규칙은 위 규칙과 명시도가 같아(클래스 2개) 소스 순서상 반드시 그 아래에 와야 이긴다. */
+.hlf-detail-hero--map-only .hlf-detail-map { min-height: 360px; }
+.hlf-comparison-map-heading { display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px; }
+.hlf-comparison-map-heading h2 { margin: 0; color: var(--hlf-primary); font-size: 16px; letter-spacing: -.02em; }
+/* 요청서: 드래그/줌으로 지도를 옮겨봤다가 다시 매물 위치로 되돌리는 버튼 — 제목과 같은 줄, 우측 정렬. */
+.hlf-map-recenter {
+	margin-left: auto;
+	padding: 4px 10px;
+	color: var(--hlf-primary);
+	font-size: 11px;
+	font-weight: 700;
+	background: var(--hlf-surface);
+	border: 1px solid var(--hlf-line);
+	border-radius: 999px;
+	cursor: pointer;
+	transition: background .15s, color .15s;
+}
+.hlf-map-recenter:hover { color: #fff; background: var(--hlf-primary); }
+.hlf-map-recenter:focus-visible { outline: 2px solid var(--hlf-primary); outline-offset: 2px; }
+.hlf-comparison-map-unit { color: var(--hlf-muted); font-size: 10px; letter-spacing: .06em; }
+/* 요청서 12: 위치 확인 지도 세로폭을 기존보다 늘린다(360px -> 440px). */
+/* position:relative는 장식이 아니라 지도가 제자리에 갇히게 하는 안전장치다(요청서: 인쇄에서 지도가
+   깨져서 다른 페이지 위에 겹쳐 찍히던 문제의 진짜 원인). 카카오 지도는 컨테이너 안에 타일/오버레이
+   레이어를 position:absolute로 붙이는데, 컨테이너가 static이면 그 레이어들의 containing block이
+   컨테이너가 아니라 위쪽의 다른 조상(없으면 페이지 전체)이 된다 — 그러면 아래 overflow:hidden도
+   그 레이어들을 자르지 못한다(CSS 규칙: 클리핑 박스보다 바깥에 containing block을 둔 절대위치
+   자손은 잘리지 않는다). 컨테이너를 항상 positioned로 만들어 두면 어떤 상황에서도 지도는 이 상자
+   안으로 잘려 들어온다 — 최악의 경우가 "지도가 일부만 보임"이지, "다른 내용 위에 겹침"이 아니게 된다.
+   상세 지도(.hlf-detail-map)도 이 클래스를 함께 갖고 있어 같이 적용된다. */
+.hlf-comparison-map { position: relative; min-height: 440px; background: var(--hlf-line); border-radius: 8px; overflow: hidden; }
+.hlf-detail-map { min-height: 260px; }
+.hlf-map-empty { display: grid; place-items: center; min-height: 260px; margin: 0; padding: 24px; color: var(--hlf-muted); font-size: 13px; text-align: center; }
+.hlf-map-marker {
+	display: grid;
+	place-items: center;
+	width: 26px;
+	height: 26px;
+	color: #fff;
+	background: var(--hlf-item-accent, var(--hlf-primary));
+	border: 2px solid #fff;
+	border-radius: 50%;
+	font-size: 11px;
+	font-weight: 800;
+	box-shadow: 0 1px 4px rgba(0, 0, 0, .25);
+	transition: transform .15s, filter .15s, box-shadow .15s;
+}
+/* 요청서: 리스트 행/막대/마커 중 하나에 마우스오버하면(assets/js/public-flyer.js ListingSync) 커지는
+   느낌 외에, 마커 테두리에 노란색 라이트가 도는 느낌을 더한다 — 기존 그림자(0 1px 4px 검정)는
+   그대로 두고 그 뒤에 노란 링 그림자를 하나 더 얹는다(box-shadow는 겹쳐 쓸 수 있어 마커 크기에는
+   영향이 없다). 요청서: 처음 색(255,196,0 — 주황에 가까움)이 밝은 노란색으로 보이도록 더 선명한
+   노랑(255,214,0)으로. */
+.hlf-map-marker.is-active {
+	transform: scale(1.25);
+	z-index: 5;
+	filter: brightness(.82);
+	box-shadow: 0 1px 4px rgba(0, 0, 0, .25), 0 0 0 4px rgba(255, 214, 0, .65);
+}
+.hlf-map-marker:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.hlf-map-unavailable { margin: 22px 0; padding: 16px; color: var(--hlf-muted); font-size: 13px; text-align: center; border: 1px dashed var(--hlf-line); border-radius: 8px; }
+/* 인쇄용 순번-주소 목록 — 화면에서는 숨기고 print.css에서만 보여준다(카카오 지도는 인쇄로 재현하기
+   어렵고, 인쇄물에 실제로 필요한 정보는 "어디에 있는지" 텍스트로 충분하다). */
+.hlf-map-print-fallback { display: none; }
+.hlf-map-print-fallback-item { display: flex; align-items: center; gap: 8px; padding: 4px 0; color: var(--hlf-ink); font-size: 12px; }
+.hlf-map-print-fallback-index { width: 22px; height: 18px; font-size: 10px; }
+
+@media (max-width: 700px) {
+	.hlf-detail-hero { grid-template-columns: 1fr; }
+	/* 요청서("카드 왼쪽 여백 조금 남아"): Leasing Info/Property Details 카드의 좌우 여백을 모바일에서
+	   줄여, 안쪽 Leasing Info 4칸(아래 .hlf-detail-metrics)이 "임대평당 X만원" 같은 보조 문구를 한
+	   줄로 담을 폭을 조금이라도 더 확보한다. */
+	.hlf-panel { padding: 16px 8px 14px; }
+	/* 목록 페이지 모바일 차트는 세로 폭을 더 줄인다 — 값 표시줄/막대영역/라벨줄 각각 축소. */
+	.hlf-noc-chart { gap: 10px; min-height: 128px; }
+	.hlf-noc-chart-item { flex-basis: 44px; grid-template-rows: 16px 1fr 26px; height: 118px; }
+	.hlf-noc-chart-bar-wrap { height: 76px; }
+	.hlf-noc-chart-bar { width: 20px; }
+	.hlf-noc-chart-bar-index { bottom: 3px; font-size: 9px; }
+	.hlf-noc-chart-value { font-size: 10px; margin-bottom: 4px; }
+	.hlf-noc-chart-label { font-size: 9px; }
+	/* 요청서 2: 막대가 5개 이상이면(assets/js/public-flyer.js renderNocChart가 .is-dense를 붙인다)
+	   고정폭 44px + 간격 10px으로는 한 줄에 다 못 들어가 두 줄로 접혔다 — 이 경우에는 줄바꿈을 끄고
+	   (flex-wrap:nowrap) 고정폭 대신 남는 폭을 균등 분할해(flex:1 1 0) 몇 개가 오든 항상 한 줄에
+	   담는다. 막대 폭·간격·글자도 함께 한 단계씩 줄여 칸이 좁아져도 값과 주소가 읽히게 한다.
+	   min-width:0이 없으면 flex 아이템의 기본 min-width:auto 때문에 안쪽 nowrap 텍스트(주소 라벨)
+	   길이만큼 칸이 다시 벌어져 결국 넘친다. 막대 폭은 칸이 아주 좁아지면 칸 폭을 따라 더 줄어들게
+	   min()으로 상한만 둔다. */
+	.hlf-noc-chart.is-dense { flex-wrap: nowrap; gap: 3px; padding-left: 0; padding-right: 0; }
+	.hlf-noc-chart.is-dense .hlf-noc-chart-item { flex: 1 1 0; min-width: 0; }
+	.hlf-noc-chart.is-dense .hlf-noc-chart-bar { width: min(18px, 80%); }
+	.hlf-noc-chart.is-dense .hlf-noc-chart-value { font-size: 9px; }
+	/* 주소 라벨은 nowrap 두 줄(동 / 번지)이라 칸보다 길어질 수 있다 — grid 아이템이라 블록으로
+	   승격되므로 줄마다 말줄임(...)이 걸린다. */
+	.hlf-noc-chart.is-dense .hlf-noc-chart-label { font-size: 8px; overflow: hidden; text-overflow: ellipsis; }
+	/* 좁은 화면: 4열+4열 — 첫째 줄 [연번+주소][층수][임대면적][전용면적], 둘째 줄 [보증금][임대료]
+	   [관리비][환산임대료]. 두 줄의 열 경계가 같은 자리에 오도록 아래 --hlf-mobile-cols 하나를 두
+	   줄이 공유한다. */
+	.hlf-listing-link { padding: 6px 8px; gap: 3px; }
+	/* 요청서 1: 두 줄(위 = 순번+주소/층수/임대면적/전용면적, 아래 = 보증금/임대료/관리비/환산임대료)이
+	   서로 다른 열 비율을 쓰고 있어서 층수 칸이 아래 임대료 칸보다 오른쪽으로 밀려 보였다(위 1.55fr
+	   .45fr 1fr 1fr → 층수 칸 시작점 38.75%, 아래 1fr×4 → 임대료 칸 시작점 25%). 이제 두 줄이
+	   --hlf-mobile-cols 하나를 공유한다 — 층수가 임대료 바로 위로 내려앉고 두 줄의 세로 구분선도
+	   같은 자리에 온다(앞으로 한쪽만 고쳐서 다시 어긋나는 일이 없도록 변수 하나로 묶었다).
+	   비율은 세 제약을 동시에 만족하는 값으로 잡았다 — (1) 첫 칸은 순번 배지 + "논현동 184-38" 급
+	   지번주소가 한 줄에 들어가야 하고, (2) 둘째 칸은 "B1/5층"과 네 자리 임대료("1,200만원")가 잘리지
+	   않아야 하며, (3) 셋째·넷째 칸은 면적/관리비·환산임대료 값을 담아야 한다. minmax(0, ...)은
+	   nowrap인 숫자 값이 트랙 자체를 밀어 넓히는 것을 막는다.
+	   글자 크기는 이 변경에서 일절 건드리지 않는다(요청 범위: 칸 정렬만) — 그 대신 360px 안팎의
+	   아주 좁은 화면에서는 첫 칸이 좁아진 만큼 지번주소가 두 줄로 넘어가거나 도로명주소 끝이
+	   말줄임될 수 있다(주소는 이미 2줄까지 허용 + 말줄임 처리가 되어 있어 잘려 사라지지는 않는다).
+	   390px 이상에서는 실측상 한 줄 그대로다. */
+	.hlf-listing-main {
+		--hlf-mobile-cols: minmax(0, 1.3fr) minmax(0, .9fr) minmax(0, .9fr) minmax(0, .9fr);
+		grid-template-columns: var(--hlf-mobile-cols);
+		grid-template-areas:
+			"idaddr floor leasearea exclarea"
+			"metrics metrics metrics metrics";
+		column-gap: 4px;
+		row-gap: 3px;
+	}
+	/* 맨 왼쪽 25% 칸에 연번 배지 + 지번/도로명주소를 함께 담는다. */
+	.hlf-listing-main .hlf-listing-idaddr {
+		grid-area: idaddr;
+		display: flex;
+		/* 요청서(실사용): 두 줄 중앙도, 카드 전체 중앙도 아니고 그냥 지번주소 줄과 평행하게 —
+		   배지와 주소 블록을 같은 시작선(위쪽)에 맞춘다. */
+		align-items: flex-start;
+		gap: 2px;
+	}
+	/* 요청서: 좁은 화면에서는 연번 배지보다 지번주소 판독성이 더 중요하다 — 배지는 살짝 줄이고
+	   주소는 기본값(12px)보다 키운다. */
+	/* 요청서: 지번주소가 숫자 하나만 더 늘어나도 줄바꿈되던 문제 — 순번 배지 폭/배지-주소 간격을
+	   더 줄이고 주소 글자 크기도 살짝 낮춰, 숫자 2개 정도 여유를 확보한다. */
+	.hlf-listing-index { flex-shrink: 0; width: 13px; height: 13px; font-size: 7px; }
+	.hlf-listing-main .hlf-listing-address-block { gap: 0; }
+	/* 요청서: 모바일 리스트 카드의 지번주소(노란 형광펜 줄)를 한 사이즈 키운다(12px -> 13px). */
+	.hlf-listing-address { font-size: 13px; line-height: 1.25; }
+	.hlf-listing-subaddress { line-height: 1.2; }
+	/* 요청서: 모바일은 자리가 좁아 도로명주소 옆 건물명을 또 두지 않고, 층 칸의 "층" 라벨을 건물명으로
+	   대체한다. */
+	.hlf-listing-address-block .hlf-building-name,
+	.hlf-listing-address-block .hlf-building-name-sep { display: none; }
+	.hlf-listing-floor .hlf-listing-floor-building { display: block; }
+	.hlf-listing-floor .hlf-lease-metric-label--has-building { display: none; }
+	/* 층/임대면적/전용면적은 위 4열 grid에 각각 한 칸씩 직접 합류한다(아래 보증금 등과 열이 맞도록)
+	   — .hlf-listing-meta 자체는 데스크톱과 마찬가지로 display:contents. */
+	/* 요청서 1: 예전에는 층수 칸이 아래 임대료 칸보다 오른쪽에 있어서, 좌우 padding을 비대칭으로 줘
+	   (2px 6px 2px 2px) 글씨만 왼쪽으로 당겨 놓았다 — 이제 두 칸이 같은 열이라 그 보정이 오히려
+	   가운데를 어긋나게 만든다. 아래 임대료 칸(.hlf-lease-metric, padding:2px)과 똑같이 대칭으로
+	   되돌려야 두 값의 중심선이 정확히 맞는다. */
+	.hlf-listing-floor { grid-area: floor; padding: 2px; }
+	.hlf-listing-lease-area { grid-area: leasearea; padding: 2px; }
+	.hlf-listing-area { grid-area: exclarea; padding: 2px; }
+	.hlf-listing-meta .hlf-lease-metric-label { font-size: 9px; line-height: 1.15; }
+	.hlf-listing-meta .hlf-listing-floor-value,
+	.hlf-listing-meta .hlf-listing-area-value { margin-top: 1px; font-size: 11px; line-height: 1.15; }
+	.hlf-listing-meta .hlf-listing-area-sub { margin-top: 0; font-size: 9px; line-height: 1.15; }
+	/* 이 너비에서는 보증금~NOC를 main grid에 합류(display:contents)시키지 않고 자체 4열 grid로
+	   되돌린다 — 열 비율(--hlf-mobile-cols)과 간격(4px)을 위 줄과 똑같이 써서 두 줄의 칸 경계와
+	   세로 구분선이 정확히 같은 자리에 오게 한다(요청서 1).
+	   요청서(재조정): 한때 이 줄만 균등 4열(repeat(4,1fr))로 분리해 보증금 칸을 다른 칸과 같은
+	   폭으로 만든 적이 있는데, 그러면 위 줄(지번주소/층수/면적)과 열 경계가 어긋나 "평행하지 않다"는
+	   재요청이 들어왔다 — 지번주소 칸 폭(--hlf-mobile-cols)은 건드리지 않는다는 원래 조건을 그대로
+	   지키면서 평행도 함께 만족하려면 두 줄이 같은 열 비율을 쓰는 수밖에 없다(정렬 > 보증금 칸
+	   균등폭). 다시 변수를 공유하도록 되돌린다. */
+	.hlf-listing-main .hlf-lease-metrics { grid-area: metrics; display: grid; grid-template-columns: var(--hlf-mobile-cols); column-gap: 4px; }
+	/* 요청서 4: 보증금 칸은 이 줄의 첫 칸이라 왼쪽에 구분할 대상이 없다 — 세로선을 없앤다(기본
+	   .hlf-lease-metric에는 항상 border-left가 있는데, 데스크톱에서는 전용면적 다음 칸이라 필요하지만
+	   모바일에서는 독립된 줄의 첫 칸이라 불필요).
+	   요청서: 이 칸은 위 줄의 지번주소 칸 폭(--hlf-mobile-cols의 1.3fr)을 그대로 물려받아 임대료/
+	   관리비/환산임대료보다 넓다 — 칸 폭(그리드)은 그대로 두고, 가운데 정렬된 텍스트만 오른쪽으로
+	   살짝 밀어 옆 세 칸과 비슷한 느낌으로 맞춘다. */
+	.hlf-listing-main .hlf-lease-metric:first-child { border-left: 0; padding-left: 24px; }
+	.hlf-listing-main .hlf-lease-metric { padding: 2px; }
+	.hlf-listing-main .hlf-lease-metric-label { font-size: 9px; line-height: 1.15; }
+	.hlf-listing-main .hlf-lease-metric-value { margin-top: 1px; font-size: 12px; line-height: 1.15; }
+	/* 요청서 6: 좁은 화면에서는 "평당 X만원"/"(NOC)" 보조 문구까지 두면 글자가 너무 많아 어지럽다 —
+	   리스트 페이지 모바일에서만 숨긴다(상세 페이지 .hlf-detail-metrics는 그대로 노출). */
+	.hlf-listing-main .hlf-lease-metric-sub { display: none; }
+	/* 환산임대료는 모바일에서도 임대면적/전용면적 데이터값(11px)과 같은 크기로 — 상위 규칙(12px)만
+	   두면 데스크톱과 달리 모바일에서 NOC만 1px 더 크게 보인다. */
+	.hlf-listing-main .hlf-lease-metric--noc .hlf-lease-metric-value { font-size: 11px; }
+	/* 요청서: Leasing Info(보증금/임대료/관리비/환산임대료) 4칸은 모바일에서도 1행에 고정한다 —
+	   2열로 접지 않고 글자 크기·여백만 좁은 화면에 맞게 줄인다. 값이 길면(예: "156,838만원") 셀
+	   안에서 줄바꿈되게 둔다(가로 스크롤/잘림 대신).*/
+	.hlf-detail-metrics { gap: 4px; }
+	.hlf-detail-metrics .hlf-lease-metric { padding: 8px 1px; }
+	.hlf-detail-metrics .hlf-lease-metric-label { font-size: 9px; }
+	.hlf-detail-metrics .hlf-lease-metric-value { font-size: 12px; white-space: normal; word-break: keep-all; }
+	/* 요청서: "임대평당 X.X만원" 보조 문구가 좁은 셀에서 두 줄로 줄바꿈되던 것을 한 줄로 고정한다 —
+	   폭이 부족해 여전히 넘칠 수 있으므로 글자를 한 단계 줄이고(9px -> 8px), 카드 자체의 좌우 여백도
+	   함께 줄여(.hlf-panel 참고) 셀에 폭을 더 준다. Playwright 실측(360/390/412px, "임대평당
+	   156.8만원"급 긴 값 포함): 이 조합에서 넘침 0. */
+	.hlf-detail-metrics .hlf-lease-metric-sub { font-size: 8px; white-space: nowrap; }
+	/* 특징 노트는 "Leasing Info" 옆(같은 줄 우측)에 붙는데, 모바일에서 줄바꿈되면 기본값(중앙정렬)이
+	   제목 쪽으로 치우쳐 보인다 — 우측 정렬로 오른쪽 끝에 맞춘다. */
+	.hlf-panel-note { text-align: right; }
+	/* 기본정보(방향/주차/사용승인일 등)도 임대조건과 마찬가지로 모바일에서 1행 2열을 유지한다. */
+	.hlf-basic-item { padding: 8px 4px; }
+	.hlf-gallery-main { aspect-ratio: 4 / 3; border-radius: 8px; }
+	.hlf-gallery-thumbs img { height: 50px; }
+	/* 데스크톱에서는 .hlf-detail-hero가 2열 grid라 지도 패널이 갤러리 카드와 같은 행에서
+	   align-items:stretch로 높이를 물려받는다(그래서 .hlf-detail-map은 min-height:0으로 둬도
+	   된다). 모바일은 hero가 1열로 쌓여 지도 패널이 그 stretch 대상을 잃는다 — 카카오 지도 JS가
+	   플레이스홀더를 지우고(container.innerHTML = '') 실제 지도를 그리는 순간 컨테이너 높이가
+	   콘텐츠 없이 0으로 무너져 지도가 보이지 않게 된다(실측: 390px 뷰포트에서 260px -> 0px로
+	   붕괴 확인). 모바일에서는 콘텐츠에 의존하지 않는 자체 min-height를 되살려 이 붕괴를 막는다. */
+	.hlf-detail-hero .hlf-detail-map { min-height: 260px; }
+	/* 요청서: 모바일에서 갤러리 사진을 클릭해 확대해도 카드보다 훨씬 커져 화면 오른쪽으로 삐져나갔다
+	   — 확대 크기를 갤러리 카드 폭(.hlf-shell 폭, 100vw-32px) 정도로만 제한한다. */
+	.hlf-lightbox { padding: 12px; }
+	.hlf-lightbox-content { width: min(600px, calc(100vw - 24px)); height: min(80vh, calc(100vh - 24px)); }
+}

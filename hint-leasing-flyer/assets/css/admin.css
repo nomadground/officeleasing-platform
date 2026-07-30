@@ -1,0 +1,251 @@
+/*
+ * HLF 관리자 화면 스타일(Phase 2-1). wp-admin 기본 룩(.wrap, .button, .widefat)을 최대한 그대로
+ * 쓰고, 이 플러그인 전용 레이아웃만 .hlf- 네임스페이스로 얹는다.
+ */
+.hlf-admin .hlf-admin-loading,
+.hlf-admin .hlf-admin-empty {
+	padding: 16px;
+	color: #646970;
+}
+.hlf-admin .hlf-admin-error {
+	padding: 8px 12px;
+	color: #8a2424;
+	background: #fcf0f1;
+	border-left: 4px solid #d63638;
+}
+.hlf-admin .hlf-admin-note {
+	color: #646970;
+	font-size: 13px;
+}
+/* 사진은 attachment 참조 공유(파일 복제 없음)라는 정책 안내 — 일반 note보다 눈에 띄게. */
+.hlf-admin .hlf-image-snapshot-warning {
+	padding: 6px 10px;
+	color: #8a6100;
+	background: #fff8db;
+	border-left: 3px solid #dba617;
+}
+
+.hlf-admin .hlf-card {
+	padding: 16px 20px;
+	margin: 16px 0;
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+}
+.hlf-admin .hlf-edit-grid {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+	gap: 16px;
+	align-items: start;
+}
+@media (max-width: 960px) {
+	.hlf-admin .hlf-edit-grid { grid-template-columns: 1fr; }
+}
+
+.hlf-admin .hlf-field { display: grid; gap: 4px; margin-bottom: 12px; }
+/* .hlf-field가 display:grid를 지정하므로 hidden 속성의 기본 UA 스타일(display:none)이 그냥은
+   덮어써진다 — 위도/경도처럼 화면에서만 숨기는 필드가 실제로 안 보이려면 이 규칙이 필요하다. */
+.hlf-admin .hlf-field[hidden] { display: none; }
+.hlf-admin .hlf-field label { font-weight: 600; font-size: 13px; }
+.hlf-admin .hlf-field input[type="text"],
+.hlf-admin .hlf-field input[type="number"],
+.hlf-admin .hlf-field select,
+.hlf-admin .hlf-field textarea {
+	width: 100%;
+	max-width: 100%;
+	padding: 6px 8px;
+}
+.hlf-admin .hlf-field textarea { min-height: 70px; resize: vertical; }
+.hlf-admin .hlf-field-checkbox { display: inline-flex; flex-direction: row; align-items: center; gap: 6px; font-weight: 600; font-size: 13px; }
+/* 주차 가능/엘리베이터 있음 체크박스 2개를 한 줄에 나란히 담는 wrapper(renderItemForm 참고) —
+   .hlf-field-wide로 grid 전체 폭을 차지하되, 안에서는 flex row로 두 체크박스를 나란히 둔다. */
+.hlf-admin .hlf-field-checkbox-row { display: flex; align-items: center; gap: 24px; }
+.hlf-admin .hlf-field-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 16px; }
+.hlf-admin .hlf-field-wide { grid-column: 1 / -1; }
+@media (max-width: 700px) {
+	.hlf-admin .hlf-field-grid { grid-template-columns: 1fr; }
+}
+
+.hlf-admin .hlf-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: 700; vertical-align: middle; }
+.hlf-admin .hlf-badge--draft { color: #8a6100; background: #fff4c9; }
+.hlf-admin .hlf-badge--published { color: #1e5c2e; background: #d8f0dc; }
+.hlf-admin .hlf-badge--archived { color: #55705a; background: #edf2ea; }
+
+.hlf-admin .hlf-admin-table { margin-top: 8px; }
+.hlf-admin .hlf-admin-actions { white-space: nowrap; }
+.hlf-admin .hlf-danger { color: #8a2424; }
+.hlf-admin .hlf-danger:hover { color: #fff; background: #d63638; border-color: #d63638; }
+
+.hlf-admin .hlf-item-form { margin-top: 16px; padding-top: 16px; border-top: 1px solid #dcdcde; }
+.hlf-admin .hlf-metrics-readonly { margin: 12px 0; padding: 10px 12px; background: #f6f7f7; border-radius: 4px; font-size: 13px; }
+.hlf-admin .hlf-metrics-readonly ul { margin: 6px 0 0; padding-left: 18px; }
+
+.hlf-admin .hlf-import-panel { margin-top: 16px; padding-top: 16px; border-top: 1px solid #dcdcde; }
+.hlf-admin .hlf-import-panel form { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; }
+.hlf-admin .hlf-import-panel .hlf-field { margin-bottom: 0; min-width: 180px; }
+.hlf-admin .hlf-import-pager { display: flex; align-items: center; gap: 10px; margin-top: 10px; font-size: 13px; }
+
+/* 네이버부동산 캡처 OCR(선택 입력 보조) — Item 필드 그리드 위에 표시. */
+.hlf-admin .hlf-ocr-section { margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid #dcdcde; }
+/* 주소 확인(step 2) — OCR 다음, 나머지 조건 필드 앞. renderAddressBlock()가 렌더링. */
+.hlf-admin .hlf-address-block { margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid #dcdcde; }
+.hlf-admin .hlf-address-block h4 { margin: 0 0 8px; }
+.hlf-admin .hlf-address-search-row { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+.hlf-admin .hlf-address-search-row .hlf-admin-note { margin: 0; }
+/* 요청서: 매물 저장 직후 임대안내문 포함 선택창. */
+.hlf-admin .hlf-src-flyer-include-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.hlf-admin .hlf-ocr-section h4 { margin: 0 0 8px; }
+.hlf-admin .hlf-ocr-preview { display: block; max-width: 100%; max-height: 220px; margin: 8px 0; object-fit: contain; background: #f0f0f1; border-radius: 4px; }
+.hlf-admin .hlf-ocr-preview[hidden] { display: none; }
+.hlf-admin .hlf-ocr-textarea { width: 100%; font-family: monospace; font-size: 12px; resize: vertical; }
+.hlf-admin .hlf-ocr-mode { margin: 10px 0; padding: 8px 10px; border: 1px solid #dcdcde; border-radius: 4px; }
+.hlf-admin .hlf-ocr-mode legend { padding: 0 4px; font-size: 12px; font-weight: 600; }
+.hlf-admin .hlf-ocr-mode label { display: inline-flex; align-items: center; gap: 4px; margin-right: 16px; font-size: 13px; font-weight: normal; }
+.hlf-admin .hlf-ocr-confirm-list { margin-top: 10px; padding: 10px 12px; background: #fcf9e8; border: 1px solid #e0d489; border-radius: 4px; }
+.hlf-admin .hlf-ocr-confirm-list[hidden] { display: none; }
+.hlf-admin .hlf-ocr-confirm-list ul { margin: 6px 0; padding-left: 18px; }
+.hlf-admin .hlf-ocr-confirm-old { color: #787c82; text-decoration: line-through; }
+.hlf-admin .hlf-ocr-confirm-new { font-weight: 600; }
+/* 자동입력된 필드 강조 — 방금 OCR/주소검색으로 채워졌음을 표시(사용자 수정 또는 일정 시간 후 자동 해제). */
+.hlf-admin .hlf-field--autofilled { background: #fff8db; border-color: #dba617; }
+/* 도로명주소는 지번주소 검색 결과로만 채워진다 — 손으로 직접 입력하면 지번주소와 어긋난 값이
+   저장될 수 있어 회색 읽기 전용으로 둔다. */
+.hlf-admin .hlf-field-readonly { background: #f0f0f1; color: #646970; cursor: not-allowed; }
+
+/* 주소 검색 후보 목록 — "다음" 우편번호 검색처럼 클릭으로 확정(자동확정 없음). */
+.hlf-admin .hlf-address-results { margin: 6px 0 0; padding: 0; list-style: none; border: 1px solid #dcdcde; border-radius: 4px; max-height: 220px; overflow-y: auto; }
+.hlf-admin .hlf-address-results[hidden] { display: none; }
+.hlf-admin .hlf-address-results li { border-bottom: 1px solid #f0f0f1; }
+.hlf-admin .hlf-address-results li:last-child { border-bottom: 0; }
+.hlf-admin .hlf-address-candidate { display: flex; flex-direction: column; width: 100%; padding: 8px 10px; text-align: left; background: none; border: 0; cursor: pointer; }
+.hlf-admin .hlf-address-candidate:hover { background: #f0f6fc; }
+.hlf-admin .hlf-address-candidate strong { font-size: 13px; }
+.hlf-admin .hlf-address-candidate span { color: #646970; font-size: 12px; }
+/* 주소 확정 후 작은 지도 미리보기(요청서 3-7) — 좌표 없거나 SDK 로드 실패 시 그냥 숨긴다. */
+.hlf-admin .hlf-address-map { width: 100%; height: 180px; margin-top: 10px; background: #f0f0f1; border-radius: 4px; }
+.hlf-admin .hlf-address-map[hidden] { display: none; }
+
+/* 매물 사진 — WordPress Media Library(wp.media)에서 선택. */
+.hlf-admin .hlf-image-section { margin-top: 16px; padding-top: 16px; border-top: 1px solid #dcdcde; }
+
+.hlf-admin .hlf-saved-image-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+	gap: 10px;
+	margin: 10px 0;
+}
+.hlf-admin .hlf-saved-image {
+	position: relative;
+	padding: 6px;
+	background: #f6f7f7;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+	text-align: center;
+}
+.hlf-admin .hlf-saved-image.is-primary { border-color: #2271b1; background: #f0f6fc; }
+.hlf-admin .hlf-saved-image img,
+.hlf-admin .hlf-saved-image-missing {
+	display: block;
+	width: 100%;
+	height: 90px;
+	object-fit: cover;
+	border-radius: 3px;
+	background: #e0e0e0;
+}
+.hlf-admin .hlf-saved-image-missing { display: flex; align-items: center; justify-content: center; font-size: 11px; color: #787c82; }
+.hlf-admin .hlf-saved-image-badge {
+	position: absolute;
+	top: 4px;
+	left: 4px;
+	padding: 1px 6px;
+	color: #fff;
+	background: #2271b1;
+	border-radius: 8px;
+	font-size: 10px;
+	font-weight: 700;
+}
+.hlf-admin .hlf-saved-image-radio { display: flex; align-items: center; justify-content: center; gap: 4px; margin-top: 6px; font-size: 11px; }
+.hlf-admin .hlf-saved-image-blur { display: flex; align-items: center; justify-content: center; gap: 4px; margin-top: 2px; font-size: 11px; color: #787c82; }
+.hlf-admin .hlf-saved-image-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; margin-top: 4px; }
+.hlf-admin .hlf-saved-image-actions .button { padding: 0 6px; min-height: 24px; line-height: 22px; font-size: 11px; }
+
+/* ==================== HINT List Up 통합 관리 화면 ==================== */
+.hlf-admin .hlf-listup { display: grid; grid-template-columns: 180px 1fr; gap: 18px; margin-top: 12px; }
+@media (max-width: 782px) { .hlf-admin .hlf-listup { grid-template-columns: 1fr; } }
+.hlf-admin .hlf-listup-nav { display: flex; flex-direction: column; gap: 4px; }
+@media (max-width: 782px) { .hlf-admin .hlf-listup-nav { flex-direction: row; flex-wrap: wrap; } }
+.hlf-admin .hlf-listup-tab { text-align: left; padding: 10px 12px; border: 1px solid transparent; border-radius: 5px; background: none; color: #39515d; cursor: pointer; font: inherit; }
+.hlf-admin .hlf-listup-tab:hover { background: #eef3f5; }
+.hlf-admin .hlf-listup-tab.is-active { background: #2271b1; border-color: #2271b1; color: #fff; font-weight: 700; }
+.hlf-admin .hlf-listup-main { min-width: 0; }
+.hlf-admin .hlf-listup-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.hlf-admin .hlf-listup-head-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.hlf-admin .hlf-listup-title { margin: 0 0 8px; font-size: 20px; }
+
+.hlf-admin .hlf-stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 12px 0; }
+@media (max-width: 900px) { .hlf-admin .hlf-stat-grid { grid-template-columns: repeat(2, 1fr); } }
+.hlf-admin .hlf-stat-card { display: block; width: 100%; background: #fff; border: 1px solid #dcdcde; border-radius: 8px; padding: 16px; text-align: left; font: inherit; cursor: pointer; }
+.hlf-admin .hlf-stat-card:hover, .hlf-admin .hlf-stat-card:focus-visible { border-color: #2271b1; box-shadow: 0 0 0 1px #2271b1; }
+.hlf-admin .hlf-stat-card strong { display: block; font-size: 28px; color: #2271b1; line-height: 1.1; }
+.hlf-admin .hlf-stat-card span { font-size: 12px; color: #646970; }
+
+.hlf-admin .hlf-toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 12px 0; }
+.hlf-admin .hlf-toolbar input[type="search"] { min-width: 260px; }
+.hlf-admin .hlf-filter-chips { display: flex; gap: 6px; }
+/* 요청서: 담당자(내 매물) 필터 드롭다운 + 전체 보기 토글 — 전체 매물/포함 매물 관리 공용. */
+.hlf-admin .hlf-contact-filter { display: flex; gap: 6px; align-items: center; margin-left: auto; }
+.hlf-admin .hlf-contact-filter select:disabled { opacity: .55; }
+.hlf-admin .hlf-contact-filter button.is-active { background: #2271b1; border-color: #2271b1; color: #fff; }
+.hlf-admin .hlf-filter-chip { background: #f0f0f1; border: 1px solid #dcdcde; border-radius: 999px; padding: 4px 12px; font-size: 12px; cursor: pointer; }
+.hlf-admin .hlf-filter-chip.is-active { background: #2271b1; border-color: #2271b1; color: #fff; }
+.hlf-admin .hlf-bulk-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 10px 12px; margin-bottom: 10px; background: #f0f6fc; border: 1px solid #c5d9ed; border-radius: 6px; }
+
+.hlf-admin .hlf-table-wrap { overflow-x: auto; background: #fff; border: 1px solid #dcdcde; border-radius: 8px; }
+.hlf-admin .hlf-table { width: 100%; border-collapse: collapse; white-space: nowrap; }
+.hlf-admin .hlf-table th, .hlf-admin .hlf-table td { padding: 9px 10px; border-bottom: 1px solid #eef0f2; text-align: left; vertical-align: middle; }
+.hlf-admin .hlf-table th { background: #f6f7f7; color: #50575e; font-size: 12px; }
+.hlf-admin .hlf-table td small { display: block; color: #7c868d; font-size: 11px; }
+/* 요청서: 마우스를 올리면 그 행 전체가 한 줄로 강조되게 한다(포함 매물 관리 등 목록 공용). */
+.hlf-admin .hlf-table tbody tr:hover { background: #f0f6fc; }
+.hlf-admin .hlf-td-center { text-align: center; }
+.hlf-admin .hlf-td-contact { color: #646970; font-size: 11px; }
+/* 요청서(포함 매물 관리 — 작업 칸만 옆 칸과 행 높이가 다름): 실측해 보니 원인은 줄바꿈이 아니라
+   display:flex 자체였다 — <td>에 display:flex를 얹으면(이전 flex-wrap 수정도 이 상태였다) 그
+   순간 이 셀은 더 이상 진짜 표 칸(table-cell)이 아니게 되어(CSS는 표 관련 요소도 display를
+   명시하면 그 값을 그대로 따른다), 같은 행의 다른 칸들과 같은 행 높이로 늘어나지 못하고 자기
+   콘텐츠만큼의 높이로 따로 논다(Playwright 실측: 이 칸만 47px, 나머지는 전부 55px). display:flex를
+   버리고 일반 표 칸으로 되돌린 채, 버튼 두 개는 인라인 흐름 + 오른쪽 여백만으로 나란히 둔다 —
+   이러면 td가 다시 온전한 table-cell이라 다른 칸과 정확히 같은 행 높이를 갖는다. */
+.hlf-admin .hlf-row-actions { white-space: nowrap; }
+.hlf-admin .hlf-row-actions > * { margin-right: 4px; }
+.hlf-admin .hlf-row-actions > *:last-child { margin-right: 0; }
+.hlf-admin .hlf-row-actions .button.button-small { min-height: 26px; line-height: 24px; padding: 0 8px; }
+.hlf-admin .hlf-empty { padding: 22px; text-align: center; color: #646970; }
+/* 요청서: 담당자 디렉터리의 "기본 지정" 버튼 옆 명함(SNS 공유 썸네일) 관련 버튼/미리보기 —
+   기본 지정 배지·명함 썸네일·명함 삽입/삭제 버튼이 한 셀 안에서 세로로 자연스럽게 쌓이게 한다. */
+.hlf-admin .hlf-contact-badge-cell { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.hlf-admin .hlf-contact-thumb { display: block; width: 80px; height: 42px; object-fit: cover; border-radius: 4px; border: 1px solid #dcdcde; }
+
+.hlf-admin .hlf-src-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+@media (max-width: 1100px) { .hlf-admin .hlf-src-form-grid { grid-template-columns: 1fr; } }
+.hlf-admin .hlf-form-actions { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+.hlf-admin .hlf-contact-picker { margin-top: 6px; }
+.hlf-admin .hlf-inline-form { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.hlf-admin .hlf-safe-note { background: #f6f8ec; border: 1px solid #d5e0b0; border-radius: 6px; padding: 8px 12px; }
+.hlf-admin .hlf-image-pending { color: #646970; font-style: italic; }
+
+.hlf-admin .hlf-img-strip { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+.hlf-admin .hlf-img-thumb { position: relative; width: 120px; }
+.hlf-admin .hlf-img-thumb img { display: block; width: 120px; height: 88px; object-fit: cover; border: 1px solid #dcdcde; border-radius: 5px; }
+.hlf-admin .hlf-img-thumb.is-primary img { border-color: #2271b1; box-shadow: 0 0 0 2px #2271b1; }
+.hlf-admin .hlf-img-missing { display: grid; place-items: center; width: 120px; height: 88px; background: #f0f0f1; border-radius: 5px; color: #7c868d; font-size: 11px; }
+.hlf-admin .hlf-img-badge { position: absolute; top: 4px; left: 4px; background: #2271b1; color: #fff; font-size: 10px; padding: 1px 6px; border-radius: 3px; }
+.hlf-admin .hlf-img-promote { display: block; width: 100%; margin-top: 4px; font-size: 11px; cursor: pointer; }
+.hlf-admin .hlf-img-blur { display: flex; align-items: center; justify-content: center; gap: 4px; width: 100%; margin-top: 4px; font-size: 11px; color: #646970; cursor: pointer; }
+.hlf-admin .hlf-img-remove { position: absolute; top: 4px; right: 4px; width: 20px; height: 20px; border: 0; border-radius: 50%; background: rgba(0,0,0,.6); color: #fff; cursor: pointer; line-height: 20px; }
+
+.hlf-admin .hlf-included-summary { margin: 10px 0; }
+.hlf-admin .hlf-included-list { margin: 6px 0 0; padding-left: 18px; }
+.hlf-admin .hlf-included-list li { margin: 2px 0; }
+
+.hlf-toast { position: fixed; right: 22px; bottom: 22px; z-index: 100000; background: #1d2327; color: #fff; padding: 11px 16px; border-radius: 6px; box-shadow: 0 4px 14px rgba(0,0,0,.25); font-size: 13px; }
