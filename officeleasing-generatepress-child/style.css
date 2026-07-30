@@ -1,0 +1,16 @@
+/*
+Theme Name: Office Leasing GeneratePress Child
+Theme URI: https://officeleasing.co.kr
+Description: OfficeLeasing.co.kr 전용 GeneratePress 자식 테마 (v1 Design System)
+Author: HINT Real Estate
+Author URI: https://officeleasing.co.kr
+Template: generatepress
+Version: 0.2.0
+Text Domain: officeleasing
+*/
+
+/*
+ * 디자인 본체는 assets/css/officeleasing.css (functions.php에서 enqueue)에 있습니다.
+ * 이 파일에는 테마 특화 소소한 보정만 둡니다.
+ * GeneratePress가 자식 style.css를 자동 로드합니다.
+ */

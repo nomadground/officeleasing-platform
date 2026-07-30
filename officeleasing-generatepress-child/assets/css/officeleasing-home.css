@@ -1,0 +1,255 @@
+/* OfficeLeasing Home V1 전용 CSS. is_front_page()에서만 로드된다.
+ * 기존 officeleasing.css의 :root 토큰(--brand/--sub/--max 등)과 .olx-* 컴포넌트를 그대로 쓰고,
+ * 여기서는 Home에만 필요한 클래스(olx-home-*)만 추가한다. 전역 스타일을 재정의하지 않는다.
+ *
+ * 슬라이더 폭 계산의 기준값. 카드 개수와 gap을 여기 한 곳에서만 관리한다.
+ *   데스크탑: 4개 노출  -> calc((100% - gap*3) / 4)
+ *   모바일:   2개 노출  -> calc((100% - gap*1) / 2)
+ */
+:root {
+	--home-slider-gap: 20px;
+}
+
+/* ── Hero ───────────────────────────────────────────── */
+.olx-home-hero {
+	padding: 64px 0 52px;
+	border-bottom: 1px solid var(--line);
+}
+.olx-home-hero h1 {
+	font-family: var(--font-display);
+	letter-spacing: -.04em;
+	margin: 12px 0 18px;
+	font-size: clamp(30px, 3.6vw, 46px);
+	font-weight: 730;
+	line-height: 1.24;
+}
+/* 상세페이지 H1과 같은 노란 밑줄 강조 */
+.olx-home-hero h1 mark {
+	background: linear-gradient(transparent 67%, var(--sub) 0);
+	color: inherit;
+	padding: 0 3px;
+}
+.olx-home-hero-desc {
+	max-width: 620px;
+	color: var(--ink-2);
+	margin: 0 0 26px;
+	font-size: 15px;
+	line-height: 1.7;
+}
+.olx-home-hero-cta {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+}
+.olx-home-hero-cta .olx-btn {
+	padding: 0 26px;
+}
+
+/* ── Why (기존 .olx-summary 재사용 + 등록번호 한 줄만 추가) ── */
+.olx-home-why {
+	margin: 40px 0;
+}
+.olx-home-license {
+	display: block;
+	margin-top: 12px;
+	color: var(--ink-3);
+	font-size: 11px;
+	line-height: 1.6;
+}
+
+/* ── 권역 섹션 ──────────────────────────────────────── */
+.olx-home-region {
+	padding: 52px 0;
+}
+.olx-home-region.is-tint { background: var(--brand-tint); }
+.olx-home-region.is-warm { background: var(--warm); }
+
+.olx-home-region-all {
+	color: var(--brand);
+	font-size: 12px;
+	font-weight: 750;
+	white-space: nowrap;
+	border-bottom: 1px solid transparent;
+	transition: border-color .16s;
+}
+.olx-home-region-all:hover { border-bottom-color: var(--brand); }
+
+.olx-home-region-desc {
+	max-width: 760px;
+	color: var(--ink-2);
+	margin: 0 0 16px;
+	font-size: 14px;
+	line-height: 1.75;
+}
+
+/* 세부 지역 내부링크 (실제 <a> — 크롤링 가능) */
+.olx-home-districts {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin-bottom: 22px;
+}
+.olx-home-districts a {
+	border: 1px solid var(--line);
+	background: var(--paper);
+	border-radius: 999px;
+	padding: 7px 14px;
+	color: var(--ink-2);
+	font-size: 12px;
+	font-weight: 650;
+	transition: all .16s;
+}
+.olx-home-districts a:hover {
+	border-color: var(--brand);
+	color: var(--brand);
+}
+
+/* ── 슬라이더 ───────────────────────────────────────── */
+.olx-home-slider { position: relative; }
+
+.olx-home-track {
+	display: flex;
+	gap: var(--home-slider-gap);
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	overflow-x: auto;
+	scroll-snap-type: x mandatory;
+	scroll-behavior: smooth;
+	/* 스크롤바를 숨기되 스크롤 기능 자체는 유지 (JS 없이도 손가락/트랙패드로 접근 가능) */
+	scrollbar-width: none;
+	-ms-overflow-style: none;
+	/* 포커스 링이 카드에 잘리지 않도록 여유 */
+	padding-bottom: 4px;
+}
+.olx-home-track::-webkit-scrollbar { display: none; }
+
+.olx-home-slide {
+	/* 데스크탑 4개 정확히: gap 3개분을 뺀 뒤 4등분 */
+	flex: 0 0 calc((100% - var(--home-slider-gap) * 3) / 4);
+	scroll-snap-align: start;
+}
+.olx-home-slide > a { height: 100%; }
+
+/* 화살표: 트랙 좌우 바깥쪽에 겹쳐 배치 */
+.olx-home-arrow {
+	position: absolute;
+	top: 42%;
+	z-index: 2;
+	width: 38px;
+	height: 38px;
+	border: 1px solid var(--line);
+	border-radius: 50%;
+	background: #fff;
+	color: var(--brand-ink);
+	font-size: 20px;
+	line-height: 1;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	box-shadow: 0 2px 10px #15202714;
+	transition: all .16s;
+}
+.olx-home-arrow.is-prev { left: -14px; }
+.olx-home-arrow.is-next { right: -14px; }
+.olx-home-arrow:hover:not(:disabled) {
+	border-color: var(--brand);
+	color: var(--brand);
+}
+.olx-home-arrow:disabled {
+	opacity: .32;
+	cursor: default;
+}
+
+/* 모바일 전용 전체보기 버튼 (데스크탑에서는 섹션 헤더 우측 링크가 그 역할) */
+.olx-home-region-all-mobile { display: none; }
+
+/* ── Empty State ────────────────────────────────────── */
+.olx-home-empty {
+	border: 1px dashed var(--line);
+	border-radius: 4px;
+	background: var(--paper);
+	padding: 34px 24px;
+	text-align: center;
+}
+.olx-home-empty p {
+	color: var(--ink-2);
+	margin: 0 0 18px;
+	font-size: 14px;
+	line-height: 1.7;
+}
+.olx-home-empty-cta {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: 10px;
+}
+.olx-home-empty-cta .olx-btn { padding: 0 22px; }
+
+/* ── 태블릿: 2.5~3개 노출 ───────────────────────────── */
+@media (max-width: 1024px) {
+	.olx-home-slide {
+		flex-basis: calc((100% - var(--home-slider-gap) * 2) / 2.6);
+	}
+	.olx-home-arrow.is-prev { left: 2px; }
+	.olx-home-arrow.is-next { right: 2px; }
+}
+
+/* ── 모바일: 정확히 2개 노출 ────────────────────────── */
+@media (max-width: 700px) {
+	:root { --home-slider-gap: 12px; }
+
+	.olx-home-hero { padding: 40px 0 34px; }
+	.olx-home-hero-desc { font-size: 14px; margin-bottom: 22px; }
+	.olx-home-hero-cta .olx-btn { flex: 1 1 100%; }
+
+	.olx-home-region { padding: 38px 0; }
+	.olx-home-region-desc { font-size: 13px; }
+
+	/* 컨테이너 폭에서 gap 1개분을 뺀 뒤 2등분 = 화면에 정확히 2개 */
+	.olx-home-slide {
+		flex-basis: calc((100% - var(--home-slider-gap)) / 2);
+	}
+
+	/* 모바일에서는 화살표를 숨기고 스와이프만 사용(터치가 더 자연스럽고 카드 영역을 가리지 않음) */
+	.olx-home-arrow { display: none; }
+
+	/* 데스크탑 헤더 우측 링크는 숨기고, 슬라이드 하단 전체폭 버튼으로 대체 */
+	.olx-home-region-all { display: none; }
+	.olx-home-region-all-mobile {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 6px;
+		margin-top: 16px;
+		border: 1px solid var(--ink);
+		background: var(--ink);
+		color: #fff;
+		min-height: 46px;
+		font-size: 13px;
+		font-weight: 750;
+	}
+}
+
+/* ── 초소형 화면(320~360px): 2열 유지하되 카드 내부 텍스트만 축소 ── */
+@media (max-width: 380px) {
+	.olx-bcard--home .olx-card-body { padding: 12px 11px 13px; }
+	.olx-bcard--home h3 { font-size: 13px; letter-spacing: -.02em; }
+	.olx-bcard--home .olx-card-body p { font-size: 11px; margin-bottom: 9px; }
+	.olx-bcard--home .olx-card-meta { gap: 4px; font-size: 10px; }
+	/* 면적/임대료가 한 줄에 겹치지 않도록 세로로 쌓는다 */
+	.olx-bcard--home .olx-bcard-stats {
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 3px;
+	}
+	.olx-bcard--home .olx-bcard-area { font-size: 11px; }
+	.olx-bcard--home .olx-bcard-rent { font-size: 10px; }
+	.olx-home-districts a { padding: 6px 11px; font-size: 11px; }
+}
+
+/* ── 모션 최소화 선호 시 부드러운 스크롤 해제 ────────── */
+@media (prefers-reduced-motion: reduce) {
+	.olx-home-track { scroll-behavior: auto; }
+	.olx-home-arrow { transition: none; }
+}

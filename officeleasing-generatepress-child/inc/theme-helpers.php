@@ -1,0 +1,450 @@
+<?php
+/**
+ * 테마 전용 헬퍼. 데이터/계산 로직이 아니라 "출력 표현"만 담당한다.
+ * 함수 프리픽스는 officeleasing-core 플러그인(ol_)과 충돌하지 않도록 olt_ (OfficeLeasing Theme)를 쓴다.
+ * 금액 포맷 등 계산성 함수는 플러그인 helpers.php의 ol_* 함수를 래핑하되,
+ * 플러그인이 비활성화된 상태에서 화이트스크린이 나지 않도록 fallback을 둔다.
+ */
+defined( 'ABSPATH' ) || exit;
+
+/**
+ * officeleasing-core 플러그인 + ACF가 둘 다 활성 상태인지.
+ * get_field()(ACF)만 보면 안 된다 - officeleasing-core가 꺼져도 ACF는 켜져 있을 수 있고,
+ * 그러면 이 체크는 true를 반환하지만 olt_get_building_listings() 같은 플러그인 의존 함수는
+ * 여전히 없어서 fatal이 난다. 플러그인 고유 함수(ol_recount_building_cache)까지 함께 확인한다.
+ *
+ * [주의] region-bar.php는 get_header() 안에서 이 가드보다 먼저 렌더링되므로, 이 함수 자체는
+ * 아무것도 막아주지 못한다. region-bar.php가 get_field()를 직접 호출하지 않고 wp_get_object_terms()
+ * (코어 함수)만 쓰기 때문에 지금은 우연히 안전한 것 - 앞으로 region-bar.php나 header.php에
+ * 플러그인 의존 호출을 추가할 때는 그 안에서 개별적으로 이 함수로 방어해야 한다.
+ */
+function olt_core_active() {
+	return function_exists( 'get_field' ) && function_exists( 'ol_recount_building_cache' );
+}
+
+/** core 비활성 안내를 출력한다(템플릿에서 get_footer 전에 호출). */
+function olt_render_core_inactive_notice() {
+	echo '<section class="olx-section"><p class="olx-search-message">'
+		. '데이터 플러그인이 비활성화되어 정보를 표시할 수 없습니다. 잠시 후 다시 시도해 주세요.'
+		. '</p></section>';
+}
+
+/** 원 단위 정수를 "1,532만원"으로 (억 단위로 쪼개지 않고 항상 만원 콤마표기). 플러그인 함수 우선, 없으면 최소 fallback. */
+function olt_won( $won ) {
+	if ( function_exists( 'ol_format_manwon' ) ) {
+		return ol_format_manwon( (float) $won );
+	}
+	return number_format( round( (float) $won / 10000 ) ) . '만원';
+}
+
+/** 평당가 등 "479.6만원" 표기. */
+function olt_pyeong_price( $won ) {
+	if ( function_exists( 'ol_format_krw_per_pyeong' ) ) {
+		return ol_format_krw_per_pyeong( $won );
+	}
+	return number_format( (float) $won / 10000, 1 ) . '만원';
+}
+
+/** ㎡ 표기: 1081.0㎡ */
+function olt_sqm( $value ) {
+	return $value ? number_format( (float) $value, 1 ) . '㎡' : '';
+}
+
+/** 평 표기: (327평) */
+function olt_pyeong( $value ) {
+	return $value ? '(' . number_format( (float) $value ) . '평)' : '';
+}
+
+/** 서울 지하철 노선 색상(원형 뱃지 배경). 목업 .line-* 대신 인라인 style로 임의 노선 대응. */
+function olt_line_color( $line ) {
+	$map = array(
+		'1' => '#0d3692', '2' => '#00a84d', '3' => '#ef7c1c', '4' => '#00a5de',
+		'5' => '#996cac', '6' => '#cd7c2f', '7' => '#747f00', '8' => '#e6186c',
+		'9' => '#aa9872', 'SB' => '#d31145', 'BD' => '#f5a200', 'SU' => '#f5a200',
+		'GJ' => '#77c4a3', 'AR' => '#0090d2', 'GTX-A' => '#9a4d33',
+	);
+	return isset( $map[ $line ] ) ? $map[ $line ] : '#8d9aa1';
+}
+
+/** 노선 뱃지 안에 표시할 짧은 라벨(숫자 노선은 숫자, 그 외는 약자) */
+function olt_line_badge( $line ) {
+	return is_numeric( $line ) ? $line : substr( (string) $line, 0, 1 );
+}
+
+/**
+ * 권역 부모 term 이름("강남사무실임대" 등, permalinks.php 마이그레이션 이후의 실제 term->name) ->
+ * 화면 라벨 "강남(GBD)". 구 영문 코드("GBD" 등)가 넘어와도 그대로 매핑되도록 둘 다 키로 둔다
+ * (마이그레이션 전 캐시/미실행 상태에 대한 방어).
+ */
+function olt_region_label( $name ) {
+	$map = array(
+		'강남사무실임대'     => '강남(GBD)',
+		'도심권사무실임대'   => '도심권(CBD)',
+		'여의도사무실임대'   => '여의도(YBD)',
+		'기타권역사무실임대' => '기타권역(ETC)',
+		'GBD' => '강남(GBD)',
+		'CBD' => '도심권(CBD)',
+		'YBD' => '여의도(YBD)',
+		'ETC' => '기타권역(ETC)',
+	);
+	$name = (string) $name;
+	if ( isset( $map[ $name ] ) ) {
+		return $map[ $name ];
+	}
+	$upper = strtoupper( $name );
+	return isset( $map[ $upper ] ) ? $map[ $upper ] : $name;
+}
+
+/**
+ * 권역 부모 term 이름 -> 카드 뱃지용 짧은 영문 코드("GBD" 등).
+ * 한글 term 이름 자체(예: "강남사무실임대")는 카드 뱃지에 넣기엔 너무 길어 별도로 짧은 코드를 둔다.
+ */
+function olt_region_short_code( $name ) {
+	$map = array(
+		'강남사무실임대'     => 'GBD',
+		'도심권사무실임대'   => 'CBD',
+		'여의도사무실임대'   => 'YBD',
+		'기타권역사무실임대' => 'ETC',
+	);
+	$name = (string) $name;
+	if ( isset( $map[ $name ] ) ) {
+		return $map[ $name ];
+	}
+	$upper = strtoupper( $name );
+	return in_array( $upper, $map, true ) ? $upper : $name;
+}
+
+/** 권역 카드 뱃지 클래스: region-gangnam 등 (한글 term 이름을 안전한 CSS 클래스 slug로) */
+function olt_region_class( $name ) {
+	$map = array(
+		'강남사무실임대'     => 'region-gbd',
+		'도심권사무실임대'   => 'region-cbd',
+		'여의도사무실임대'   => 'region-ybd',
+		'기타권역사무실임대' => 'region-etc',
+	);
+	if ( isset( $map[ (string) $name ] ) ) {
+		return $map[ (string) $name ];
+	}
+	return 'region-' . strtolower( (string) $name );
+}
+
+/** 지하/지상 층수 두 숫자로 "지하 7층 ~ 지상 40층" 문구를 조합 (별도 텍스트 필드 없이 생성) */
+function olt_format_building_scale( $basement, $ground ) {
+	$basement = (int) $basement;
+	$ground   = (int) $ground;
+	if ( ! $ground ) {
+		return '';
+	}
+	if ( $basement > 0 ) {
+		return sprintf( '지하 %d층 ~ 지상 %d층', $basement, $ground );
+	}
+	return sprintf( '지상 %d층', $ground );
+}
+
+/**
+ * 입주가능일 표시 (D1 확정 규격): move_in_type이 immediate/negotiable이면 그 라벨 그대로,
+ * scheduled면 move_in_date를 "2026년 9월 1일 입주가능" 형태로 포맷.
+ */
+function olt_format_move_in( $move_in_type, $move_in_date ) {
+	$labels = array( 'immediate' => '즉시입주', 'negotiable' => '협의가능' );
+	if ( isset( $labels[ $move_in_type ] ) ) {
+		return $labels[ $move_in_type ];
+	}
+	if ( 'scheduled' === $move_in_type && $move_in_date ) {
+		return date_i18n( 'Y년 n월 j일', strtotime( $move_in_date ) ) . ' 입주가능';
+	}
+	return '협의가능';
+}
+
+/** 매물 상태값 -> [라벨, badge 표시 여부(available/reserved 계열만 초록 뱃지)] */
+function olt_status_label( $status ) {
+	$map = array(
+		'available'        => '임대가능',
+		'reserved'         => '협의중',
+		'contract_pending' => '계약진행중',
+		'leased'           => '거래완료',
+		'temporarily_hidden' => '노출중지',
+		'expired'          => '만료',
+	);
+	return isset( $map[ $status ] ) ? $map[ $status ] : $status;
+}
+
+/** 공개 노출 대상 매물 상태 (빌딩 페이지에 카운트/렌더할 상태) */
+function olt_public_listing_statuses() {
+	return array( 'available', 'reserved', 'contract_pending' );
+}
+
+/**
+ * 특정 빌딩에 연결된, 공개 노출 대상 매물들을 반환.
+ * related_building = building_id 이고 listing_status가 공개 상태인 매물.
+ */
+function olt_get_building_listings( $building_id, $only_public = true ) {
+	$meta_query = array(
+		array(
+			'key'   => 'related_building',
+			'value' => $building_id,
+		),
+	);
+	if ( $only_public ) {
+		$meta_query[] = array(
+			'key'     => 'listing_status',
+			'value'   => olt_public_listing_statuses(),
+			'compare' => 'IN',
+		);
+	}
+	// [버그 수정] 이전엔 monthly_total_cost DESC(최고가 우선)였다. single-building.php는 이 배열의
+	// 첫 번째 매물([0])을 "대표 매물"로 Hero에 노출하는데, 최고가 매물을 대표로 내세우면
+	// 사이트 전반에서 강조하는 "최저 임대료"(building_min_rent 캐시) 브랜딩과 어긋난다.
+	// 가장 저렴한 매물을 대표로 - 카드/캐시가 보여주는 값과 일치시킨다.
+	return get_posts( array(
+		'post_type'      => 'listing',
+		'posts_per_page' => -1,
+		'meta_query'     => $meta_query,
+		'orderby'        => 'meta_value_num',
+		'meta_key'       => 'monthly_total_cost',
+		'order'          => 'ASC',
+	) );
+}
+
+/**
+ * 번호형 이미지 필드(building_image_1..N / listing_image_1..N)를 배열로 수집.
+ * 반환: [ ['id'=>, 'url'=>, 'alt'=>], ... ] (값이 있는 것만)
+ */
+function olt_collect_images( $post_id, $prefix, $count ) {
+	$images = array();
+	for ( $i = 1; $i <= $count; $i++ ) {
+		$img = get_field( $prefix . $i, $post_id );
+		if ( ! $img ) {
+			continue;
+		}
+		// ACF image return_format = array
+		if ( is_array( $img ) ) {
+			$images[] = array(
+				'id'  => $img['ID'] ?? 0,
+				'url' => $img['sizes']['large'] ?? ( $img['url'] ?? '' ),
+				'alt' => $img['alt'] ?? '',
+			);
+		}
+	}
+	return $images;
+}
+
+/**
+ * 빌딩 전용면적 범위 표기: "전용 298~342평" / 단일이면 "전용 327평" / 없으면 ''.
+ * building의 캐시 필드(building_min/max_exclusive_area_pyeong)만 읽는다(재쿼리 없음).
+ */
+function olt_building_area_range( $building_id ) {
+	$min = (float) get_field( 'building_min_exclusive_area_pyeong', $building_id );
+	$max = (float) get_field( 'building_max_exclusive_area_pyeong', $building_id );
+	if ( $min <= 0 && $max <= 0 ) {
+		return '';
+	}
+	if ( $min > 0 && $max > 0 && $min !== $max ) {
+		return sprintf( '전용 %s~%s평', number_format( $min ), number_format( $max ) );
+	}
+	$one = $max > 0 ? $max : $min;
+	return sprintf( '전용 %s평', number_format( $one ) );
+}
+
+/**
+ * 아카이브(/사무실임대/) 상단 SEO 인트로.
+ * 플러그인의 ol_default_archive_intro()가 정본 - schema-hub.php(FAQPage/CollectionPage)도 같은 함수를
+ * 불러서 화면과 스키마 문구가 갈라지지 않게 한다. 플러그인 비활성 시에만 이 사본으로 폴백.
+ */
+function olt_archive_seo_intro() {
+	if ( function_exists( 'ol_default_archive_intro' ) ) {
+		return ol_default_archive_intro();
+	}
+	return '서울 프라임 오피스 임대 매물을 권역별로 확인하세요. 강남(GBD)·도심권(CBD)·여의도(YBD)를 중심으로 검증된 빌딩 정보와 실시간 공실 현황을 제공합니다.';
+}
+
+/** 아카이브 하단 서술형 SEO 블록. */
+function olt_archive_seo_content() {
+	return '오피스리싱은 힌트부동산중개법인이 운영하는 서울 프라임 오피스 임대 전문 플랫폼입니다. 각 빌딩의 전용면적·임대 조건·교통·주변 인프라를 표준화된 형식으로 정리해, 기업 이전 담당자가 빠르게 비교하고 판단할 수 있도록 돕습니다. 관심 있는 권역을 선택하면 해당 지역의 임대 가능 매물을 한눈에 확인할 수 있습니다.';
+}
+
+/**
+ * 아카이브 기본 FAQ (지역 컨텍스트 없는 전체 목록용).
+ * 플러그인의 ol_default_archive_faqs()가 정본 - schema-hub.php의 FAQPage가 같은 함수를 불러
+ * 화면에 보이는 Q&A와 스키마가 항상 1:1로 일치하게 한다.
+ */
+function olt_archive_faqs() {
+	if ( function_exists( 'ol_default_archive_faqs' ) ) {
+		return ol_default_archive_faqs();
+	}
+	return array(
+		array( 'q' => '오피스 임대 상담은 어떻게 진행되나요?', 'a' => '관심 빌딩의 문의 버튼으로 연락 주시면, 담당 중개사가 공실 현황과 임대 조건을 확인해 안내해 드립니다.' ),
+		array( 'q' => '표시된 임대 조건은 확정 금액인가요?', 'a' => '임대료·관리비는 시장 상황과 공실 현황에 따라 변동될 수 있어, 상담 시 최신 조건을 다시 확인해 드립니다. 부가세는 모두 별도입니다.' ),
+		array( 'q' => '원하는 지역의 매물이 목록에 없으면 어떻게 하나요?', 'a' => '희망 지역·면적·예산을 알려주시면 등록되지 않은 매물까지 포함해 확인 가능한 범위에서 찾아 안내해 드립니다.' ),
+	);
+}
+
+/** 지역(term)의 FAQ. region_faq_q1~5 / a1~5 term 필드를 읽고, 비어있으면 아카이브 기본값으로 폴백. */
+function olt_region_faqs( $term ) {
+	$faqs = array();
+	for ( $i = 1; $i <= 5; $i++ ) {
+		$q = get_field( 'region_faq_q' . $i, $term );
+		$a = get_field( 'region_faq_a' . $i, $term );
+		if ( $q && $a ) {
+			$faqs[] = array( 'q' => $q, 'a' => $a );
+		}
+	}
+	return ! empty( $faqs ) ? $faqs : olt_archive_faqs();
+}
+
+/**
+ * Empty state용 인근 빌딩 추천. 현재 term의 형제(같은 부모의 다른 자식) 또는 부모 권역 내 빌딩을 반환.
+ * @return int[] building post IDs
+ */
+function olt_get_nearby_buildings( $term, $limit = 4 ) {
+	if ( ! $term || is_wp_error( $term ) ) {
+		return array();
+	}
+	$parent_id = (int) $term->parent ? (int) $term->parent : (int) $term->term_id;
+	return get_posts( array(
+		'post_type'      => 'building',
+		'posts_per_page' => $limit,
+		'fields'         => 'ids',
+		'post__not_in'   => array(),
+		'tax_query'      => array( array(
+			'taxonomy'         => 'office_region',
+			'field'            => 'term_id',
+			'terms'            => $parent_id,
+			'include_children' => true,
+		) ),
+	) );
+}
+
+/**
+ * 빌딩의 office_region 자식 term과 그 부모를 반환.
+ * 반환: [ 'child' => WP_Term|null, 'parent' => WP_Term|null ]
+ */
+function olt_get_region_terms( $post_id ) {
+	// wp_get_object_terms()가 아니라 get_the_terms()를 쓴다: 전자는 매번 DB를 직접 조회하므로
+	// 카드를 32개 렌더하는 Home에서 term 쿼리가 32번 나가는 N+1이 된다. get_the_terms()는
+	// WP_Query가 이미 채워둔 object term 캐시를 읽으므로 추가 쿼리가 발생하지 않는다.
+	// (반환 형태는 둘 다 WP_Term 배열이라 이 아래 로직은 그대로 동작한다.)
+	$terms = get_the_terms( $post_id, 'office_region' );
+	$out = array( 'child' => null, 'parent' => null );
+	if ( is_wp_error( $terms ) || empty( $terms ) ) {
+		return $out;
+	}
+	foreach ( $terms as $t ) {
+		if ( $t->parent ) {
+			$out['child'] = $t;
+			$parent = get_term( $t->parent, 'office_region' );
+			if ( $parent && ! is_wp_error( $parent ) ) {
+				$out['parent'] = $parent;
+			}
+		} elseif ( ! $out['parent'] ) {
+			$out['parent'] = $t;
+		}
+	}
+	return $out;
+}
+
+/**
+ * 회사 공통정보. 플러그인의 ol_company_info()를 우선 쓰고, 플러그인 비활성 시에도
+ * Footer/회사정보는 정상 노출되어야 하므로(Home V1 예외처리 요구사항) 동일한 값을 fallback으로 둔다.
+ * 값을 바꿀 때는 플러그인 helpers.php의 ol_company_info()가 정본 - 여기는 비상용 사본이다.
+ */
+function olt_company( $key ) {
+	if ( function_exists( 'ol_company' ) ) {
+		return ol_company( $key );
+	}
+	$fallback = array(
+		'legal_name'     => '힌트부동산중개법인',
+		'brand'          => 'OFFICE LEASING',
+		'tagline'        => '서울 프라임 오피스 임대 플랫폼',
+		'phone'          => '02-553-5988',
+		'address_full'   => '서울 강남구 언주로 550 청광빌딩 2층',
+		'license_number' => '11680-2026-00163',
+		'hours'          => '평일 09:00 – 18:00',
+	);
+	return isset( $fallback[ $key ] ) ? $fallback[ $key ] : '';
+}
+
+/** 전화번호 tel: 링크용 정규화. */
+function olt_tel_href( $phone = null ) {
+	if ( function_exists( 'ol_tel_href' ) ) {
+		return ol_tel_href( $phone );
+	}
+	$phone = ( null === $phone ) ? olt_company( 'phone' ) : $phone;
+	return preg_replace( '/[^0-9+]/', '', (string) $phone );
+}
+
+/**
+ * Home 권역 섹션의 표시 문구(Eyebrow/제목/설명).
+ * 실제 term은 DB가 정본이고, 이 배열은 "그 term을 화면에 어떻게 소개할지"라는 표현 레이어이므로 테마에 둔다.
+ * 키는 마이그레이션 이후의 실제 부모 term 이름. 구 영문 코드도 함께 받아 방어한다.
+ * 매핑에 없는 term은 term 이름을 그대로 제목으로 쓰고 설명은 비운다(가짜 문구를 만들지 않음).
+ */
+function olt_home_region_copy( $term_name ) {
+	$map = array(
+		'강남사무실임대' => array(
+			'eyebrow' => 'GBD',
+			'title'   => '강남 주요 업무지구',
+			'desc'    => '역삼동, 삼성동, 대치동, 논현동, 신사동, 청담동을 포함하는 서울의 대표 업무권역입니다. 테헤란로와 강남대로를 중심으로 IT·금융·외국계 기업과 대기업 본사 수요가 집중되어 있습니다.',
+			'all'     => '강남 사무실 임대 전체 보기',
+		),
+		'도심권사무실임대' => array(
+			'eyebrow' => 'CBD',
+			'title'   => '도심 주요 업무지구',
+			'desc'    => '광화문, 종로, 을지로, 서울역 일대를 중심으로 금융·법률·공공기관·대기업 본사 수요가 형성된 서울의 전통적인 핵심 업무권역입니다.',
+			'all'     => '도심권 사무실 임대 전체 보기',
+		),
+		'여의도사무실임대' => array(
+			'eyebrow' => 'YBD',
+			'title'   => '여의도 업무지구',
+			'desc'    => '여의도역, 국회의사당, IFC를 중심으로 금융회사·증권사·자산운용사와 대기업이 밀집한 서울의 대표 금융 업무권역입니다.',
+			'all'     => '여의도 사무실 임대 전체 보기',
+		),
+		'기타권역사무실임대' => array(
+			// 화면에 'ETC'를 크게 노출하지 않는다(확정 사항). 관리 데이터·카드 뱃지는 계속 ETC 코드를 쓴다.
+			'eyebrow' => 'OTHER BUSINESS DISTRICTS',
+			'title'   => '서울 주요 업무권역',
+			'desc'    => '서초·성수·송파·용산 등 기업 수요가 확장되고 있는 서울의 주요 업무지역을 함께 소개합니다.',
+			'all'     => '기타 권역 사무실 임대 전체 보기',
+		),
+	);
+	$legacy = array( 'GBD' => '강남사무실임대', 'CBD' => '도심권사무실임대', 'YBD' => '여의도사무실임대', 'ETC' => '기타권역사무실임대' );
+	$term_name = (string) $term_name;
+	if ( isset( $legacy[ strtoupper( $term_name ) ] ) ) {
+		$term_name = $legacy[ strtoupper( $term_name ) ];
+	}
+	if ( isset( $map[ $term_name ] ) ) {
+		return $map[ $term_name ];
+	}
+	return array(
+		'eyebrow' => olt_region_short_code( $term_name ),
+		'title'   => $term_name,
+		'desc'    => '',
+		'all'     => '전체 보기',
+	);
+}
+
+/**
+ * Home에서 쓸 권역 부모 term 목록(정렬 순서 고정: 강남 → 도심권 → 여의도 → 기타권역).
+ * get_terms의 기본 정렬(name)은 한글 가나다순이라 원하는 순서가 안 나오므로 명시적으로 재정렬한다.
+ * 매핑에 없는 부모 term(운영 중 새로 추가된 권역)은 뒤에 이름순으로 붙인다.
+ */
+function olt_home_region_parents() {
+	$terms = get_terms( array(
+		'taxonomy'   => 'office_region',
+		'parent'     => 0,
+		'hide_empty' => false,
+	) );
+	if ( is_wp_error( $terms ) || empty( $terms ) ) {
+		return array();
+	}
+	$order = array( '강남사무실임대' => 0, '도심권사무실임대' => 1, '여의도사무실임대' => 2, '기타권역사무실임대' => 3 );
+	usort( $terms, function ( $a, $b ) use ( $order ) {
+		$ia = isset( $order[ $a->name ] ) ? $order[ $a->name ] : 99;
+		$ib = isset( $order[ $b->name ] ) ? $order[ $b->name ] : 99;
+		if ( $ia !== $ib ) {
+			return $ia <=> $ib;
+		}
+		return strcmp( $a->name, $b->name );
+	} );
+	return $terms;
+}
