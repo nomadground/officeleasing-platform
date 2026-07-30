@@ -1,0 +1,162 @@
+/*
+ * 직원 포털(/listup/) 전용 스타일. admin.css(HINT List Up 관리자 화면)의 컴포넌트 클래스
+ * (.hlf-card/.hlf-table/.hlf-field/.hlf-stat-card/.hlf-toolbar/.hlf-filter-chip 등)를 그대로
+ * 재사용한다 — HLF_Portal::maybe_enqueue_assets()가 admin.css도 함께 로드하고, <body>에
+ * .hlf-admin 클래스를 얹어 그 안의 ".hlf-admin .xyz" 스코프 규칙이 그대로 적용되게 한다.
+ *
+ * admin.css는 "wp-admin 기본 룩(.button 등)을 그대로 쓴다"는 전제로 만들어졌는데(그 주석 참고),
+ * 이 포털은 wp-admin 밖(프론트엔드)에서 열리므로 그 기본 버튼 스타일이 없다 — 그래서 이 파일이
+ * .button/.button-primary/.button-small/.hlf-danger 버튼 스킨만 따로 정의한다(로그인 화면은
+ * admin.css조차 로드하지 않으므로 — 로그인 전에는 wp.media/OCR이 필요 없어 아예 안 불러온다 —
+ * 여기 정의가 로그인 화면의 유일한 스타일 출처다).
+ */
+
+:root {
+	--hlf-portal-primary: #355c73;
+	--hlf-portal-ink: #263e4c;
+	--hlf-portal-line: #dfe6ea;
+	--hlf-portal-bg: #f5f7f8;
+}
+
+.hlf-portal {
+	margin: 0;
+	background: var(--hlf-portal-bg);
+	color: #25343d;
+	font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.hlf-portal * { box-sizing: border-box; }
+
+/* ---------- 버튼 스킨(admin.css가 기대하는 wp-admin .button 대체) ---------- */
+.hlf-portal .button,
+.hlf-portal button.button {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 6px 12px;
+	background: #f6f7f7;
+	border: 1px solid #949494;
+	border-radius: 3px;
+	color: #2c3338;
+	font: inherit;
+	font-size: 13px;
+	cursor: pointer;
+	line-height: 1.5;
+}
+.hlf-portal .button:hover { background: #f0f0f1; }
+.hlf-portal .button-primary {
+	background: var(--hlf-portal-primary);
+	border-color: var(--hlf-portal-primary);
+	color: #fff;
+}
+.hlf-portal .button-primary:hover { background: #2b4a5d; }
+.hlf-portal .button-small { padding: 3px 8px; font-size: 12px; }
+.hlf-portal .button:disabled { opacity: .5; cursor: not-allowed; }
+.hlf-portal .hlf-danger { color: #a22d2d; border-color: #e4b5b5; }
+.hlf-portal .hlf-danger:hover { color: #fff; background: #a22d2d; border-color: #a22d2d; }
+
+/* ---------- 로그인 화면(admin.css 미로드 — 완전히 독립) ---------- */
+.hlf-login-shell { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
+.hlf-login-card {
+	width: 100%;
+	max-width: 360px;
+	background: #fff;
+	border: 1px solid var(--hlf-portal-line);
+	border-radius: 10px;
+	padding: 28px 26px;
+}
+.hlf-login-brand { font-size: 22px; font-weight: 800; color: var(--hlf-portal-ink); }
+.hlf-login-brand small { font-size: 12px; font-weight: 400; opacity: .7; margin-left: 8px; }
+.hlf-login-sub { margin: 4px 0 18px; color: #71818a; font-size: 12px; }
+.hlf-login-error { margin: 0 0 14px; padding: 8px 12px; color: #8a2424; background: #fcf0f1; border-left: 4px solid #d63638; font-size: 13px; }
+.hlf-login-card .hlf-field { display: grid; gap: 4px; margin-bottom: 14px; }
+.hlf-login-card label { font-weight: 600; font-size: 13px; }
+.hlf-login-card input[type="text"],
+.hlf-login-card input[type="password"] {
+	width: 100%;
+	padding: 8px 10px;
+	border: 1px solid #cbd6dc;
+	border-radius: 5px;
+	font: inherit;
+}
+.hlf-login-submit {
+	width: 100%;
+	margin-top: 6px;
+	padding: 10px;
+	background: var(--hlf-portal-primary);
+	border: 1px solid var(--hlf-portal-primary);
+	border-radius: 5px;
+	color: #fff;
+	font: inherit;
+	font-size: 14px;
+	font-weight: 700;
+	cursor: pointer;
+}
+.hlf-login-submit:hover { background: #2b4a5d; }
+
+/* ---------- 상단 바 + 좌측 nav + 본문(인증된 포털 화면) ---------- */
+.hlf-portal-top {
+	height: 56px;
+	background: var(--hlf-portal-primary);
+	color: #fff;
+	padding: 0 22px;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+.hlf-portal-brand { font-size: 18px; font-weight: 800; }
+.hlf-portal-brand small { font-size: 11px; font-weight: 400; opacity: .75; margin-left: 6px; }
+.hlf-portal-topright { display: flex; align-items: center; gap: 12px; font-size: 12px; }
+.hlf-portal-staff-label { opacity: .9; }
+.hlf-portal-staff-change,
+.hlf-portal-logout {
+	background: rgba(255,255,255,.12);
+	border: 1px solid rgba(255,255,255,.35);
+	border-radius: 4px;
+	padding: 5px 10px;
+	color: #fff;
+	font: inherit;
+	font-size: 12px;
+	text-decoration: none;
+	cursor: pointer;
+}
+.hlf-portal-staff-change:hover,
+.hlf-portal-logout:hover { background: rgba(255,255,255,.22); }
+
+.hlf-portal-layout { display: grid; grid-template-columns: 190px 1fr; min-height: calc(100vh - 56px); }
+@media (max-width: 782px) { .hlf-portal-layout { grid-template-columns: 1fr; } }
+
+.hlf-portal-nav { background: #fff; border-right: 1px solid var(--hlf-portal-line); padding: 14px 10px; display: flex; flex-direction: column; gap: 4px; }
+@media (max-width: 782px) { .hlf-portal-nav { flex-direction: row; flex-wrap: wrap; border-right: 0; border-bottom: 1px solid var(--hlf-portal-line); } }
+.hlf-portal-navbtn { text-align: left; padding: 10px 12px; border: 0; border-radius: 5px; background: none; color: #39515d; cursor: pointer; font: inherit; }
+.hlf-portal-navbtn:hover { background: #eef3f5; }
+.hlf-portal-navbtn.is-active { background: var(--hlf-portal-primary); color: #fff; font-weight: 700; }
+
+.hlf-portal-main { min-width: 0; padding: 24px; max-width: 1400px; width: 100%; }
+
+/* ---------- 담당자 선택 모달 ---------- */
+.hlf-portal-modal-overlay {
+	position: fixed;
+	inset: 0;
+	background: rgba(24, 42, 51, .55);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 18px;
+	z-index: 100001;
+}
+.hlf-portal-modal {
+	background: #fff;
+	border-radius: 8px;
+	max-width: 420px;
+	width: 100%;
+	padding: 22px;
+}
+.hlf-portal-modal h3 { margin: 0 0 8px; }
+.hlf-portal-modal select {
+	width: 100%;
+	margin-top: 10px;
+	padding: 8px 10px;
+	border: 1px solid #cbd6dc;
+	border-radius: 5px;
+	font: inherit;
+}
