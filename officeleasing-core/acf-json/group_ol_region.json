@@ -1,0 +1,202 @@
+{
+    "key": "group_ol_region",
+    "title": "지역 정보",
+    "fields": [
+        {
+            "key": "field_ol_rgn_intro",
+            "label": "지역 소개 (SEO 인트로)",
+            "name": "region_intro",
+            "type": "textarea",
+            "instructions": "허브 페이지 상단에 노출되는 지역 소개문. 비워두면 기본 문구가 대신 표시됩니다.",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "rows": 4,
+            "new_lines": "",
+            "maxlength": ""
+        },
+        {
+            "key": "field_ol_rgn_faq_q1",
+            "label": "FAQ 1 - 질문",
+            "name": "region_faq_q1",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "readonly": 0
+        },
+        {
+            "key": "field_ol_rgn_faq_a1",
+            "label": "FAQ 1 - 답변",
+            "name": "region_faq_a1",
+            "type": "textarea",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "rows": 3,
+            "new_lines": "",
+            "maxlength": ""
+        },
+        {
+            "key": "field_ol_rgn_faq_q2",
+            "label": "FAQ 2 - 질문",
+            "name": "region_faq_q2",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "readonly": 0
+        },
+        {
+            "key": "field_ol_rgn_faq_a2",
+            "label": "FAQ 2 - 답변",
+            "name": "region_faq_a2",
+            "type": "textarea",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "rows": 3,
+            "new_lines": "",
+            "maxlength": ""
+        },
+        {
+            "key": "field_ol_rgn_faq_q3",
+            "label": "FAQ 3 - 질문",
+            "name": "region_faq_q3",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "readonly": 0
+        },
+        {
+            "key": "field_ol_rgn_faq_a3",
+            "label": "FAQ 3 - 답변",
+            "name": "region_faq_a3",
+            "type": "textarea",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "rows": 3,
+            "new_lines": "",
+            "maxlength": ""
+        },
+        {
+            "key": "field_ol_rgn_faq_q4",
+            "label": "FAQ 4 - 질문",
+            "name": "region_faq_q4",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "readonly": 0
+        },
+        {
+            "key": "field_ol_rgn_faq_a4",
+            "label": "FAQ 4 - 답변",
+            "name": "region_faq_a4",
+            "type": "textarea",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "rows": 3,
+            "new_lines": "",
+            "maxlength": ""
+        },
+        {
+            "key": "field_ol_rgn_faq_q5",
+            "label": "FAQ 5 - 질문",
+            "name": "region_faq_q5",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "readonly": 0
+        },
+        {
+            "key": "field_ol_rgn_faq_a5",
+            "label": "FAQ 5 - 답변",
+            "name": "region_faq_a5",
+            "type": "textarea",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "rows": 3,
+            "new_lines": "",
+            "maxlength": ""
+        }
+    ],
+    "location": [
+        [
+            {
+                "param": "taxonomy",
+                "operator": "==",
+                "value": "office_region"
+            }
+        ]
+    ],
+    "menu_order": 0,
+    "position": "normal",
+    "style": "default",
+    "label_placement": "top",
+    "instruction_placement": "label",
+    "hide_on_screen": "",
+    "active": true,
+    "description": "",
+    "show_in_rest": 0,
+    "modified": 1785233658
+}

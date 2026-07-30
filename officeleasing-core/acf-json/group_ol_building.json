@@ -1,0 +1,1025 @@
+{
+    "key": "group_ol_building",
+    "title": "빌딩 정보",
+    "fields": [
+        {
+            "key": "field_ol_bld_map_picker_slot",
+            "label": "위치 찾기",
+            "name": "building_map_picker_slot",
+            "type": "message",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "message": "",
+            "new_lines": "wpautop",
+            "esc_html": 0
+        },
+        {
+            "key": "field_ol_bld_address_road",
+            "label": "도로명주소",
+            "name": "building_address_road",
+            "type": "text",
+            "instructions": "",
+            "required": 1,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "readonly": 1
+        },
+        {
+            "key": "field_ol_bld_address_jibun",
+            "label": "지번주소",
+            "name": "building_address_jibun",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "readonly": 1
+        },
+        {
+            "key": "field_ol_bld_lat",
+            "label": "위도",
+            "name": "building_lat",
+            "type": "number",
+            "instructions": "",
+            "required": 1,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "min": "",
+            "max": "",
+            "step": "0.000001",
+            "readonly": 1,
+            "prepend": "",
+            "append": "",
+            "placeholder": ""
+        },
+        {
+            "key": "field_ol_bld_lng",
+            "label": "경도",
+            "name": "building_lng",
+            "type": "number",
+            "instructions": "",
+            "required": 1,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "min": "",
+            "max": "",
+            "step": "0.000001",
+            "readonly": 1,
+            "prepend": "",
+            "append": "",
+            "placeholder": ""
+        },
+        {
+            "key": "field_ol_bld_completion_date",
+            "label": "준공일",
+            "name": "building_completion_date",
+            "type": "date_picker",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "display_format": "Y.m.d",
+            "return_format": "Ymd",
+            "first_day": 0
+        },
+        {
+            "key": "field_ol_bld_basement_floors",
+            "label": "지하 층수",
+            "name": "building_basement_floors",
+            "type": "number",
+            "instructions": "",
+            "required": 1,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "min": "0",
+            "max": "",
+            "step": "1",
+            "readonly": 0,
+            "prepend": "",
+            "append": "",
+            "placeholder": ""
+        },
+        {
+            "key": "field_ol_bld_ground_floors",
+            "label": "지상 층수",
+            "name": "building_ground_floors",
+            "type": "number",
+            "instructions": "",
+            "required": 1,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "min": "1",
+            "max": "",
+            "step": "1",
+            "readonly": 0,
+            "prepend": "",
+            "append": "",
+            "placeholder": ""
+        },
+        {
+            "key": "field_ol_bld_total_area_sqm",
+            "label": "연면적 (㎡, 입력)",
+            "name": "building_total_area_sqm",
+            "type": "number",
+            "instructions": "",
+            "required": 1,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "min": "",
+            "max": "",
+            "step": "0.01",
+            "readonly": 0,
+            "prepend": "",
+            "append": "",
+            "placeholder": ""
+        },
+        {
+            "key": "field_ol_bld_total_area_pyeong",
+            "label": "연면적 (평, 자동계산)",
+            "name": "building_total_area_pyeong",
+            "type": "number",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "min": "",
+            "max": "",
+            "step": "",
+            "readonly": 1,
+            "prepend": "",
+            "append": "",
+            "placeholder": ""
+        },
+        {
+            "key": "field_ol_bld_standard_floor_area_sqm",
+            "label": "기준층면적 (㎡, 입력)",
+            "name": "building_standard_floor_area_sqm",
+            "type": "number",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "min": "",
+            "max": "",
+            "step": "0.01",
+            "readonly": 0,
+            "prepend": "",
+            "append": "",
+            "placeholder": ""
+        },
+        {
+            "key": "field_ol_bld_standard_floor_area_pyeong",
+            "label": "기준층면적 (평, 자동계산)",
+            "name": "building_standard_floor_area_pyeong",
+            "type": "number",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "min": "",
+            "max": "",
+            "step": "",
+            "readonly": 1,
+            "prepend": "",
+            "append": "",
+            "placeholder": ""
+        },
+        {
+            "key": "field_ol_bld_exclusive_ratio",
+            "label": "전용률 (%)",
+            "name": "building_exclusive_ratio",
+            "type": "number",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "min": "",
+            "max": "100",
+            "step": "0.1",
+            "readonly": 0,
+            "prepend": "",
+            "append": "",
+            "placeholder": ""
+        },
+        {
+            "key": "field_ol_bld_active_listing_count",
+            "label": "활성 매물 수 (자동계산)",
+            "name": "building_active_listing_count",
+            "type": "number",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "min": "",
+            "max": "",
+            "step": "",
+            "readonly": 1,
+            "prepend": "",
+            "append": "",
+            "placeholder": ""
+        },
+        {
+            "key": "field_ol_bld_min_ex_area",
+            "label": "최소 전용면적 평 (자동계산)",
+            "name": "building_min_exclusive_area_pyeong",
+            "type": "number",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "min": "",
+            "max": "",
+            "step": "",
+            "readonly": 1,
+            "prepend": "",
+            "append": "",
+            "placeholder": ""
+        },
+        {
+            "key": "field_ol_bld_max_ex_area",
+            "label": "최대 전용면적 평 (자동계산)",
+            "name": "building_max_exclusive_area_pyeong",
+            "type": "number",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "min": "",
+            "max": "",
+            "step": "",
+            "readonly": 1,
+            "prepend": "",
+            "append": "",
+            "placeholder": ""
+        },
+        {
+            "key": "field_ol_bld_min_rent",
+            "label": "최저 임대료 원 (자동계산)",
+            "name": "building_min_rent",
+            "type": "number",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "min": "",
+            "max": "",
+            "step": "",
+            "readonly": 1,
+            "prepend": "",
+            "append": "",
+            "placeholder": ""
+        },
+        {
+            "key": "field_ol_bld_last_verified",
+            "label": "최근 확인일 Ymd (자동계산)",
+            "name": "building_last_verified_at",
+            "type": "number",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "min": "",
+            "max": "",
+            "step": "",
+            "readonly": 1,
+            "prepend": "",
+            "append": "",
+            "placeholder": ""
+        },
+        {
+            "key": "field_ol_bld_parking",
+            "label": "주차",
+            "name": "building_parking",
+            "type": "text",
+            "instructions": "",
+            "required": 1,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "readonly": 0
+        },
+        {
+            "key": "field_ol_bld_orientation",
+            "label": "방향",
+            "name": "building_orientation",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "readonly": 0
+        },
+        {
+            "key": "field_ol_bld_elevator_count",
+            "label": "엘리베이터 대수",
+            "name": "building_elevator_count",
+            "type": "number",
+            "instructions": "",
+            "required": 1,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "min": "0",
+            "max": "",
+            "step": "1",
+            "readonly": 0,
+            "prepend": "",
+            "append": "",
+            "placeholder": ""
+        },
+        {
+            "key": "field_ol_bld_subway1_line",
+            "label": "인근역 1 - 호선",
+            "name": "building_subway1_line",
+            "type": "select",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "choices": {
+                "1": "1호선",
+                "2": "2호선",
+                "3": "3호선",
+                "4": "4호선",
+                "5": "5호선",
+                "6": "6호선",
+                "7": "7호선",
+                "8": "8호선",
+                "9": "9호선",
+                "GJ": "경의중앙선",
+                "BD": "분당선",
+                "SB": "신분당선",
+                "AR": "공항철도",
+                "SU": "수인분당선",
+                "GTX-A": "GTX-A"
+            },
+            "default_value": "",
+            "allow_null": 1,
+            "multiple": 0,
+            "ui": 1,
+            "ajax": 0,
+            "return_format": "value",
+            "placeholder": ""
+        },
+        {
+            "key": "field_ol_bld_subway1_station",
+            "label": "인근역 1 - 역명",
+            "name": "building_subway1_station",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "readonly": 0
+        },
+        {
+            "key": "field_ol_bld_subway2_line",
+            "label": "인근역 2 - 호선",
+            "name": "building_subway2_line",
+            "type": "select",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "choices": {
+                "1": "1호선",
+                "2": "2호선",
+                "3": "3호선",
+                "4": "4호선",
+                "5": "5호선",
+                "6": "6호선",
+                "7": "7호선",
+                "8": "8호선",
+                "9": "9호선",
+                "GJ": "경의중앙선",
+                "BD": "분당선",
+                "SB": "신분당선",
+                "AR": "공항철도",
+                "SU": "수인분당선",
+                "GTX-A": "GTX-A"
+            },
+            "default_value": "",
+            "allow_null": 1,
+            "multiple": 0,
+            "ui": 1,
+            "ajax": 0,
+            "return_format": "value",
+            "placeholder": ""
+        },
+        {
+            "key": "field_ol_bld_subway2_station",
+            "label": "인근역 2 - 역명",
+            "name": "building_subway2_station",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "readonly": 0
+        },
+        {
+            "key": "field_ol_bld_nearby_infra",
+            "label": "주변 인프라",
+            "name": "building_nearby_infra",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "readonly": 0
+        },
+        {
+            "key": "field_ol_bld_image_1",
+            "label": "빌딩 사진 1",
+            "name": "building_image_1",
+            "type": "image",
+            "instructions": "",
+            "required": 1,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "return_format": "array",
+            "preview_size": "medium",
+            "library": "all",
+            "min_width": "",
+            "min_height": "",
+            "min_size": "",
+            "max_width": "",
+            "max_height": "",
+            "max_size": "",
+            "mime_types": ""
+        },
+        {
+            "key": "field_ol_bld_image_2",
+            "label": "빌딩 사진 2",
+            "name": "building_image_2",
+            "type": "image",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "return_format": "array",
+            "preview_size": "medium",
+            "library": "all",
+            "min_width": "",
+            "min_height": "",
+            "min_size": "",
+            "max_width": "",
+            "max_height": "",
+            "max_size": "",
+            "mime_types": ""
+        },
+        {
+            "key": "field_ol_bld_image_3",
+            "label": "빌딩 사진 3",
+            "name": "building_image_3",
+            "type": "image",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "return_format": "array",
+            "preview_size": "medium",
+            "library": "all",
+            "min_width": "",
+            "min_height": "",
+            "min_size": "",
+            "max_width": "",
+            "max_height": "",
+            "max_size": "",
+            "mime_types": ""
+        },
+        {
+            "key": "field_ol_bld_image_4",
+            "label": "빌딩 사진 4",
+            "name": "building_image_4",
+            "type": "image",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "return_format": "array",
+            "preview_size": "medium",
+            "library": "all",
+            "min_width": "",
+            "min_height": "",
+            "min_size": "",
+            "max_width": "",
+            "max_height": "",
+            "max_size": "",
+            "mime_types": ""
+        },
+        {
+            "key": "field_ol_bld_image_5",
+            "label": "빌딩 사진 5",
+            "name": "building_image_5",
+            "type": "image",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "return_format": "array",
+            "preview_size": "medium",
+            "library": "all",
+            "min_width": "",
+            "min_height": "",
+            "min_size": "",
+            "max_width": "",
+            "max_height": "",
+            "max_size": "",
+            "mime_types": ""
+        },
+        {
+            "key": "field_ol_bld_image_6",
+            "label": "빌딩 사진 6",
+            "name": "building_image_6",
+            "type": "image",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "return_format": "array",
+            "preview_size": "medium",
+            "library": "all",
+            "min_width": "",
+            "min_height": "",
+            "min_size": "",
+            "max_width": "",
+            "max_height": "",
+            "max_size": "",
+            "mime_types": ""
+        },
+        {
+            "key": "field_ol_bld_image_7",
+            "label": "빌딩 사진 7",
+            "name": "building_image_7",
+            "type": "image",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "return_format": "array",
+            "preview_size": "medium",
+            "library": "all",
+            "min_width": "",
+            "min_height": "",
+            "min_size": "",
+            "max_width": "",
+            "max_height": "",
+            "max_size": "",
+            "mime_types": ""
+        },
+        {
+            "key": "field_ol_bld_image_8",
+            "label": "빌딩 사진 8",
+            "name": "building_image_8",
+            "type": "image",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "return_format": "array",
+            "preview_size": "medium",
+            "library": "all",
+            "min_width": "",
+            "min_height": "",
+            "min_size": "",
+            "max_width": "",
+            "max_height": "",
+            "max_size": "",
+            "mime_types": ""
+        },
+        {
+            "key": "field_ol_bld_location_summary",
+            "label": "입지 요약 (AIO)",
+            "name": "building_location_summary",
+            "type": "textarea",
+            "instructions": "비워두면 저장 시 초안 템플릿이 자동 삽입됩니다. 자동 초안을 그대로 쓰려면 아래 검수 상태를 '검수 완료'로 바꿔주세요.",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "rows": 4,
+            "new_lines": "",
+            "maxlength": ""
+        },
+        {
+            "key": "field_ol_bld_aio_generation_status",
+            "label": "생성 방식 (자동계산)",
+            "name": "aio_generation_status",
+            "type": "select",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "choices": {
+                "auto_generated": "자동 생성",
+                "human_written": "직접 작성"
+            },
+            "default_value": "auto_generated",
+            "allow_null": 0,
+            "multiple": 0,
+            "ui": 1,
+            "ajax": 0,
+            "return_format": "value",
+            "placeholder": ""
+        },
+        {
+            "key": "field_ol_bld_aio_review_status",
+            "label": "검수 상태",
+            "name": "aio_review_status",
+            "type": "select",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "choices": {
+                "pending": "검수 대기",
+                "reviewed": "검수 완료"
+            },
+            "default_value": "pending",
+            "allow_null": 0,
+            "multiple": 0,
+            "ui": 1,
+            "ajax": 0,
+            "return_format": "value",
+            "placeholder": ""
+        },
+        {
+            "key": "field_ol_bld_transportation_summary",
+            "label": "교통 요약 (AIO)",
+            "name": "building_transportation_summary",
+            "type": "textarea",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "rows": 4,
+            "new_lines": "",
+            "maxlength": ""
+        },
+        {
+            "key": "field_ol_bld_feature_summary",
+            "label": "특징 요약 (AIO)",
+            "name": "building_feature_summary",
+            "type": "textarea",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "rows": 4,
+            "new_lines": "",
+            "maxlength": ""
+        },
+        {
+            "key": "field_ol_bld_recommended_tenant_summary",
+            "label": "추천 입주업종 요약 (AIO)",
+            "name": "building_recommended_tenant_summary",
+            "type": "textarea",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "rows": 4,
+            "new_lines": "",
+            "maxlength": ""
+        },
+        {
+            "key": "field_ol_bld_faq_q1",
+            "label": "FAQ 1 - 질문",
+            "name": "building_faq_q1",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "readonly": 0
+        },
+        {
+            "key": "field_ol_bld_faq_a1",
+            "label": "FAQ 1 - 답변",
+            "name": "building_faq_a1",
+            "type": "textarea",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "rows": 3,
+            "new_lines": "",
+            "maxlength": ""
+        },
+        {
+            "key": "field_ol_bld_faq_q2",
+            "label": "FAQ 2 - 질문",
+            "name": "building_faq_q2",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "readonly": 0
+        },
+        {
+            "key": "field_ol_bld_faq_a2",
+            "label": "FAQ 2 - 답변",
+            "name": "building_faq_a2",
+            "type": "textarea",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "rows": 3,
+            "new_lines": "",
+            "maxlength": ""
+        },
+        {
+            "key": "field_ol_bld_faq_q3",
+            "label": "FAQ 3 - 질문",
+            "name": "building_faq_q3",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "readonly": 0
+        },
+        {
+            "key": "field_ol_bld_faq_a3",
+            "label": "FAQ 3 - 답변",
+            "name": "building_faq_a3",
+            "type": "textarea",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "rows": 3,
+            "new_lines": "",
+            "maxlength": ""
+        },
+        {
+            "key": "field_ol_bld_faq_q4",
+            "label": "FAQ 4 - 질문",
+            "name": "building_faq_q4",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "readonly": 0
+        },
+        {
+            "key": "field_ol_bld_faq_a4",
+            "label": "FAQ 4 - 답변",
+            "name": "building_faq_a4",
+            "type": "textarea",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "rows": 3,
+            "new_lines": "",
+            "maxlength": ""
+        },
+        {
+            "key": "field_ol_bld_faq_q5",
+            "label": "FAQ 5 - 질문",
+            "name": "building_faq_q5",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "readonly": 0
+        },
+        {
+            "key": "field_ol_bld_faq_a5",
+            "label": "FAQ 5 - 답변",
+            "name": "building_faq_a5",
+            "type": "textarea",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "rows": 3,
+            "new_lines": "",
+            "maxlength": ""
+        }
+    ],
+    "location": [
+        [
+            {
+                "param": "post_type",
+                "operator": "==",
+                "value": "building"
+            }
+        ]
+    ],
+    "menu_order": 0,
+    "position": "normal",
+    "style": "default",
+    "label_placement": "top",
+    "instruction_placement": "label",
+    "hide_on_screen": "",
+    "active": true,
+    "description": "",
+    "show_in_rest": 0,
+    "modified": 1785233658
+}

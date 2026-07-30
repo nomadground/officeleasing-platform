@@ -1,0 +1,810 @@
+{
+    "key": "group_ol_listing",
+    "title": "매물 정보",
+    "fields": [
+        {
+            "key": "field_ol_lst_related_building",
+            "label": "연결 빌딩",
+            "name": "related_building",
+            "type": "post_object",
+            "instructions": "",
+            "required": 1,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "post_type": [
+                "building"
+            ],
+            "taxonomy": [],
+            "allow_null": 0,
+            "multiple": 0,
+            "return_format": "id",
+            "ui": 1
+        },
+        {
+            "key": "field_ol_lst_status",
+            "label": "매물 상태",
+            "name": "listing_status",
+            "type": "select",
+            "instructions": "",
+            "required": 1,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "choices": {
+                "available": "임대가능",
+                "reserved": "협의중",
+                "contract_pending": "계약진행중",
+                "leased": "거래완료",
+                "temporarily_hidden": "노출중지",
+                "expired": "만료"
+            },
+            "default_value": "available",
+            "allow_null": 0,
+            "multiple": 0,
+            "ui": 1,
+            "ajax": 0,
+            "return_format": "value",
+            "placeholder": ""
+        },
+        {
+            "key": "field_ol_lst_move_in_type",
+            "label": "입주가능일 유형",
+            "name": "move_in_type",
+            "type": "select",
+            "instructions": "",
+            "required": 1,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "choices": {
+                "immediate": "즉시입주",
+                "negotiable": "협의가능",
+                "scheduled": "날짜지정"
+            },
+            "default_value": "immediate",
+            "allow_null": 0,
+            "multiple": 0,
+            "ui": 1,
+            "ajax": 0,
+            "return_format": "value",
+            "placeholder": ""
+        },
+        {
+            "key": "field_ol_lst_move_in_date",
+            "label": "입주가능일 (날짜지정 시)",
+            "name": "move_in_date",
+            "type": "date_picker",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_ol_lst_move_in_type",
+                        "operator": "==",
+                        "value": "scheduled"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "display_format": "Y.m.d",
+            "return_format": "Ymd",
+            "first_day": 0
+        },
+        {
+            "key": "field_ol_lst_verified_at",
+            "label": "최근 확인일",
+            "name": "verified_at",
+            "type": "date_picker",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "display_format": "Y.m.d",
+            "return_format": "Ymd",
+            "first_day": 0
+        },
+        {
+            "key": "field_ol_lst_expires_at",
+            "label": "만료일",
+            "name": "expires_at",
+            "type": "date_picker",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "display_format": "Y.m.d",
+            "return_format": "Ymd",
+            "first_day": 0
+        },
+        {
+            "key": "field_ol_lst_leased_at",
+            "label": "계약완료일",
+            "name": "leased_at",
+            "type": "date_picker",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "display_format": "Y.m.d",
+            "return_format": "Ymd",
+            "first_day": 0
+        },
+        {
+            "key": "field_ol_lst_floor_display",
+            "label": "해당층 표기",
+            "name": "floor_display",
+            "type": "text",
+            "instructions": "",
+            "required": 1,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "readonly": 0
+        },
+        {
+            "key": "field_ol_lst_exclusive_area_pyeong",
+            "label": "전용면적 (평, 원본입력)",
+            "name": "exclusive_area_pyeong",
+            "type": "number",
+            "instructions": "",
+            "required": 1,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "min": "",
+            "max": "",
+            "step": "0.01",
+            "readonly": 0,
+            "prepend": "",
+            "append": "",
+            "placeholder": ""
+        },
+        {
+            "key": "field_ol_lst_exclusive_area_sqm",
+            "label": "전용면적 (㎡, 자동계산)",
+            "name": "exclusive_area_sqm",
+            "type": "number",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "min": "",
+            "max": "",
+            "step": "",
+            "readonly": 1,
+            "prepend": "",
+            "append": "",
+            "placeholder": ""
+        },
+        {
+            "key": "field_ol_lst_lease_area_pyeong",
+            "label": "공급면적 (평, 원본입력)",
+            "name": "lease_area_pyeong",
+            "type": "number",
+            "instructions": "",
+            "required": 1,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "min": "",
+            "max": "",
+            "step": "0.01",
+            "readonly": 0,
+            "prepend": "",
+            "append": "",
+            "placeholder": ""
+        },
+        {
+            "key": "field_ol_lst_lease_area_sqm",
+            "label": "공급면적 (㎡, 자동계산)",
+            "name": "lease_area_sqm",
+            "type": "number",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "min": "",
+            "max": "",
+            "step": "",
+            "readonly": 1,
+            "prepend": "",
+            "append": "",
+            "placeholder": ""
+        },
+        {
+            "key": "field_ol_lst_deposit_manwon",
+            "label": "보증금 (만원 단위 입력)",
+            "name": "deposit_manwon",
+            "type": "number",
+            "instructions": "",
+            "required": 1,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "min": "0",
+            "max": "",
+            "step": "1",
+            "readonly": 0,
+            "prepend": "",
+            "append": "",
+            "placeholder": ""
+        },
+        {
+            "key": "field_ol_lst_deposit_amount",
+            "label": "보증금 (원, 자동계산)",
+            "name": "deposit_amount",
+            "type": "number",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "min": "",
+            "max": "",
+            "step": "",
+            "readonly": 1,
+            "prepend": "",
+            "append": "",
+            "placeholder": ""
+        },
+        {
+            "key": "field_ol_lst_rent_manwon",
+            "label": "임대료 (만원 단위 입력, 월)",
+            "name": "monthly_rent_manwon",
+            "type": "number",
+            "instructions": "",
+            "required": 1,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "min": "0",
+            "max": "",
+            "step": "1",
+            "readonly": 0,
+            "prepend": "",
+            "append": "",
+            "placeholder": ""
+        },
+        {
+            "key": "field_ol_lst_monthly_rent",
+            "label": "임대료 (원/월, 자동계산)",
+            "name": "monthly_rent",
+            "type": "number",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "min": "",
+            "max": "",
+            "step": "",
+            "readonly": 1,
+            "prepend": "",
+            "append": "",
+            "placeholder": ""
+        },
+        {
+            "key": "field_ol_lst_maintenance_fee_manwon",
+            "label": "관리비 (만원 단위 입력, 월)",
+            "name": "maintenance_fee_manwon",
+            "type": "number",
+            "instructions": "",
+            "required": 1,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "min": "0",
+            "max": "",
+            "step": "1",
+            "readonly": 0,
+            "prepend": "",
+            "append": "",
+            "placeholder": ""
+        },
+        {
+            "key": "field_ol_lst_maintenance_fee",
+            "label": "관리비 (원/월, 자동계산)",
+            "name": "maintenance_fee",
+            "type": "number",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "min": "",
+            "max": "",
+            "step": "",
+            "readonly": 1,
+            "prepend": "",
+            "append": "",
+            "placeholder": ""
+        },
+        {
+            "key": "field_ol_lst_monthly_total_cost",
+            "label": "월 총비용 (자동계산)",
+            "name": "monthly_total_cost",
+            "type": "number",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "min": "",
+            "max": "",
+            "step": "",
+            "readonly": 1,
+            "prepend": "",
+            "append": "",
+            "placeholder": ""
+        },
+        {
+            "key": "field_ol_lst_rent_per_lease_pyeong",
+            "label": "공급평당 임대료 (자동계산)",
+            "name": "rent_per_lease_pyeong",
+            "type": "number",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "min": "",
+            "max": "",
+            "step": "",
+            "readonly": 1,
+            "prepend": "",
+            "append": "",
+            "placeholder": ""
+        },
+        {
+            "key": "field_ol_lst_maintenance_per_lease_pyeong",
+            "label": "공급평당 관리비 (자동계산)",
+            "name": "maintenance_per_lease_pyeong",
+            "type": "number",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "min": "",
+            "max": "",
+            "step": "",
+            "readonly": 1,
+            "prepend": "",
+            "append": "",
+            "placeholder": ""
+        },
+        {
+            "key": "field_ol_lst_noc_per_exclusive_pyeong",
+            "label": "전용평당 NOC (자동계산)",
+            "name": "noc_per_exclusive_pyeong",
+            "type": "number",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "min": "",
+            "max": "",
+            "step": "",
+            "readonly": 1,
+            "prepend": "",
+            "append": "",
+            "placeholder": ""
+        },
+        {
+            "key": "field_ol_lst_deposit_per_exclusive_pyeong",
+            "label": "전용평당 보증금 (자동계산)",
+            "name": "deposit_per_exclusive_pyeong",
+            "type": "number",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "min": "",
+            "max": "",
+            "step": "",
+            "readonly": 1,
+            "prepend": "",
+            "append": "",
+            "placeholder": ""
+        },
+        {
+            "key": "field_ol_lst_image_1",
+            "label": "매물 사진 1",
+            "name": "listing_image_1",
+            "type": "image",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "return_format": "array",
+            "preview_size": "medium",
+            "library": "all",
+            "min_width": "",
+            "min_height": "",
+            "min_size": "",
+            "max_width": "",
+            "max_height": "",
+            "max_size": "",
+            "mime_types": ""
+        },
+        {
+            "key": "field_ol_lst_image_2",
+            "label": "매물 사진 2",
+            "name": "listing_image_2",
+            "type": "image",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "return_format": "array",
+            "preview_size": "medium",
+            "library": "all",
+            "min_width": "",
+            "min_height": "",
+            "min_size": "",
+            "max_width": "",
+            "max_height": "",
+            "max_size": "",
+            "mime_types": ""
+        },
+        {
+            "key": "field_ol_lst_image_3",
+            "label": "매물 사진 3",
+            "name": "listing_image_3",
+            "type": "image",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "return_format": "array",
+            "preview_size": "medium",
+            "library": "all",
+            "min_width": "",
+            "min_height": "",
+            "min_size": "",
+            "max_width": "",
+            "max_height": "",
+            "max_size": "",
+            "mime_types": ""
+        },
+        {
+            "key": "field_ol_lst_image_4",
+            "label": "매물 사진 4",
+            "name": "listing_image_4",
+            "type": "image",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "return_format": "array",
+            "preview_size": "medium",
+            "library": "all",
+            "min_width": "",
+            "min_height": "",
+            "min_size": "",
+            "max_width": "",
+            "max_height": "",
+            "max_size": "",
+            "mime_types": ""
+        },
+        {
+            "key": "field_ol_lst_image_5",
+            "label": "매물 사진 5",
+            "name": "listing_image_5",
+            "type": "image",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "return_format": "array",
+            "preview_size": "medium",
+            "library": "all",
+            "min_width": "",
+            "min_height": "",
+            "min_size": "",
+            "max_width": "",
+            "max_height": "",
+            "max_size": "",
+            "mime_types": ""
+        },
+        {
+            "key": "field_ol_lst_image_6",
+            "label": "매물 사진 6",
+            "name": "listing_image_6",
+            "type": "image",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "return_format": "array",
+            "preview_size": "medium",
+            "library": "all",
+            "min_width": "",
+            "min_height": "",
+            "min_size": "",
+            "max_width": "",
+            "max_height": "",
+            "max_size": "",
+            "mime_types": ""
+        },
+        {
+            "key": "field_ol_lst_note",
+            "label": "특이사항",
+            "name": "listing_note",
+            "type": "textarea",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "rows": 4,
+            "new_lines": "",
+            "maxlength": ""
+        },
+        {
+            "key": "field_ol_lst_key_point_1",
+            "label": "핵심포인트 1",
+            "name": "listing_key_point_1",
+            "type": "group",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "layout": "block",
+            "sub_fields": [
+                {
+                    "key": "field_ol_lst_kp1_title",
+                    "label": "제목",
+                    "name": "kp1_title",
+                    "type": "text",
+                    "instructions": "",
+                    "required": 0,
+                    "conditional_logic": 0,
+                    "wrapper": {
+                        "width": "",
+                        "class": "",
+                        "id": ""
+                    },
+                    "readonly": 0
+                },
+                {
+                    "key": "field_ol_lst_kp1_desc",
+                    "label": "설명",
+                    "name": "kp1_desc",
+                    "type": "text",
+                    "instructions": "",
+                    "required": 0,
+                    "conditional_logic": 0,
+                    "wrapper": {
+                        "width": "",
+                        "class": "",
+                        "id": ""
+                    },
+                    "readonly": 0
+                }
+            ]
+        },
+        {
+            "key": "field_ol_lst_key_point_2",
+            "label": "핵심포인트 2",
+            "name": "listing_key_point_2",
+            "type": "group",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "layout": "block",
+            "sub_fields": [
+                {
+                    "key": "field_ol_lst_kp2_title",
+                    "label": "제목",
+                    "name": "kp2_title",
+                    "type": "text",
+                    "instructions": "",
+                    "required": 0,
+                    "conditional_logic": 0,
+                    "wrapper": {
+                        "width": "",
+                        "class": "",
+                        "id": ""
+                    },
+                    "readonly": 0
+                },
+                {
+                    "key": "field_ol_lst_kp2_desc",
+                    "label": "설명",
+                    "name": "kp2_desc",
+                    "type": "text",
+                    "instructions": "",
+                    "required": 0,
+                    "conditional_logic": 0,
+                    "wrapper": {
+                        "width": "",
+                        "class": "",
+                        "id": ""
+                    },
+                    "readonly": 0
+                }
+            ]
+        },
+        {
+            "key": "field_ol_lst_key_point_3",
+            "label": "핵심포인트 3",
+            "name": "listing_key_point_3",
+            "type": "group",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "layout": "block",
+            "sub_fields": [
+                {
+                    "key": "field_ol_lst_kp3_title",
+                    "label": "제목",
+                    "name": "kp3_title",
+                    "type": "text",
+                    "instructions": "",
+                    "required": 0,
+                    "conditional_logic": 0,
+                    "wrapper": {
+                        "width": "",
+                        "class": "",
+                        "id": ""
+                    },
+                    "readonly": 0
+                },
+                {
+                    "key": "field_ol_lst_kp3_desc",
+                    "label": "설명",
+                    "name": "kp3_desc",
+                    "type": "text",
+                    "instructions": "",
+                    "required": 0,
+                    "conditional_logic": 0,
+                    "wrapper": {
+                        "width": "",
+                        "class": "",
+                        "id": ""
+                    },
+                    "readonly": 0
+                }
+            ]
+        }
+    ],
+    "location": [
+        [
+            {
+                "param": "post_type",
+                "operator": "==",
+                "value": "listing"
+            }
+        ]
+    ],
+    "menu_order": 1,
+    "position": "normal",
+    "style": "default",
+    "label_placement": "top",
+    "instruction_placement": "label",
+    "hide_on_screen": "",
+    "active": true,
+    "description": "",
+    "show_in_rest": 0,
+    "modified": 1785233658
+}
