@@ -66,6 +66,27 @@ officeleasing-generatepress-child/
 `template-parts/contact-cta.php` 하단에 `do_action( 'olt_contact_lead_slot' )` 훅을 뒀습니다.
 추후 AI 선택형 대화창(Lead)은 별도 코드에서 이 훅에 버튼을 주입하면 되고, 지금 디자인은 그대로 유지됩니다.
 
+## 이미지 성능 최적화 (docs/IMAGE_PERFORMANCE_GUIDELINES.md 반영)
+
+`functions.php`에 용도별 이미지 크기 6종을 등록했습니다(`olt_register_image_sizes()`):
+
+| 크기 이름 | 치수 | crop | 용도 |
+|---|---|---|---|
+| `ol-building-thumb` | 480×640 | true | 빌딩/매물 카드 (building-card.php, listing-card.php) |
+| `ol-interior` | 600×400 | true | 상세페이지 갤러리 썸네일 (single-building.php) |
+| `ol-interior-large` | 900×600 | true | 등록만 함 - 현재 별도 "대표 내부사진" UI가 없어 미사용 |
+| `ol-map-thumb` | 240×180 | true | 등록만 함 - 지도는 정적 이미지가 아니라 **카카오맵 JS 캔버스**라 적용 대상 자체가 없음 |
+| `ol-hero-desktop` | 1600×800 | **false** | 상세페이지 대표 이미지(Hero), 데스크톱 |
+| `ol-hero-mobile` | 768×600 | **false** | 상세페이지 대표 이미지(Hero), 모바일(`<= 900px`) |
+
+**Hero 두 크기만 soft resize(crop=false)로 등록한 이유**: `.olx-gallery-main`(데스크톱 Hero 컨테이너)은 CSS에 고정 비율이 없고 `.olx-hero{align-items:stretch}`로 사이드 컬럼 높이에 맞춰 늘어나는 가변 박스입니다(고정 비율은 900px 이하에서만 `aspect-ratio:1.35`로 붙음). `.olx-gallery-main img`는 전 구간에서 `object-fit:cover`라 브라우저가 실제 박스에 맞춰 이미 잘라줍니다 — 서버에서 임의 비율(예: 2:1)로 미리 hard-crop하면 실제 렌더 박스와 어긋나 건물 파사드가 의도치 않은 지점에서 잘릴 위험이 있어 soft resize를 택했습니다.
+
+**Hero 구현**: `single-building.php`의 대표 이미지를 `<picture>` + `<source media="(max-width: 900px)">`로 데스크톱/모바일을 분리 전달합니다(별도 ACF 필드 추가 없이 WordPress가 생성한 파생 이미지만 사용). `fetchpriority="high"` + `loading` 속성 미출력(LCP 이미지이므로 lazy 미적용). `object-fit:cover`가 이미 있는 CSS에 `.olx-gallery-main picture{display:block;width:100%;height:100%}` 한 줄만 추가했습니다 — `<picture>`가 기본 `display:inline`이라 자식 `<img>`의 퍼센트 높이 계산 기준을 못 만들어주는 구조적 문제를 고치기 위함으로, 디자인 변경이 아닙니다.
+
+**`olt_collect_images()`**가 `$size` 파라미터를 받아 `$img['sizes'][$size]`를 반환하도록 바뀌었습니다(기존엔 `'large'` 고정 하드코딩). 모든 호출부가 용도에 맞는 크기를 명시적으로 지정합니다.
+
+**알려진 트레이드오프**: 상세페이지 갤러리 썸네일(`.olx-gallery-thumbs`)을 클릭하면 `single.js`가 그 썸네일 `<img>`의 `src`를 그대로 메인 Hero 자리에 복사해 확대 표시하는데, 썸네일 자체가 이제 `ol-interior`(600×400) 크기라 예전(대략 `large`, ~1024px 유도)보다 확대 시 화질이 다소 낮아집니다. 화질보다 속도를 우선하는 가이드라인에 따른 의도된 결과입니다.
+
 ## Sprint 02.5 (허브 SEO 스키마)
 - `taxonomy-office_region.php`의 브레드크럼에 **"홈" 크럼 추가**(이전엔 "사무실 임대"로 바로 시작 - `archive-building.php`와 불일치했고, 플러그인 `schema-hub.php`의 BreadcrumbList가 화면과 동일한 경로를 갖도록 맞춤).
 - `olt_archive_seo_intro()`/`olt_archive_faqs()`가 이제 플러그인의 `ol_default_archive_intro()`/`ol_default_archive_faqs()`를 우선 호출합니다(플러그인 비활성 시엔 기존처럼 자체 하드코딩 사본으로 폴백) — 화면 문구와 허브 스키마(FAQPage/CollectionPage) 문구가 항상 같은 소스를 쓰도록 통일. `taxonomy-office_region.php`의 `region_intro` 기본 폴백 문장도 같은 이유로 `ol_default_region_intro()`를 우선 호출하도록 변경(문구가 term 이름 스타일링 없이 원본 이름을 쓰도록 살짝 바뀜 - Core가 테마의 표시 헬퍼를 호출하지 않는다는 원칙 때문).

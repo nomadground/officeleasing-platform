@@ -87,9 +87,36 @@ $gallery_captions = array( '외관', '오피스', '라운지', '회의실', '', 
 <section class="olx-hero" aria-label="매물 핵심 정보">
 	<div class="olx-gallery">
 		<div class="olx-gallery-main">
-			<?php if ( ! empty( $gallery ) ) : ?>
-				<img src="<?php echo esc_url( $gallery[0]['url'] ); ?>" alt="<?php echo esc_attr( $gallery[0]['alt'] ?: $building_name . ' 외관' ); ?>" width="1400" height="900" fetchpriority="high" decoding="async">
-			<?php endif; ?>
+			<?php
+			// Hero(LCP) 이미지: docs/IMAGE_PERFORMANCE_GUIDELINES.md 기준 데스크톱/모바일 분리 전달.
+			// ol-hero-desktop/ol-hero-mobile은 soft resize(crop=false)로 등록돼 있다(functions.php 참고) -
+			// .olx-gallery-main img가 이미 object-fit:cover라 브라우저가 실제 박스에 맞춰 채워주므로,
+			// 서버에서 임의 비율로 미리 자르지 않고 <picture>로 뷰포트별 적절한 원본만 나눠 보낸다.
+			// lazy 미적용 + fetchpriority=high: 이 이미지가 페이지의 LCP 요소이기 때문(가이드라인 6장).
+			if ( ! empty( $gallery ) ) :
+				$hero_id  = (int) ( $gallery[0]['id'] ?? 0 );
+				$hero_alt = $gallery[0]['alt'] ?: $building_name . ' 외관';
+				if ( $hero_id ) :
+					$hero_mobile_src = wp_get_attachment_image_url( $hero_id, 'ol-hero-mobile' );
+					?>
+					<picture>
+						<?php if ( $hero_mobile_src ) : ?>
+							<source media="(max-width: 900px)" srcset="<?php echo esc_url( $hero_mobile_src ); ?>">
+						<?php endif; ?>
+						<?php
+						echo wp_get_attachment_image( $hero_id, 'ol-hero-desktop', false, array(
+							'alt'           => $hero_alt,
+							'fetchpriority' => 'high',
+							'decoding'      => 'async',
+							'loading'       => false,
+						) );
+						?>
+					</picture>
+				<?php else : ?>
+					<img src="<?php echo esc_url( $gallery[0]['url'] ); ?>" alt="<?php echo esc_attr( $hero_alt ); ?>" fetchpriority="high" decoding="async">
+				<?php endif;
+			endif;
+			?>
 			<?php
 			// [버그 수정] 썸네일은 최대 4개만 렌더(디자인 그리드 4열 고정)되므로, 인덱스 총계도
 			// 실제 갤러리 전체 개수(최대 8)가 아니라 "클릭 가능한 썸네일 수"와 일치시킨다.
