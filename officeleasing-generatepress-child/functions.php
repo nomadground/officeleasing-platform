@@ -100,8 +100,33 @@ function olt_theme_setup(): void {
 	) );
 	add_theme_support( 'post-thumbnails' );
 	add_theme_support( 'title-tag' );
+	olt_register_image_sizes();
 }
 add_action( 'after_setup_theme', 'olt_theme_setup' );
+
+/**
+ * docs/IMAGE_PERFORMANCE_GUIDELINES.md 기준 용도별 이미지 크기.
+ *
+ * 카드/썸네일 4종은 실제로 고정 비율 박스(.olx-card-img, .olx-gallery-thumbs button)에
+ * object-fit:cover로 들어가므로 hard crop(true)이 맞다.
+ *
+ * Hero(ol-hero-desktop/mobile)는 soft resize(false)로 등록한다 - crop=true를 쓰지 않는 이유:
+ *   1) .olx-gallery-main(데스크톱 Hero 컨테이너)은 officeleasing.css에 고정 aspect-ratio가 없다.
+ *      .olx-hero{align-items:stretch}로 사이드 컬럼 높이에 맞춰 늘어나는 가변 박스라, 특정 비율로
+ *      서버에서 미리 잘라두면 실제 렌더 박스와 어긋나 건물 파사드가 의도치 않게 잘릴 수 있다.
+ *      (아래 900px에서만 aspect-ratio:1.35 고정이 붙는다.)
+ *   2) `.olx-gallery-main img`가 이미 전 구간에서 object-fit:cover라, 브라우저가 어차피 실제 박스에
+ *      맞춰 잘라준다 - 서버 hard crop 없이도 화면에 빈틈/왜곡 없이 채워진다.
+ *   그래서 사진 원본은 그대로 두고 too-large 파일만 방지하는 최대 경계값으로 등록한다.
+ */
+function olt_register_image_sizes(): void {
+	add_image_size( 'ol-building-thumb', 480, 640, true );
+	add_image_size( 'ol-map-thumb', 240, 180, true );
+	add_image_size( 'ol-interior', 600, 400, true );
+	add_image_size( 'ol-interior-large', 900, 600, true );
+	add_image_size( 'ol-hero-desktop', 1600, 800, false );
+	add_image_size( 'ol-hero-mobile', 768, 600, false );
+}
 
 /**
  * officeleasing-core 플러그인 의존성 안내.
