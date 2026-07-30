@@ -288,6 +288,11 @@ final class HLF_Flyer_Repository {
 			'paged'          => $args['page'] ?? 1,
 			'orderby'        => 'date',
 			'order'          => 'DESC',
+			// 성능 감사: 이 목록은 total/페이지 수를 응답에 실어 보내지 않는다(REST 핸들러
+			// list_flyers()가 배열만 그대로 반환) — FOUND_ROWS() 계산이 아예 안 쓰이는데도 매번
+			// 돌고 있었다. HLF_Source_Listing_Repository::list()는 total을 실제로 쓰므로 그대로
+			// 둔다(그쪽만 켜 두는 이유).
+			'no_found_rows'  => true,
 		);
 		$posts = get_posts( $query );
 		// 페이지당 Flyer 수만큼 count_items()를 따로 부르는 대신(N+1) 한 번에 배치 계산한다.

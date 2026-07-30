@@ -1279,6 +1279,80 @@ Playwright로 실제 마크업(`.hlf-noc-chart-item`/`.hlf-noc-chart-bar`/`.hlf-
 확인했다(막대 바닥 120px, 라벨 상단 120.625px). `php tests/test-calculations.php`,
 `php tests/test-display-helpers.php` 통과(이번 라운드는 CSS만 변경).
 
+## 요청서 반영 — v0.4.0-beta.48 (외부 보안/안정성 감사 교차 검토 + 실제 경합 조건·REST 안정성 수정)
+
+GPT/Codex 두 외부 검토 의견을 받아 실제 코드와 교차 검증했다 — 이 코드베이스에는 이미 이전 라운드의
+"GPT 코드 감사 P0/P1" 대응(Flyer 번호 원자적 발급, 업로드 크기·해상도 제한, HLF 전용 업로드 스코프
+등)이 다수 반영돼 있었다. 이번에는 아직 남아 있던 진짜 경합 조건·REST 500 위험만 찾아 고쳤다 —
+점수/등급 형태의 의견은 그대로 받아들이지 않고, 각 항목을 실제 코드에서 재현 가능한지 확인한
+뒤에만 반영했다.
+
+### 1. 경합 조건(race condition) — 매물 추가/포함 시 상한·중복
+- `HLF_Flyer_Item_Service::prepare_item_creation()`(10개 상한 확인 + display_order 계산)과 실제
+  `wp_insert_post()` 사이에 잠금이 없었다 — 같은 Flyer에 동시에 "매물 추가"가 두 번 들어오면(더블
+  클릭, 여러 탭) 둘 다 "9개(<10개)"를 보고 통과해 11개가 되거나, 두 매물이 같은 display_order를
+  받을 수 있었다.
+- `HLF_Source_Listing_Repository::include_in_flyer()`도 "이미 포함됐는지" 확인과 Item 생성 사이에
+  같은 구조의 경합이 있어, 같은 원본 매물을 동시에 두 번 포함시키면 Item이 중복 생성될 수 있었다.
+- 수정: `HLF_Flyer_Item_Service::with_flyer_lock()`(신규)을 추가해 MySQL/MariaDB의 이름 붙은 락
+  (GET_LOCK/RELEASE_LOCK)으로 Flyer 하나에 대한 이 두 종류의 쓰기를 직렬화한다. 같은 PHP 요청 안의
+  중첩 호출은 재진입으로 인식해 다시 잠그지 않고(nested lock deadlock 자체가 발생할 수 없는 구조 —
+  한 요청은 항상 Flyer 하나만 잠근다), try/finally로 예외가 나도 반드시 해제한다. 락 획득이
+  타임아웃되면(다른 요청이 지금 이 Flyer를 쓰고 있음) 409로 명확히 알리고, GET_LOCK 자체를 못 쓰는
+  환경(테스트 더블 등)은 fail-open으로 락 없이 그대로 진행한다.
+- **실행 환경 제약**: 이 저장소에는 워드프레스·MySQL 런타임이 없어 GET_LOCK 경로 자체를 여기서
+  기동해 검증하지 못했다 — 정적 코드 검토만 수행했다. 실제 배포 환경(MySQL/MariaDB)에서 동시 요청
+  테스트가 필요하다.
+
+### 2. REST 응답 안정성 — 뮤테이션 직후 재조회 TypeError 방지
+`create_item`/`update_item`/`update_item_images`/`delete_item_image`/`create_source_listing`/
+`update_source_listing`/`update_source_images`/`delete_source_image`/`include_source_in_flyer`/
+`exclude_source_from_flyer`/`respond_flyer`(create_flyer·update_flyer·set_status가 공유) 등 여러
+핸들러가 저장/삭제가 끝난 "직후" 응답을 만들려고 `get_post()`를 다시 불렀다 — 그 사이 다른 요청이
+같은 대상을 지웠으면(경쟁 조건) `get_post()`는 null을 돌려주는데, 이 null을 그대로
+`WP_Post $x` 타입을 요구하는 각 Repository의 `to_array()`에 넘기면 잡히지 않는 TypeError로 500이
+난다. `HLF_REST_Controller::require_post()`(신규 헬퍼)로 이 지점들을 전부 통일해, 지워졌으면
+uncaught TypeError 대신 명확한 404 WP_Error를 돌려준다.
+
+### 3. 성능 — 안 쓰는 FOUND_ROWS() 계산 제거
+`HLF_Flyer_Repository::list()`(Dashboard/임대안내문 탭이 쓰는 Flyer 목록)는 REST 응답에 total/
+페이지 수를 전혀 싣지 않는데도(핸들러가 배열만 그대로 반환) 매번 `FOUND_ROWS()` 집계 쿼리를 함께
+돌리고 있었다 — `no_found_rows => true`를 추가했다. `HLF_Source_Listing_Repository::list()`는
+응답에 `total`을 실제로 쓰므로 그대로 둔다(그 파일의 다른 get_posts() 호출들은 이미 전부
+no_found_rows가 적용돼 있었다 — 이번에 새로 찾은 유일한 누락 지점).
+
+### 4. JavaScript — 오래된 검색 응답이 최신 결과를 덮어쓰는 경쟁
+`admin-listup.js`/`portal.js`의 "전체 매물"(`renderSourceList`)과 "포함 매물 관리"
+(`renderFlyerManage`) 화면은 검색/필터 변경마다 새 API 요청을 보내는데, 요청 완료 순서가 뒤바뀌면
+(느린 네트워크에서 먼저 보낸 요청이 나중에 응답) 오래된 결과가 화면에 이미 나와 있는 더 최신 결과를
+덮어쓸 수 있었다 — 같은 파일의 officeleasing 가져오기 검색(`runImportSearch`)과
+`admin-flyer-edit.js`의 주소 검색에는 이미 있던 요청-순번 가드(request sequence guard)를 이 두
+함수에도 추가했다.
+
+### 검토했지만 이미 정상이었던 항목(교차 검증 근거)
+- 모든 REST 라우트에 `permission_callback`이 있음을 재확인(`class-hlf-rest-controller.php`
+  전수 검토) — 누락 없음.
+- Flyer 번호(`assign_flyer_number`/`next_daily_sequence`)와 item_number(`next_sequence`)는 이미
+  MySQL `LAST_INSERT_ID(expr)` 원자적 증가 패턴으로 동시 생성/더블클릭에 안전함(이전 라운드
+  "GPT 코드 감사 P1#8" 대응) — 추가 수정 불필요.
+- 이미지 업로드 크기(12MB)·해상도(10000px) 제한, `getimagesize()`로 실제 이미지 헤더 검증(확장자
+  위장 방지), HLF 전용 업로드로 스코프 제한(`hlf_upload` 플래그) — 이미 반영돼 있음(이전 라운드
+  "GPT 코드 감사 P0#1/P0#2" 대응).
+- 모든 `$wpdb->query()`/`get_var()` raw SQL은 이미 `$wpdb->prepare()`를 거침 — SQL 인젝션 없음.
+- 이미지 접근 권한(`set_images()`가 새로 추가되는 attachment ID에만 `read_post` 재확인), archived
+  Flyer 쓰기 차단(`assert_not_archived`) — 이미 정상 동작.
+- redirect 처리 코드 자체가 없어(open redirect 표면 없음), 소스에 하드코딩된 키/비밀번호 없음(카카오
+  API 키는 `wp-config.php`의 `HLF_KAKAO_REST_API_KEY` 상수로만 주입).
+- `HLF_Source_Listing_Repository`의 다른 `get_posts()` 호출들은 이미 전부 `no_found_rows`가 적용돼
+  있었음.
+
+### 검증
+`php -l`을 저장소의 모든 PHP 파일에, `node --check`를 모든 JS 파일에 실행(전부 통과).
+`php tests/test-calculations.php`, `php tests/test-display-helpers.php` 통과. 이 저장소에는
+워드프레스/MySQL 런타임이 없어 REST 엔드포인트·동시 요청·GET_LOCK 경로 자체는 이 환경에서 직접
+기동해 검증하지 못했다 — 정적 코드 검토(타입/로직/edge case)만 수행했으며, 실제 배포 환경에서의
+통합/동시성 테스트가 필요하다.
+
 ## 후속 단계에서 제외
 AI 이미지 적합성 판별, 워터마크 제거/자동 보정, 얼굴·번호판 블러, 이미지 Drag & Drop/크롭 편집기,
 이미지 순서 변경(위/아래) UI, officeleasing 원본 이미지 자동 동기화, PDF 생성, 인쇄 밀도별 레이아웃,

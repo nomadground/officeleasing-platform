@@ -256,57 +256,63 @@ final class HLF_Source_Listing_Repository {
 	 * @return int|WP_Error 생성(또는 기존) Item ID.
 	 */
 	public static function include_in_flyer( int $flyer_id, int $source_id ) {
-		$source = self::get( $source_id );
-		if ( ! $source ) {
-			return new WP_Error( 'hlf_source_not_found', '매물을 찾을 수 없습니다.', array( 'status' => 404 ) );
-		}
-
-		$existing = self::items_for_source_in_flyer( $flyer_id, $source_id );
-		if ( $existing ) {
-			return (int) $existing[0];
-		}
-
-		// 원본의 현재 값(쓰기 가능 필드만) + 이미지 필드를 스냅샷으로 복사한다.
-		$source_data = HLF_Meta_Schema::read_source( $source_id );
-		$fields      = array();
-		foreach ( HLF_Meta_Schema::source_writable_fields() as $key ) {
-			if ( array_key_exists( $key, $source_data ) ) {
-				$fields[ $key ] = $source_data[ $key ];
+		// 동시성 안정화 감사 대응: "이미 포함됐는지" 확인과 실제 Item 생성 사이에 다른 요청이 끼어들면
+		// 같은 원본이 같은 Flyer에 중복 생성될 수 있다 — Flyer 단위 락으로 통째로 감싼다
+		// (HLF_Flyer_Item_Service::with_flyer_lock). 아래 create_item() 호출은 같은 요청 안에서 이
+		// 락을 재진입으로 인식해 다시 잠그려 하지 않는다.
+		return HLF_Flyer_Item_Service::with_flyer_lock( $flyer_id, function () use ( $flyer_id, $source_id ) {
+			$source = self::get( $source_id );
+			if ( ! $source ) {
+				return new WP_Error( 'hlf_source_not_found', '매물을 찾을 수 없습니다.', array( 'status' => 404 ) );
 			}
-		}
 
-		$item_id = HLF_Item_Repository::create_item( $flyer_id, $fields );
-		if ( is_wp_error( $item_id ) ) {
-			return $item_id;
-		}
-		$item_id = (int) $item_id;
+			$existing = self::items_for_source_in_flyer( $flyer_id, $source_id );
+			if ( $existing ) {
+				return (int) $existing[0];
+			}
 
-		// 이미지도 그대로 복사(같은 attachment ID를 참조 — 파일 복제 없음, Item 이미지 규칙과 동일).
-		// 반환값을 반드시 확인한다 — 예전에는 실패해도 무시하고 넘어가, 사진이 있는 원본을 포함했는데도
-		// 새 Item에 사진이 하나도 안 들어간 채 "포함 성공"으로 응답이 나가는 문제가 있었다(예: 새로
-		// 생성된 Item은 기존 이미지가 없어 set_images()가 모든 요청 ID를 "새로 추가되는" 것으로 보고
-		// read_post 권한을 검사하는데, 이게 실패해도 여기서 조용히 삼켜졌다). 실패하면 방금 만든 Item을
-		// 정리하고(아래 source_listing_id 기록 실패와 동일한 orphan cleanup) 에러를 그대로 올린다.
-		$exterior = (int) ( $source_data['exterior_image_id'] ?? 0 );
-		$interior = is_array( $source_data['interior_image_ids'] ?? null ) ? $source_data['interior_image_ids'] : array();
-		if ( $exterior > 0 || ! empty( $interior ) ) {
-			$images_result = HLF_Item_Repository::set_images( $flyer_id, $item_id, $exterior, $interior );
-			if ( is_wp_error( $images_result ) ) {
+			// 원본의 현재 값(쓰기 가능 필드만) + 이미지 필드를 스냅샷으로 복사한다.
+			$source_data = HLF_Meta_Schema::read_source( $source_id );
+			$fields      = array();
+			foreach ( HLF_Meta_Schema::source_writable_fields() as $key ) {
+				if ( array_key_exists( $key, $source_data ) ) {
+					$fields[ $key ] = $source_data[ $key ];
+				}
+			}
+
+			$item_id = HLF_Item_Repository::create_item( $flyer_id, $fields );
+			if ( is_wp_error( $item_id ) ) {
+				return $item_id;
+			}
+			$item_id = (int) $item_id;
+
+			// 이미지도 그대로 복사(같은 attachment ID를 참조 — 파일 복제 없음, Item 이미지 규칙과 동일).
+			// 반환값을 반드시 확인한다 — 예전에는 실패해도 무시하고 넘어가, 사진이 있는 원본을 포함했는데도
+			// 새 Item에 사진이 하나도 안 들어간 채 "포함 성공"으로 응답이 나가는 문제가 있었다(예: 새로
+			// 생성된 Item은 기존 이미지가 없어 set_images()가 모든 요청 ID를 "새로 추가되는" 것으로 보고
+			// read_post 권한을 검사하는데, 이게 실패해도 여기서 조용히 삼켜졌다). 실패하면 방금 만든 Item을
+			// 정리하고(아래 source_listing_id 기록 실패와 동일한 orphan cleanup) 에러를 그대로 올린다.
+			$exterior = (int) ( $source_data['exterior_image_id'] ?? 0 );
+			$interior = is_array( $source_data['interior_image_ids'] ?? null ) ? $source_data['interior_image_ids'] : array();
+			if ( $exterior > 0 || ! empty( $interior ) ) {
+				$images_result = HLF_Item_Repository::set_images( $flyer_id, $item_id, $exterior, $interior );
+				if ( is_wp_error( $images_result ) ) {
+					HLF_Item_Repository::delete_item( $flyer_id, $item_id );
+					return $images_result;
+				}
+			}
+
+			// 출처 기록(역참조용). 실패하면 방금 만든 Item을 정리해 반쪽짜리 상태를 남기지 않는다
+			// (officeleasing import service와 동일한 orphan cleanup).
+			$linked = HLF_Item_Repository::set_source_listing_id( $item_id, $source_id );
+			if ( is_wp_error( $linked ) ) {
 				HLF_Item_Repository::delete_item( $flyer_id, $item_id );
-				return $images_result;
+				return $linked;
 			}
-		}
 
-		// 출처 기록(역참조용). 실패하면 방금 만든 Item을 정리해 반쪽짜리 상태를 남기지 않는다
-		// (officeleasing import service와 동일한 orphan cleanup).
-		$linked = HLF_Item_Repository::set_source_listing_id( $item_id, $source_id );
-		if ( is_wp_error( $linked ) ) {
-			HLF_Item_Repository::delete_item( $flyer_id, $item_id );
-			return $linked;
-		}
-
-		self::invalidate_stats_cache();
-		return $item_id;
+			self::invalidate_stats_cache();
+			return $item_id;
+		} );
 	}
 
 	/**

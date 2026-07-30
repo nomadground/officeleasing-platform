@@ -238,6 +238,11 @@
 		{ key: 'unlinked', label: '미연결' }
 	];
 
+	// 보안/안정성 감사 대응: 검색/필터를 빠르게 연달아 바꾸면 여러 renderSourceList() 호출이 동시에
+	// 진행 중일 수 있다 — 먼저 시작했지만 응답이 늦게 온 요청이 이미 화면의 더 최신 결과를 나중에
+	// 덮어쓰지 않도록 요청-순번 가드를 둔다(renderFlyerManage()와 같은 원칙).
+	var sourceListSeq = 0;
+
 	// contact가 undefined면(탭을 처음 열 때) 담당자 디렉터리를 먼저 읽어 기본 담당자로 한 번
 	// 재호출한다 — 목록이 커질수록 전체를 한꺼번에 그리는 게 느려지므로, 기본값은 "내 매물"만
 	// 먼저 보여주고 "전체 보기"를 눌러야 전부 나오게 한다(요청서).
@@ -248,6 +253,7 @@
 			return;
 		}
 		showAll = !! showAll;
+		var requestId = ++sourceListSeq;
 		var el = main();
 		el.innerHTML =
 			'<div class="hlf-listup-head">' +
@@ -303,8 +309,12 @@
 		q += '' !== filter ? ( '&linked=' + encodeURIComponent( filter ) ) : '';
 		q += ( ! showAll && contact ) ? ( '&contact=' + encodeURIComponent( contact ) ) : '';
 		api( 'source-listings?per_page=100' + q ).then( function ( data ) {
+			if ( requestId !== sourceListSeq ) { return; } // 더 최신 호출이 이미 나가 있음 — 이 응답은 버린다.
 			renderSourceTable( data.items || [] );
-		} ).catch( function ( err ) { errorText( document.getElementById( 'hlf-src-results' ), '목록을 불러오지 못했습니다: ' + err.message ); } );
+		} ).catch( function ( err ) {
+			if ( requestId !== sourceListSeq ) { return; }
+			errorText( document.getElementById( 'hlf-src-results' ), '목록을 불러오지 못했습니다: ' + err.message );
+		} );
 	}
 
 	function renderSourceTable( items ) {
@@ -1080,12 +1090,19 @@
 
 	// contact/showAll: renderSourceList와 같은 이유(요청서) — 기본값은 담당자 디렉터리의 기본
 	// 담당자("나") 매물만 후보로 먼저 보여주고, "전체 보기"를 눌러야 전체 후보가 나온다.
+	// 보안/안정성 감사 대응: 검색/필터를 빠르게 연달아 바꾸면(엔터 두 번, 필터 클릭 직후 다시 클릭 등)
+	// 여러 renderFlyerManage() 호출이 동시에 진행 중일 수 있다 — 그중 먼저 시작했지만 응답이 늦게 온
+	// 요청이 이미 화면에 나와 있는 더 최신 결과를 나중에 덮어쓸 수 있다(admin-flyer-edit.js
+	// 주소검색/officeleasing 가져오기 검색에 이미 있는 것과 같은 요청-순번 가드를 여기에도 둔다).
+	var flyerManageSeq = 0;
+
 	function renderFlyerManage( flyerId, searchTerm, contact, showAll ) {
 		if ( undefined === contact ) {
 			loadContacts( function ( dir ) { renderFlyerManage( flyerId, searchTerm, preferredContactName( dir ), false ); } );
 			return;
 		}
 		showAll = !! showAll;
+		var requestId = ++flyerManageSeq;
 		var el = main();
 		el.innerHTML = '<p class="hlf-admin-loading">불러오는 중…</p>';
 		// 성능(GPT/Codex 코드 감사): source-listings 목록 쿼리는 flyer 상세 응답 값을 전혀 쓰지 않는데도
@@ -1095,6 +1112,7 @@
 		q += ( ! showAll && contact ) ? ( '&contact=' + encodeURIComponent( contact ) ) : '';
 		var sourceListingsPromise = api( 'source-listings?per_page=100' + q );
 		api( 'flyers/' + flyerId ).then( function ( flyer ) {
+			if ( requestId !== flyerManageSeq ) { return; } // 더 최신 호출이 이미 나가 있음 — 이 응답은 버린다.
 			el.innerHTML =
 				'<div class="hlf-listup-head">' +
 					'<h2 class="hlf-listup-title">포함 매물 관리 — ' + esc( flyer.title || flyer.flyer_number ) + '</h2>' +
@@ -1131,9 +1149,16 @@
 			renderIncludedSummary( flyer );
 
 			sourceListingsPromise.then( function ( data ) {
+				if ( requestId !== flyerManageSeq ) { return; }
 				renderManageResults( flyer, data.items || [] );
-			} ).catch( function ( err ) { errorText( document.getElementById( 'hlf-fm-results' ), '원본 매물을 불러오지 못했습니다: ' + err.message ); } );
-		} ).catch( function ( err ) { errorText( el, '안내문을 불러오지 못했습니다: ' + err.message ); } );
+			} ).catch( function ( err ) {
+				if ( requestId !== flyerManageSeq ) { return; }
+				errorText( document.getElementById( 'hlf-fm-results' ), '원본 매물을 불러오지 못했습니다: ' + err.message );
+			} );
+		} ).catch( function ( err ) {
+			if ( requestId !== flyerManageSeq ) { return; }
+			errorText( el, '안내문을 불러오지 못했습니다: ' + err.message );
+		} );
 	}
 
 	function renderIncludedSummary( flyer ) {

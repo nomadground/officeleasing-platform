@@ -136,33 +136,39 @@ final class HLF_Item_Repository {
 	}
 
 	public static function create_item( int $flyer_id, array $fields ): int|WP_Error {
-		// "이 Flyer가 새 Item을 받아도 되는가"(보관 가드 + 10개 상한)와 display_order 계산은
-		// HLF_Flyer_Item_Service가 조정한다 — Item_Repository는 실제 포스트 생성/필드 저장만 맡는다.
-		$prep = HLF_Flyer_Item_Service::prepare_item_creation( $flyer_id );
-		if ( is_wp_error( $prep ) ) {
-			return $prep;
-		}
-		$next_display_order = $prep['next_display_order'];
+		// 동시성 안정화 감사 대응: "이 Flyer가 새 Item을 받아도 되는가"(보관 가드 + 10개 상한) 확인과
+		// 실제 생성(wp_insert_post) 사이에 다른 요청이 끼어들지 못하게 Flyer 단위 락으로 감싼다
+		// (HLF_Flyer_Item_Service::with_flyer_lock 참고 — 두 요청이 동시에 "9개(<10)"를 보고 통과해
+		// 11개가 되거나, display_order가 중복되는 경합을 막는다).
+		return HLF_Flyer_Item_Service::with_flyer_lock( $flyer_id, function () use ( $flyer_id, $fields ) {
+			// "이 Flyer가 새 Item을 받아도 되는가"(보관 가드 + 10개 상한)와 display_order 계산은
+			// HLF_Flyer_Item_Service가 조정한다 — Item_Repository는 실제 포스트 생성/필드 저장만 맡는다.
+			$prep = HLF_Flyer_Item_Service::prepare_item_creation( $flyer_id );
+			if ( is_wp_error( $prep ) ) {
+				return $prep;
+			}
+			$next_display_order = $prep['next_display_order'];
 
-		$item_id = wp_insert_post( array(
-			'post_type'   => HLF_Post_Types::ITEM,
-			'post_parent' => $flyer_id,
-			'post_status' => 'publish',
-			'post_title'  => sanitize_text_field( $fields['road_address'] ?? $fields['lot_address'] ?? ( 'Flyer ' . $flyer_id . ' 항목' ) ),
-		), true );
+			$item_id = wp_insert_post( array(
+				'post_type'   => HLF_Post_Types::ITEM,
+				'post_parent' => $flyer_id,
+				'post_status' => 'publish',
+				'post_title'  => sanitize_text_field( $fields['road_address'] ?? $fields['lot_address'] ?? ( 'Flyer ' . $flyer_id . ' 항목' ) ),
+			), true );
 
-		if ( is_wp_error( $item_id ) ) {
+			if ( is_wp_error( $item_id ) ) {
+				return $item_id;
+			}
+			$item_id = (int) $item_id;
+
+			// 불변 item_number(원자적) + display_order(맨 뒤, 위에서 미리 계산한 값).
+			$seq = self::next_sequence( $flyer_id );
+			update_post_meta( $item_id, 'item_number', self::format_item_number( $seq ) );
+			update_post_meta( $item_id, 'display_order', $next_display_order );
+
+			self::apply_fields( $item_id, $fields );
 			return $item_id;
-		}
-		$item_id = (int) $item_id;
-
-		// 불변 item_number(원자적) + display_order(맨 뒤, 위에서 미리 계산한 값).
-		$seq = self::next_sequence( $flyer_id );
-		update_post_meta( $item_id, 'item_number', self::format_item_number( $seq ) );
-		update_post_meta( $item_id, 'display_order', $next_display_order );
-
-		self::apply_fields( $item_id, $fields );
-		return $item_id;
+		} );
 	}
 
 	public static function update_item( int $flyer_id, int $item_id, array $fields ): int|WP_Error {

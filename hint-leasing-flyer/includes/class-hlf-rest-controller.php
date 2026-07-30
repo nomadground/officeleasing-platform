@@ -402,7 +402,11 @@ final class HLF_REST_Controller {
 		if ( is_wp_error( $item_id ) ) {
 			return $item_id;
 		}
-		return rest_ensure_response( HLF_Item_Repository::to_array( get_post( $item_id ) ) );
+		$item = self::require_post( (int) $item_id, HLF_Post_Types::ITEM, '매물을 찾을 수 없습니다.' );
+		if ( is_wp_error( $item ) ) {
+			return $item;
+		}
+		return rest_ensure_response( HLF_Item_Repository::to_array( $item ) );
 	}
 
 	public static function update_item( WP_REST_Request $request ) {
@@ -410,7 +414,11 @@ final class HLF_REST_Controller {
 		if ( is_wp_error( $result ) ) {
 			return $result;
 		}
-		return rest_ensure_response( HLF_Item_Repository::to_array( get_post( (int) $request['item_id'] ) ) );
+		$item = self::require_post( (int) $request['item_id'], HLF_Post_Types::ITEM, '매물을 찾을 수 없습니다.' );
+		if ( is_wp_error( $item ) ) {
+			return $item;
+		}
+		return rest_ensure_response( HLF_Item_Repository::to_array( $item ) );
 	}
 
 	public static function delete_item( WP_REST_Request $request ) {
@@ -472,7 +480,11 @@ final class HLF_REST_Controller {
 			return $item_id;
 		}
 
-		$response = rest_ensure_response( HLF_Item_Repository::to_array( get_post( $item_id ) ) );
+		$item = self::require_post( (int) $item_id, HLF_Post_Types::ITEM, '매물을 찾을 수 없습니다.' );
+		if ( is_wp_error( $item ) ) {
+			return $item;
+		}
+		$response = rest_ensure_response( HLF_Item_Repository::to_array( $item ) );
 		$response->set_status( 201 );
 		return $response;
 	}
@@ -495,7 +507,11 @@ final class HLF_REST_Controller {
 			return $source_id;
 		}
 
-		$response = rest_ensure_response( HLF_Source_Listing_Repository::to_array( get_post( $source_id ) ) );
+		$source = self::require_post( (int) $source_id, HLF_Post_Types::SOURCE, '매물을 찾을 수 없습니다.' );
+		if ( is_wp_error( $source ) ) {
+			return $source;
+		}
+		$response = rest_ensure_response( HLF_Source_Listing_Repository::to_array( $source ) );
 		$response->set_status( 201 );
 		return $response;
 	}
@@ -515,7 +531,11 @@ final class HLF_REST_Controller {
 		if ( is_wp_error( $result ) ) {
 			return $result;
 		}
-		return rest_ensure_response( HLF_Item_Repository::to_array( get_post( $item_id ) ) );
+		$item = self::require_post( $item_id, HLF_Post_Types::ITEM, '매물을 찾을 수 없습니다.' );
+		if ( is_wp_error( $item ) ) {
+			return $item;
+		}
+		return rest_ensure_response( HLF_Item_Repository::to_array( $item ) );
 	}
 
 	/** 이미지 하나를 이 Item에서 뗀다(Item 필드에서만 제거 — Attachment 자체는 삭제하지 않는다,
@@ -529,7 +549,11 @@ final class HLF_REST_Controller {
 		if ( is_wp_error( $result ) ) {
 			return $result;
 		}
-		return rest_ensure_response( HLF_Item_Repository::to_array( get_post( $item_id ) ) );
+		$item = self::require_post( $item_id, HLF_Post_Types::ITEM, '매물을 찾을 수 없습니다.' );
+		if ( is_wp_error( $item ) ) {
+			return $item;
+		}
+		return rest_ensure_response( HLF_Item_Repository::to_array( $item ) );
 	}
 
 	/* ---------------- 카카오 주소 검색 ---------------- */
@@ -678,7 +702,11 @@ final class HLF_REST_Controller {
 		if ( is_wp_error( $source_id ) ) {
 			return $source_id;
 		}
-		$response = rest_ensure_response( HLF_Source_Listing_Repository::to_array( get_post( $source_id ) ) );
+		$source = self::require_post( (int) $source_id, HLF_Post_Types::SOURCE, '매물을 찾을 수 없습니다.' );
+		if ( is_wp_error( $source ) ) {
+			return $source;
+		}
+		$response = rest_ensure_response( HLF_Source_Listing_Repository::to_array( $source ) );
 		$response->set_status( 201 );
 		return $response;
 	}
@@ -696,7 +724,11 @@ final class HLF_REST_Controller {
 		if ( is_wp_error( $result ) ) {
 			return $result;
 		}
-		return rest_ensure_response( HLF_Source_Listing_Repository::to_array( get_post( (int) $request['source_id'] ) ) );
+		$source = self::require_post( (int) $request['source_id'], HLF_Post_Types::SOURCE, '매물을 찾을 수 없습니다.' );
+		if ( is_wp_error( $source ) ) {
+			return $source;
+		}
+		return rest_ensure_response( HLF_Source_Listing_Repository::to_array( $source ) );
 	}
 
 	public static function delete_source_listing( WP_REST_Request $request ) {
@@ -717,7 +749,11 @@ final class HLF_REST_Controller {
 		if ( is_wp_error( $result ) ) {
 			return $result;
 		}
-		return rest_ensure_response( HLF_Source_Listing_Repository::to_array( get_post( $source_id ) ) );
+		$source = self::require_post( $source_id, HLF_Post_Types::SOURCE, '매물을 찾을 수 없습니다.' );
+		if ( is_wp_error( $source ) ) {
+			return $source;
+		}
+		return rest_ensure_response( HLF_Source_Listing_Repository::to_array( $source ) );
 	}
 
 	public static function delete_source_image( WP_REST_Request $request ) {
@@ -726,7 +762,11 @@ final class HLF_REST_Controller {
 		if ( is_wp_error( $result ) ) {
 			return $result;
 		}
-		return rest_ensure_response( HLF_Source_Listing_Repository::to_array( get_post( $source_id ) ) );
+		$source = self::require_post( $source_id, HLF_Post_Types::SOURCE, '매물을 찾을 수 없습니다.' );
+		if ( is_wp_error( $source ) ) {
+			return $source;
+		}
+		return rest_ensure_response( HLF_Source_Listing_Repository::to_array( $source ) );
 	}
 
 	/* ---------------- Flyer ↔ 원본 매물 포함/해제 ---------------- */
@@ -738,10 +778,18 @@ final class HLF_REST_Controller {
 		if ( is_wp_error( $result ) ) {
 			return $result;
 		}
+		$item = self::require_post( (int) $result, HLF_Post_Types::ITEM, '매물을 찾을 수 없습니다.' );
+		if ( is_wp_error( $item ) ) {
+			return $item;
+		}
+		$source = self::require_post( $source_id, HLF_Post_Types::SOURCE, '원본 매물을 찾을 수 없습니다.' );
+		if ( is_wp_error( $source ) ) {
+			return $source;
+		}
 		return rest_ensure_response( array(
 			'included' => true,
-			'item'     => HLF_Item_Repository::to_array( get_post( (int) $result ) ),
-			'source'   => HLF_Source_Listing_Repository::to_array( get_post( $source_id ) ),
+			'item'     => HLF_Item_Repository::to_array( $item ),
+			'source'   => HLF_Source_Listing_Repository::to_array( $source ),
 		) );
 	}
 
@@ -752,10 +800,14 @@ final class HLF_REST_Controller {
 		if ( is_wp_error( $result ) ) {
 			return $result;
 		}
+		$source = self::require_post( $source_id, HLF_Post_Types::SOURCE, '원본 매물을 찾을 수 없습니다.' );
+		if ( is_wp_error( $source ) ) {
+			return $source;
+		}
 		return rest_ensure_response( array(
 			'included' => false,
 			'removed'  => (int) $result,
-			'source'   => HLF_Source_Listing_Repository::to_array( get_post( $source_id ) ),
+			'source'   => HLF_Source_Listing_Repository::to_array( $source ),
 		) );
 	}
 
@@ -873,8 +925,28 @@ final class HLF_REST_Controller {
 		return $out;
 	}
 
+	/**
+	 * 동시성/안정성 감사 대응: mutation이 성공한 "직후" 응답을 만들려고 다시 get_post()를 부르는
+	 * 지점이 여러 곳 있다(respond_flyer, update_item, update_item_images, update_source_listing,
+	 * include_source_in_flyer 등) — 그 사이 다른 요청이 같은 대상을 지웠으면(경쟁 조건) get_post()가
+	 * null을 돌려주는데, 이 null을 그대로 WP_Post 타입을 요구하는 각 Repository::to_array()에 넘기면
+	 * 잡히지 않는 TypeError로 500이 난다. 여기서 한 번에 null/타입 불일치를 검사해, 지워졌으면
+	 * uncaught TypeError 대신 명확한 404 WP_Error를 돌려준다.
+	 */
+	private static function require_post( int $id, string $post_type, string $not_found_message ) {
+		$post = $id > 0 ? get_post( $id ) : null;
+		if ( ! $post || $post_type !== $post->post_type ) {
+			return new WP_Error( 'hlf_not_found', $not_found_message, array( 'status' => 404 ) );
+		}
+		return $post;
+	}
+
 	private static function respond_flyer( int $flyer_id, int $status = 200 ) {
-		$response = rest_ensure_response( HLF_Flyer_Repository::to_array( get_post( $flyer_id ) ) );
+		$flyer = self::require_post( $flyer_id, HLF_Post_Types::FLYER, 'Flyer를 찾을 수 없습니다.' );
+		if ( is_wp_error( $flyer ) ) {
+			return $flyer;
+		}
+		$response = rest_ensure_response( HLF_Flyer_Repository::to_array( $flyer ) );
 		$response->set_status( $status );
 		return $response;
 	}
