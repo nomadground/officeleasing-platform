@@ -20,7 +20,7 @@
 |---|---|
 | `officeleasing-core` | `officeleasing-core.php` 헤더에 `Requires Plugins: advanced-custom-fields` 명시 — **ACF(무료) 없이는 워드프레스가 활성화 자체를 막는다**(WP 6.5+ 기능). |
 | `officeleasing-generatepress-child` | `style.css` 헤더에 `Template: generatepress` — **GeneratePress 부모 테마가 `wp-content/themes/`에 설치돼 있어야** 자식 테마를 활성화할 수 있다(부모 테마 자체를 "활성" 상태로 둘 필요는 없음, 자식 테마 활성화가 곧 전환). |
-| `hint-leasing-flyer` | 플러그인 헤더에 명시: **"officeleasing-core에 의존하지 않고 단독 동작한다."** 데이터 접근은 전부 `get_post_meta()`/`register_post_meta()` 네이티브 함수만 쓴다. 단, `class-hlf-officeleasing-mapper.php`의 "officeleasing에서 가져오기" 기능만 `get_field()`로 building/listing ACF 데이터를 **읽어온다** — 이 한 기능만 officeleasing-core + ACF가 활성 상태여야 정상 동작한다(없으면 빈 값으로 매핑될 뿐 fatal은 아님). |
+| `hint-leasing-flyer` | 플러그인 헤더에 명시: **"officeleasing-core에 의존하지 않고 단독 동작한다."** 데이터 접근은 전부 `get_post_meta()`/`register_post_meta()` 네이티브 함수만 쓴다. 단, `class-hlf-officeleasing-mapper.php`의 "officeleasing에서 가져오기" 기능만 `get_field()`로 building/listing ACF 데이터를 **읽어온다** — 이 한 기능만 officeleasing-core + ACF가 활성 상태여야 정상 동작한다. 실제 코드 확인 결과, 없을 경우 빈 값으로 조용히 매핑되는 게 아니라 `function_exists('get_field') && post_type_exists('listing') && post_type_exists('building')` 가용성 체크를 통과하지 못하면 `new WP_Error('hlf_core_unavailable', ...)`를 즉시 반환한다(fatal은 아니지만 명시적 에러 반환이지 "빈 값 매핑"이 아님). |
 
 **권장 설치·활성화 순서:**
 
@@ -63,7 +63,10 @@
 
 ## 4. rewrite flush 필요 시점
 
-세 구성요소 모두 "버전 옵션 비교 → 최초 1회만 자동 flush" 패턴을 쓴다. 즉 **정상적인 신규 설치·활성화라면
+`officeleasing-core`와 `hint-leasing-flyer` 두 플러그인은 "버전 옵션 비교 → 최초 1회만 자동 flush" 패턴을
+쓴다. **`officeleasing-generatepress-child` 테마에는 rewrite flush 로직 자체가 없다**(코드 확인:
+`grep -rn "flush_rewrite_rules" officeleasing-generatepress-child` 결과 0건) — 테마는 rewrite 규칙을
+직접 등록하지 않으므로 flush도 필요 없다. 즉 **정상적인 신규 설치·활성화라면(두 플러그인 기준)
 수동 flush가 필요 없어야 한다.** 다만 아래 시점에서는 확인이 필요하다.
 
 | 트리거 | 위치 | 자동 flush 여부 |
