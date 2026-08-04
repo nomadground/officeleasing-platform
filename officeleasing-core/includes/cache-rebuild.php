@@ -65,7 +65,7 @@ function ol_render_rebuild_cache_notice() {
     }
     $url = wp_nonce_url(admin_url('admin-post.php?action=ol_rebuild_cache'), 'ol_rebuild_cache');
     printf(
-        '<div class="notice notice-info"><p>매물 집계 캐시(활성매물수·면적범위·최저임대료)가 실제 데이터와 안 맞아 보이면 '
+        '<div class="notice notice-info"><p>매물 집계 캐시(활성매물수·층수/면적/보증금/임대료/관리비 범위)가 실제 데이터와 안 맞아 보이면 '
             . '<a href="%s">지금 전체 재생성</a>할 수 있습니다. 플러그인 설치 직후나 대량 데이터 입력 후 1회 실행을 권장합니다.</p></div>',
         esc_url($url)
     );

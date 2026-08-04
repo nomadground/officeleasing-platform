@@ -71,5 +71,16 @@ $fail += !ol_assert('층수 추출 - 지하 범위 표기도 미지원(null)', o
 $fail += !ol_assert('층수 추출 - 지하/지상 혼합 범위도 미지원(null)', ol_extract_floor_number('지하1층~지상2층'), null, 0) ? 1 : 0;
 $fail += !ol_assert('층수 추출 - 숫자 없음', ol_extract_floor_number('저층부'), null, 0) ? 1 : 0;
 $fail += !ol_assert('층수 추출 - 빈 값', ol_extract_floor_number(''), null, 0) ? 1 : 0;
+
+// 보증금/임대료/관리비: "저장된 적 없음"과 "0으로 저장됨"을 구분해야 building-cache.php의 min/max
+// 범위 집계에서 0원 조건의 매물이 조용히 빠지지 않는다(group_ol_listing.json 기준 required=1 + min=0
+// 이라 0은 관리자가 실제로 고를 수 있는 유효한 값 - "관리비 없음" 등).
+$fail += !ol_assert('금액 필드 - 저장된 적 없음(null)', ol_money_field_value(null), null, 0) ? 1 : 0;
+$fail += !ol_assert('금액 필드 - 저장된 적 없음(false)', ol_money_field_value(false), null, 0) ? 1 : 0;
+$fail += !ol_assert('금액 필드 - 저장된 적 없음(빈 문자열)', ol_money_field_value(''), null, 0) ? 1 : 0;
+$fail += !ol_assert('금액 필드 - 명시적 0은 유효값', ol_money_field_value(0), 0.0, 0) ? 1 : 0;
+$fail += !ol_assert('금액 필드 - 문자열 "0"도 유효값', ol_money_field_value('0'), 0.0, 0) ? 1 : 0;
+$fail += !ol_assert('금액 필드 - 정상 금액', ol_money_field_value(500000), 500000.0, 0) ? 1 : 0;
+
 echo $fail === 0 ? "\n전체 통과\n" : "\n실패 {$fail}건\n";
 exit($fail === 0 ? 0 : 1);

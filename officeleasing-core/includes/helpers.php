@@ -8,6 +8,21 @@ if (!defined('OL_PYEONG_TO_SQM')) {
     define('OL_PYEONG_TO_SQM', 3.3058);
 }
 
+/**
+ * get_field()로 읽은 보증금/임대료/관리비 원시값에서 "저장된 적 없음"과 "0으로 저장됨"을 구분한다.
+ * group_ol_listing.json 기준 deposit_manwon/monthly_rent_manwon/maintenance_fee_manwon은 전부
+ * required=1 + min=0 - 즉 0은 관리자가 실제로 고를 수 있는 유효한 값이다(관리비 없음/보증금 없음
+ * 조건 등). ACF는 값이 한 번도 저장된 적 없는 필드는 null/false/''를 반환하므로, 그 경우에만 null을
+ * 반환해 "집계에서 제외"로 처리하고 그 외에는 0을 포함한 실제 숫자를 그대로 반환한다.
+ * ol_calc_*류처럼 워드프레스 함수를 쓰지 않으므로 WP 없이도 단독 테스트 가능하다.
+ */
+function ol_money_field_value($raw) {
+    if ($raw === null || $raw === false || $raw === '') {
+        return null;
+    }
+    return (float) $raw;
+}
+
 function ol_calc_sqm_from_pyeong($pyeong) {
     $pyeong = (float) $pyeong;
     if ($pyeong <= 0) {
