@@ -366,6 +366,16 @@ if ( ! empty( $aio_blocks ) ) : ?>
 				<div class="row"><span><?php echo esc_html( $label ); ?></span><b><?php echo esc_html( $text ); ?></b></div>
 			<?php endforeach; ?>
 		</div>
+		<?php
+		// 체크리스트 페이지는 아직 별도로 만들어지지 않았다(PROJECT_OVERVIEW.md의 Insight 콘텐츠 계획 참고).
+		// 관리자가 나중에 slug "checklist"로 일반 페이지를 만들면 이 버튼이 자동으로 나타난다 -
+		// 지금은 존재하지 않는 링크를 미리 만들지 않는다(contact-cta.php의 contact 페이지 처리와 동일 패턴).
+		$checklist_page = get_page_by_path( 'checklist' );
+		if ( $checklist_page ) : ?>
+			<a class="olx-inline-link" href="<?php echo esc_url( get_permalink( $checklist_page ) ); ?>">
+				사무실 임대 체크리스트 보기 <span>→</span>
+			</a>
+		<?php endif; ?>
 	</section>
 <?php endif; ?>
 
@@ -471,23 +481,20 @@ if ( ! empty( $faqs ) ) : ?>
 <?php endif; ?>
 
 <?php
+// 세부지역/권역 링크는 별도 nav가 아니라 Contact 카드 안으로 이동했다(전체 사무실 매물 링크는 삭제).
+$district_link = $child_term ? array(
+	'label' => $district . ' 사무실 임대',
+	'url'   => get_term_link( $child_term ),
+) : null;
+$region_link = $parent_term ? array(
+	'label' => preg_replace( '/\(.+\)/', '', olt_region_label( $region_code ) ) . ' 사무실 임대',
+	'url'   => get_term_link( $parent_term ),
+) : null;
+
 get_template_part( 'template-parts/contact-cta', null, array(
-	'title' => $building_name . ', 전문 중개사와 바로 상담하세요',
+	'title'         => $building_name . ', 전문 중개사와 바로 상담하세요',
+	'district_link' => $district_link,
+	'region_link'   => $region_link,
 ) );
-?>
 
-<nav class="olx-morelinks" aria-label="매물 카테고리 바로가기">
-	<?php if ( $child_term ) : ?>
-		<a href="<?php echo esc_url( get_term_link( $child_term ) ); ?>"><?php echo esc_html( $district ); ?> 사무실 임대 <span>→</span></a>
-	<?php endif; ?>
-	<?php if ( $parent_term ) : ?>
-		<a href="<?php echo esc_url( get_term_link( $parent_term ) ); ?>"><?php echo esc_html( preg_replace( '/\(.+\)/', '', olt_region_label( $region_code ) ) ); ?> 사무실 임대 <span>→</span></a>
-	<?php endif; ?>
-	<?php $all_buildings_url = get_post_type_archive_link( 'building' ); ?>
-	<?php if ( $all_buildings_url ) : ?>
-		<a href="<?php echo esc_url( $all_buildings_url ); ?>">전체 사무실 매물 <span>→</span></a>
-	<?php endif; ?>
-</nav>
-
-<?php
 get_footer();
