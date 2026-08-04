@@ -53,11 +53,17 @@ function ol_recount_building_cache($building_id, $exclude_listing_id = 0) {
     $last_verified = 0;
 
     foreach ($listing_ids as $lid) {
+        // 면적은 0이 될 수 없는 값이라(모든 매물은 실제 면적이 있어야 함) ">0" 필터가 곧
+        // "입력 안 됨"과 같은 뜻이라 안전하다. 반면 보증금/임대료/관리비는 ACF 정의상
+        // required=1 + min=0(group_ol_listing.json) - 즉 "0"이 관리자가 실제로 선택할 수 있는
+        // 유효한 값이다(예: 관리비 없는 조건, 보증금 없는 조건). 그래서 이 세 필드는 ">0"이 아니라
+        // ol_money_field_value()로 "저장된 적 없음(null/false/'')"과 "0으로 저장됨"을 구분해야
+        // 0원 조건의 매물이 building 범위 캐시에서 조용히 빠지는 걸 막는다.
         $area = (float) get_field('exclusive_area_pyeong', $lid);
         $lease_area = (float) get_field('lease_area_pyeong', $lid);
-        $rent = (float) get_field('monthly_rent', $lid);
-        $deposit = (float) get_field('deposit_amount', $lid);
-        $maintenance = (float) get_field('maintenance_fee', $lid);
+        $rent = ol_money_field_value(get_field('monthly_rent', $lid));
+        $deposit = ol_money_field_value(get_field('deposit_amount', $lid));
+        $maintenance = ol_money_field_value(get_field('maintenance_fee', $lid));
         $floor = ol_extract_floor_number(get_field('floor_display', $lid));
 
         if ($area > 0) {
@@ -68,15 +74,15 @@ function ol_recount_building_cache($building_id, $exclude_listing_id = 0) {
             $min_lease_area = ($min_lease_area === null) ? $lease_area : min($min_lease_area, $lease_area);
             $max_lease_area = ($max_lease_area === null) ? $lease_area : max($max_lease_area, $lease_area);
         }
-        if ($rent > 0) {
+        if ($rent !== null) {
             $min_rent = ($min_rent === null) ? $rent : min($min_rent, $rent);
             $max_rent = ($max_rent === null) ? $rent : max($max_rent, $rent);
         }
-        if ($deposit > 0) {
+        if ($deposit !== null) {
             $min_deposit = ($min_deposit === null) ? $deposit : min($min_deposit, $deposit);
             $max_deposit = ($max_deposit === null) ? $deposit : max($max_deposit, $deposit);
         }
-        if ($maintenance > 0) {
+        if ($maintenance !== null) {
             $min_maintenance = ($min_maintenance === null) ? $maintenance : min($min_maintenance, $maintenance);
             $max_maintenance = ($max_maintenance === null) ? $maintenance : max($max_maintenance, $maintenance);
         }
