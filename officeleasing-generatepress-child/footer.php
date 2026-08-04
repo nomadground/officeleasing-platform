@@ -13,17 +13,19 @@ $tel   = olt_tel_href( $phone );
 
 <footer class="olx-footer">
 	<div class="olx-wrap">
-		<div>
+		<div class="olx-footer-brand">
 			<b><?php echo esc_html( olt_company( 'brand' ) ); ?></b>
-			<p><?php echo esc_html( olt_company( 'legal_name' ) ); ?>이 운영하는<br><?php echo esc_html( olt_company( 'tagline' ) ); ?></p>
 		</div>
 		<div>
-			<p><b><?php echo esc_html( olt_company( 'legal_name' ) ); ?></b></p>
+			<p><?php echo esc_html( olt_company( 'legal_name' ) ); ?></p>
 			<p><?php echo esc_html( olt_company( 'address_full' ) ); ?></p>
 			<p>대표전화 <?php echo esc_html( $phone ); ?></p>
-			<p>중개업 등록번호 <strong><?php echo esc_html( olt_company( 'license_number' ) ); ?></strong></p>
+			<p>중개업 등록번호 <?php echo esc_html( olt_company( 'license_number' ) ); ?></p>
 		</div>
-		<small>© <?php echo esc_html( date( 'Y' ) ); ?> HINT REAL ESTATE CO., LTD.</small>
+		<div class="olx-footer-contact">
+			<a href="tel:<?php echo esc_attr( $tel ); ?>"><?php echo esc_html( $phone ); ?></a>
+			<small>© <?php echo esc_html( date( 'Y' ) ); ?> HINT REAL ESTATE CO., LTD.</small>
+		</div>
 	</div>
 </footer>
 
