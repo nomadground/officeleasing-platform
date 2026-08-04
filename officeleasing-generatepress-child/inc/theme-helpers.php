@@ -286,6 +286,42 @@ function olt_floor_range( $min, $max ) {
 }
 
 /**
+ * slug로 페이지를 찾아, "지금 이 사이트 방문자에게 실제로 보여줘도 되는" 상태일 때만 permalink를 반환.
+ * contact-cta.php(contact/insight)와 single-building.php(checklist)가 각자 get_page_by_path()만
+ * 호출하던 것을 여기로 모았다 - 페이지가 draft/private/비밀번호 보호 상태여도 "존재는 한다"는 이유로
+ * 버튼이 노출되던 문제를 여기 한 곳에서 막는다.
+ *
+ * 검사 항목:
+ *  - get_page_by_path()가 실제 WP_Post를 반환하는지(post_type='page' 조건은 get_page_by_path() 3번째
+ *    인자 기본값 자체가 이미 'page'라 사실상 중복이지만, 향후 이 함수가 다른 곳에서 호출될 때를 대비해 명시)
+ *  - post_status가 정확히 publish인지(draft/pending/future 등 전부 제외)
+ *  - post_password가 비어있는지(비밀번호 보호 페이지는 존재해도 공개 링크로 노출하지 않는다 -
+ *    관리자가 미리보기로 비밀번호를 입력해둔 상태와 무관하게, 일반 방문자 기준으로 판단해야 하므로
+ *    런타임 쿠키 확인 함수인 post_password_required()가 아니라 post_password 값 자체를 본다)
+ *  - is_post_publicly_viewable()이 있으면(WP 4.4+) 추가로 확인 - private 페이지 등 위 조건들만으론
+ *    못 걸러내는 경우의 이중 방어
+ *  - get_permalink()이 실제 URL을 반환하는지(실패 시 false)
+ * 하나라도 걸리면 빈 문자열 - 호출부는 지금처럼 "값이 있을 때만 버튼 렌더"만 하면 된다.
+ */
+function olt_get_public_page_url( $slug ) {
+	$page = get_page_by_path( $slug );
+	if ( ! ( $page instanceof WP_Post ) || 'page' !== $page->post_type ) {
+		return '';
+	}
+	if ( 'publish' !== $page->post_status ) {
+		return '';
+	}
+	if ( ! empty( $page->post_password ) ) {
+		return '';
+	}
+	if ( function_exists( 'is_post_publicly_viewable' ) && ! is_post_publicly_viewable( $page ) ) {
+		return '';
+	}
+	$url = get_permalink( $page );
+	return $url ? $url : '';
+}
+
+/**
  * 아카이브(/사무실임대/) 상단 SEO 인트로.
  * 플러그인의 ol_default_archive_intro()가 정본 - schema-hub.php(FAQPage/CollectionPage)도 같은 함수를
  * 불러서 화면과 스키마 문구가 갈라지지 않게 한다. 플러그인 비활성 시에만 이 사본으로 폴백.
