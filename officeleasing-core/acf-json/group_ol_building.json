@@ -340,6 +340,195 @@
             "placeholder": ""
         },
         {
+            "key": "field_ol_bld_max_rent",
+            "label": "최고 임대료 원 (자동계산)",
+            "name": "building_max_rent",
+            "type": "number",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "min": "",
+            "max": "",
+            "step": "",
+            "readonly": 1,
+            "prepend": "",
+            "append": "",
+            "placeholder": ""
+        },
+        {
+            "key": "field_ol_bld_min_lease_area",
+            "label": "최소 임대면적 평 (자동계산)",
+            "name": "building_min_lease_area_pyeong",
+            "type": "number",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "min": "",
+            "max": "",
+            "step": "",
+            "readonly": 1,
+            "prepend": "",
+            "append": "",
+            "placeholder": ""
+        },
+        {
+            "key": "field_ol_bld_max_lease_area",
+            "label": "최대 임대면적 평 (자동계산)",
+            "name": "building_max_lease_area_pyeong",
+            "type": "number",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "min": "",
+            "max": "",
+            "step": "",
+            "readonly": 1,
+            "prepend": "",
+            "append": "",
+            "placeholder": ""
+        },
+        {
+            "key": "field_ol_bld_min_deposit",
+            "label": "최소 보증금 원 (자동계산)",
+            "name": "building_min_deposit",
+            "type": "number",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "min": "",
+            "max": "",
+            "step": "",
+            "readonly": 1,
+            "prepend": "",
+            "append": "",
+            "placeholder": ""
+        },
+        {
+            "key": "field_ol_bld_max_deposit",
+            "label": "최대 보증금 원 (자동계산)",
+            "name": "building_max_deposit",
+            "type": "number",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "min": "",
+            "max": "",
+            "step": "",
+            "readonly": 1,
+            "prepend": "",
+            "append": "",
+            "placeholder": ""
+        },
+        {
+            "key": "field_ol_bld_min_maintenance",
+            "label": "최소 관리비 원 (자동계산)",
+            "name": "building_min_maintenance_fee",
+            "type": "number",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "min": "",
+            "max": "",
+            "step": "",
+            "readonly": 1,
+            "prepend": "",
+            "append": "",
+            "placeholder": ""
+        },
+        {
+            "key": "field_ol_bld_max_maintenance",
+            "label": "최대 관리비 원 (자동계산)",
+            "name": "building_max_maintenance_fee",
+            "type": "number",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "min": "",
+            "max": "",
+            "step": "",
+            "readonly": 1,
+            "prepend": "",
+            "append": "",
+            "placeholder": ""
+        },
+        {
+            "key": "field_ol_bld_min_floor",
+            "label": "최소 층수 (자동계산, 지하는 음수)",
+            "name": "building_min_floor",
+            "type": "number",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "min": "",
+            "max": "",
+            "step": "",
+            "readonly": 1,
+            "prepend": "",
+            "append": "",
+            "placeholder": ""
+        },
+        {
+            "key": "field_ol_bld_max_floor",
+            "label": "최대 층수 (자동계산, 지하는 음수)",
+            "name": "building_max_floor",
+            "type": "number",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "min": "",
+            "max": "",
+            "step": "",
+            "readonly": 1,
+            "prepend": "",
+            "append": "",
+            "placeholder": ""
+        },
+        {
             "key": "field_ol_bld_last_verified",
             "label": "최근 확인일 Ymd (자동계산)",
             "name": "building_last_verified_at",
@@ -1021,5 +1210,5 @@
     "active": true,
     "description": "",
     "show_in_rest": 0,
-    "modified": 1785233658
+    "modified": 1785825822
 }

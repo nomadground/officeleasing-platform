@@ -60,6 +60,24 @@ function ol_format_krw_per_pyeong($won) {
     return number_format($won / 10000, 1) . '만원';
 }
 
+/**
+ * floor_display(자유 텍스트, 예: "17층", "지하1층", "3~5층")에서 층수 숫자를 추출한다.
+ * 여러 매물의 floor_display를 min/max로 묶어 building 카드에 "3~7층" 범위를 캐시하기 위한 용도.
+ * 지하/B로 시작하면 음수로 취급(지하1층 -> -1)해 지상/지하가 섞인 범위도 min/max 비교가 자연스럽게 성립한다.
+ * 숫자를 하나도 못 찾으면 null(캐시에서 이 매물은 층수 범위 계산에서 제외됨을 뜻함).
+ */
+function ol_extract_floor_number($floor_display) {
+    $floor_display = trim((string) $floor_display);
+    if ($floor_display === '' || !preg_match('/(\d+)/', $floor_display, $m)) {
+        return null;
+    }
+    $num = (int) $m[1];
+    if (preg_match('/(지하|B)/iu', $floor_display)) {
+        $num = -$num;
+    }
+    return $num;
+}
+
 // save_post_{type} 훅에서 리비전/자동저장/타입불일치를 걸러내는 공통 가드
 function ol_is_real_save($post_id, $post_type) {
     if (wp_is_post_revision($post_id) || wp_is_post_autosave($post_id)) {

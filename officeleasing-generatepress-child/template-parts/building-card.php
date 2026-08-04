@@ -37,8 +37,44 @@ $images = olt_collect_images( $building_id, 'building_image_', 8, 'ol-building-t
 $img    = $images[0] ?? null;
 
 $active_count = (int) get_field( 'building_active_listing_count', $building_id );
-$area_range   = olt_building_area_range( $building_id );
-$min_rent     = (float) get_field( 'building_min_rent', $building_id );
+
+// 아래 값들은 모두 building-cache.php가 매물 저장/상태변경 시 미리 계산해둔 캐시 필드다.
+// 카드 렌더 시 매물을 재쿼리하지 않는다는 원칙(상단 주석)을 지키기 위해, 매물이 여러 건이어도
+// 이 캐시 min/max만으로 "3~7층" 같은 범위 표기를 만든다(olt_floor_range/olt_format_range 참고).
+$floor_display = olt_floor_range(
+	get_field( 'building_min_floor', $building_id ),
+	get_field( 'building_max_floor', $building_id )
+);
+// 카드 칩 안에서는 괄호 없는 "298~342평" 형태로 쓴다(olt_pyeong()의 "(327평)" 표기는
+// sqm 값 아래 보조 텍스트로 붙일 때 전용이라 여기서는 안 맞는다).
+$pyeong_plain = function ( $v ) {
+	return number_format( (float) $v ) . '평';
+};
+$lease_area_range = olt_format_range(
+	get_field( 'building_min_lease_area_pyeong', $building_id ),
+	get_field( 'building_max_lease_area_pyeong', $building_id ),
+	$pyeong_plain
+);
+$exclusive_area_range = olt_format_range(
+	get_field( 'building_min_exclusive_area_pyeong', $building_id ),
+	get_field( 'building_max_exclusive_area_pyeong', $building_id ),
+	$pyeong_plain
+);
+$deposit_range = olt_format_range(
+	get_field( 'building_min_deposit', $building_id ),
+	get_field( 'building_max_deposit', $building_id ),
+	'olt_won'
+);
+$rent_range = olt_format_range(
+	get_field( 'building_min_rent', $building_id ),
+	get_field( 'building_max_rent', $building_id ),
+	'olt_won'
+);
+$maintenance_range = olt_format_range(
+	get_field( 'building_min_maintenance_fee', $building_id ),
+	get_field( 'building_max_maintenance_fee', $building_id ),
+	'olt_won'
+);
 ?>
 <a class="<?php echo esc_attr( $card_class ); ?>" href="<?php echo esc_url( $building_link ); ?>">
 	<div class="olx-card-img">
@@ -88,13 +124,31 @@ $min_rent     = (float) get_field( 'building_min_rent', $building_id );
 		<?php if ( $address ) : ?>
 			<p><?php echo esc_html( $address ); ?></p>
 		<?php endif; ?>
-		<div class="olx-bcard-stats">
-			<?php if ( $area_range ) : ?>
-				<span class="olx-bcard-area"><?php echo esc_html( $area_range ); ?></span>
-			<?php endif; ?>
-			<?php if ( $min_rent > 0 ) : ?>
-				<span class="olx-bcard-rent">최저 임대료 <b><?php echo esc_html( olt_won( $min_rent ) ); ?></b></span>
-			<?php endif; ?>
-		</div>
+		<?php if ( $floor_display || $lease_area_range || $exclusive_area_range ) : ?>
+			<div class="olx-card-areas">
+				<?php if ( $floor_display ) : ?>
+					<span class="olx-card-floor"><?php echo esc_html( $floor_display ); ?></span>
+				<?php endif; ?>
+				<?php if ( $lease_area_range ) : ?>
+					<span>
+						<b>임대</b>
+						<strong><?php echo esc_html( $lease_area_range ); ?></strong>
+					</span>
+				<?php endif; ?>
+				<?php if ( $exclusive_area_range ) : ?>
+					<span>
+						<b>전용</b>
+						<strong><?php echo esc_html( $exclusive_area_range ); ?></strong>
+					</span>
+				<?php endif; ?>
+			</div>
+		<?php endif; ?>
+		<?php if ( $deposit_range || $rent_range || $maintenance_range ) : ?>
+			<div class="olx-card-prices">
+				<?php if ( $deposit_range ) : ?><span><i class="chip-deposit">보</i><?php echo esc_html( $deposit_range ); ?></span><?php endif; ?>
+				<?php if ( $rent_range ) : ?><span><i class="chip-rent">월</i><?php echo esc_html( $rent_range ); ?></span><?php endif; ?>
+				<?php if ( $maintenance_range ) : ?><span><i class="chip-maintenance">관</i><?php echo esc_html( $maintenance_range ); ?></span><?php endif; ?>
+			</div>
+		<?php endif; ?>
 	</div>
 </a>

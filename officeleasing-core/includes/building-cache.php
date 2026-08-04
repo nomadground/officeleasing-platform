@@ -40,18 +40,49 @@ function ol_recount_building_cache($building_id, $exclude_listing_id = 0) {
     $count = count($listing_ids);
     $min_area = null;
     $max_area = null;
+    $min_lease_area = null;
+    $max_lease_area = null;
     $min_rent = null;
+    $max_rent = null;
+    $min_deposit = null;
+    $max_deposit = null;
+    $min_maintenance = null;
+    $max_maintenance = null;
+    $min_floor = null;
+    $max_floor = null;
     $last_verified = 0;
 
     foreach ($listing_ids as $lid) {
         $area = (float) get_field('exclusive_area_pyeong', $lid);
+        $lease_area = (float) get_field('lease_area_pyeong', $lid);
         $rent = (float) get_field('monthly_rent', $lid);
+        $deposit = (float) get_field('deposit_amount', $lid);
+        $maintenance = (float) get_field('maintenance_fee', $lid);
+        $floor = ol_extract_floor_number(get_field('floor_display', $lid));
+
         if ($area > 0) {
             $min_area = ($min_area === null) ? $area : min($min_area, $area);
             $max_area = ($max_area === null) ? $area : max($max_area, $area);
         }
+        if ($lease_area > 0) {
+            $min_lease_area = ($min_lease_area === null) ? $lease_area : min($min_lease_area, $lease_area);
+            $max_lease_area = ($max_lease_area === null) ? $lease_area : max($max_lease_area, $lease_area);
+        }
         if ($rent > 0) {
             $min_rent = ($min_rent === null) ? $rent : min($min_rent, $rent);
+            $max_rent = ($max_rent === null) ? $rent : max($max_rent, $rent);
+        }
+        if ($deposit > 0) {
+            $min_deposit = ($min_deposit === null) ? $deposit : min($min_deposit, $deposit);
+            $max_deposit = ($max_deposit === null) ? $deposit : max($max_deposit, $deposit);
+        }
+        if ($maintenance > 0) {
+            $min_maintenance = ($min_maintenance === null) ? $maintenance : min($min_maintenance, $maintenance);
+            $max_maintenance = ($max_maintenance === null) ? $maintenance : max($max_maintenance, $maintenance);
+        }
+        if ($floor !== null) {
+            $min_floor = ($min_floor === null) ? $floor : min($min_floor, $floor);
+            $max_floor = ($max_floor === null) ? $floor : max($max_floor, $floor);
         }
         // verified_at은 ACF date_picker return_format="Ymd" (예: "20260716") 이므로
         // 정수로 캐스팅해 그대로 최댓값 비교가 가능하다. 비어있으면 0이 되어 자동 제외.
@@ -64,7 +95,18 @@ function ol_recount_building_cache($building_id, $exclude_listing_id = 0) {
     update_field('building_active_listing_count', $count, $building_id);
     update_field('building_min_exclusive_area_pyeong', $min_area ?? 0, $building_id);
     update_field('building_max_exclusive_area_pyeong', $max_area ?? 0, $building_id);
+    update_field('building_min_lease_area_pyeong', $min_lease_area ?? 0, $building_id);
+    update_field('building_max_lease_area_pyeong', $max_lease_area ?? 0, $building_id);
     update_field('building_min_rent', $min_rent ?? 0, $building_id);
+    update_field('building_max_rent', $max_rent ?? 0, $building_id);
+    update_field('building_min_deposit', $min_deposit ?? 0, $building_id);
+    update_field('building_max_deposit', $max_deposit ?? 0, $building_id);
+    update_field('building_min_maintenance_fee', $min_maintenance ?? 0, $building_id);
+    update_field('building_max_maintenance_fee', $max_maintenance ?? 0, $building_id);
+    // 층수는 0이 "지상 1층 미만"이라는 유효값이 될 수 없는 도메인이라, 캐시 없음(0)과 실제 값을
+    // 구분하는 데 다른 min/max 캐시와 동일한 "0 = 데이터 없음" 규약을 그대로 써도 안전하다.
+    update_field('building_min_floor', $min_floor ?? 0, $building_id);
+    update_field('building_max_floor', $max_floor ?? 0, $building_id);
     update_field('building_last_verified_at', $last_verified, $building_id);
 }
 

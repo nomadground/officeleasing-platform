@@ -234,20 +234,55 @@ function olt_collect_images( $post_id, $prefix, $count, $size = 'ol-interior' ) 
 }
 
 /**
- * 빌딩 전용면적 범위 표기: "전용 298~342평" / 단일이면 "전용 327평" / 없으면 ''.
- * building의 캐시 필드(building_min/max_exclusive_area_pyeong)만 읽는다(재쿼리 없음).
+ * 두 숫자(빌딩 캐시의 min/max)를 값 포맷 콜백에 넘겨 범위 문자열로 합친다.
+ * min==max(매물 1건) 또는 둘 중 하나만 있으면 단일값, 둘 다 없으면 빈 문자열.
+ * building-card.php/single-building.php에서 면적·보증금·임대료·관리비 범위 표기에 공통으로 쓴다.
+ *
+ * @param callable $formatter 값 하나를 받아 단위 포함 문자열로 포맷하는 콜백(예: olt_won).
  */
-function olt_building_area_range( $building_id ) {
-	$min = (float) get_field( 'building_min_exclusive_area_pyeong', $building_id );
-	$max = (float) get_field( 'building_max_exclusive_area_pyeong', $building_id );
+function olt_format_range( $min, $max, callable $formatter ) {
+	$min = (float) $min;
+	$max = (float) $max;
 	if ( $min <= 0 && $max <= 0 ) {
 		return '';
 	}
-	if ( $min > 0 && $max > 0 && $min !== $max ) {
-		return sprintf( '전용 %s~%s평', number_format( $min ), number_format( $max ) );
+	if ( $min > 0 && $max > 0 && round( $min, 4 ) !== round( $max, 4 ) ) {
+		return call_user_func( $formatter, $min ) . ' ~ ' . call_user_func( $formatter, $max );
 	}
-	$one = $max > 0 ? $max : $min;
-	return sprintf( '전용 %s평', number_format( $one ) );
+	return call_user_func( $formatter, $max > 0 ? $max : $min );
+}
+
+/** 캐시된 층수(정수, 지하는 음수) 하나를 "17층"/"지하1층"으로 표기. 0은 "데이터 없음"이라 호출부에서 걸러야 한다. */
+function olt_floor_label( $n ) {
+	$n = (int) $n;
+	return $n < 0 ? sprintf( '지하%d층', abs( $n ) ) : sprintf( '%d층', $n );
+}
+
+/**
+ * 빌딩 캐시의 최소/최대 층수를 "3~7층"/"지하1층~7층" 또는 단일 "17층"으로 표기.
+ * 두 값 모두 0(데이터 없음)이면 빈 문자열 - 카드에서 이 값이 비면 층수 행 자체를 렌더하지 않는다.
+ */
+function olt_floor_range( $min, $max ) {
+	$min = (int) $min;
+	$max = (int) $max;
+	if ( ! $min && ! $max ) {
+		return '';
+	}
+	if ( $min && $max && $min !== $max ) {
+		// 지상층만 섞인 흔한 경우엔 단위를 한 번만 붙여 "3~7층"으로 - 지하가 섞이면
+		// "지하1층~7층"처럼 각 값에 라벨을 다 붙여야 부호가 헷갈리지 않는다.
+		if ( $min > 0 && $max > 0 ) {
+			return sprintf( '%d~%d층', $min, $max );
+		}
+		if ( $min < 0 && $max < 0 ) {
+			// 둘 다 지하일 땐 숫자(음수) 크기 순이 아니라 "얕은 지하 → 깊은 지하" 순으로 읽혀야
+			// 자연스럽다(지하1층~지하3층 O, 지하3층~지하1층 X) - 절댓값이 작은 쪽(=더 큰 정수)이 먼저.
+			return olt_floor_label( max( $min, $max ) ) . '~' . olt_floor_label( min( $min, $max ) );
+		}
+		// 지상/지하가 섞이면 지하 쪽이 항상 더 작은 정수라 $min이 그대로 지하 값이 된다.
+		return olt_floor_label( $min ) . '~' . olt_floor_label( $max );
+	}
+	return olt_floor_label( $max ?: $min );
 }
 
 /**
