@@ -27,9 +27,11 @@ $online_label  = '카카오톡으로 문의하기';
 $online_note   = '실시간 상담';
 $online_target = true;
 if ( ! $online_url ) {
-	$contact_page = get_page_by_path( 'contact' );
-	if ( $contact_page ) {
-		$online_url    = get_permalink( $contact_page );
+	// olt_get_public_page_url()이 publish 상태의 공개 페이지일 때만 URL을 준다 - draft/private/
+	// 비밀번호 보호 상태인 "contact" 페이지가 있어도 조용히 숨겨진다(온라인 문의 버튼 자체가 안 뜸).
+	$contact_url = olt_get_public_page_url( 'contact' );
+	if ( $contact_url ) {
+		$online_url    = $contact_url;
 		$online_label  = '온라인 문의';
 		$online_note   = '문의 양식';
 		$online_target = false;
@@ -37,12 +39,16 @@ if ( ! $online_url ) {
 }
 
 // 인사이트(체크리스트/가이드) 페이지도 아직 만들어지지 않았을 수 있다 - checklist 버튼과 동일하게
-// slug "insight" 페이지가 실제 존재할 때만 버튼을 노출한다(존재하지 않는 링크를 만들지 않는다).
-$insight_page = get_page_by_path( 'insight' );
-$insight_url  = $insight_page ? get_permalink( $insight_page ) : '';
+// slug "insight" 페이지가 실제 공개 상태일 때만 버튼을 노출한다.
+$insight_url = olt_get_public_page_url( 'insight' );
 
 $district_link = $args['district_link'] ?? null;
 $region_link   = $args['region_link'] ?? null;
+
+// 렌더될 버튼 개수(전화는 항상 1개 + 온라인문의/인사이트 조건부)에 맞춰 grid 열 수를 고른다.
+// olt_contact_lead_slot 액션으로 나중에 버튼이 더 붙을 수 있지만, 지금은 아무것도 렌더하지 않으므로
+// 이 카운트에 포함하지 않는다 - 그 훅으로 실제 버튼을 추가하게 되면 이 카운트도 함께 늘려야 한다.
+$actions_count = 1 + ( $online_url ? 1 : 0 ) + ( $insight_url ? 1 : 0 );
 ?>
 <section class="olx-contact" id="contact" aria-labelledby="contact-title">
 	<div>
@@ -51,18 +57,18 @@ $region_link   = $args['region_link'] ?? null;
 		<span><?php echo esc_html( $desc ); ?></span>
 	</div>
 	<div>
-		<div class="olx-contact-actions">
-			<a href="tel:<?php echo esc_attr( $tel ); ?>">
+		<div class="olx-contact-actions olx-contact-actions--<?php echo esc_attr( (string) $actions_count ); ?>">
+			<a class="olx-contact-action olx-contact-action--phone" href="tel:<?php echo esc_attr( $tel ); ?>">
 				<b>전화 상담 · <?php echo esc_html( $phone ); ?></b>
 			</a>
 			<?php if ( $online_url ) : ?>
-				<a href="<?php echo esc_url( $online_url ); ?>"<?php echo $online_target ? ' target="_blank" rel="noopener noreferrer"' : ''; ?>>
+				<a class="olx-contact-action olx-contact-action--online" href="<?php echo esc_url( $online_url ); ?>"<?php echo $online_target ? ' target="_blank" rel="noopener noreferrer"' : ''; ?>>
 					<b><?php echo esc_html( $online_label ); ?></b>
 					<small><?php echo esc_html( $online_note ); ?></small>
 				</a>
 			<?php endif; ?>
 			<?php if ( $insight_url ) : ?>
-				<a href="<?php echo esc_url( $insight_url ); ?>">
+				<a class="olx-contact-action olx-contact-action--insight" href="<?php echo esc_url( $insight_url ); ?>">
 					<b>인사이트</b>
 					<small>임대 가이드·체크리스트</small>
 				</a>
@@ -71,7 +77,9 @@ $region_link   = $args['region_link'] ?? null;
 			/**
 			 * 추후 Lead(AI 선택형 대화창) 진입점 슬롯.
 			 * 별도 플러그인/파일에서 add_action('olt_contact_lead_slot', ...)로 버튼을 주입한다.
-			 * 지금은 아무것도 렌더하지 않으므로 디자인에 영향 없음.
+			 * 지금은 아무것도 렌더하지 않으므로 디자인에 영향 없음. 실제로 버튼을 주입하게 되면
+			 * 그 버튼에도 olx-contact-action(+역할별 색상 클래스)을 붙이고 위 $actions_count 계산에
+			 * 포함시켜야 grid 열 수와 어긋나지 않는다.
 			 */
 			do_action( 'olt_contact_lead_slot' );
 			?>

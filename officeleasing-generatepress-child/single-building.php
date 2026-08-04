@@ -368,11 +368,11 @@ if ( ! empty( $aio_blocks ) ) : ?>
 		</div>
 		<?php
 		// 체크리스트 페이지는 아직 별도로 만들어지지 않았다(PROJECT_OVERVIEW.md의 Insight 콘텐츠 계획 참고).
-		// 관리자가 나중에 slug "checklist"로 일반 페이지를 만들면 이 버튼이 자동으로 나타난다 -
-		// 지금은 존재하지 않는 링크를 미리 만들지 않는다(contact-cta.php의 contact 페이지 처리와 동일 패턴).
-		$checklist_page = get_page_by_path( 'checklist' );
-		if ( $checklist_page ) : ?>
-			<a class="olx-inline-link" href="<?php echo esc_url( get_permalink( $checklist_page ) ); ?>">
+		// 관리자가 나중에 slug "checklist"로 공개(publish) 페이지를 만들면 이 버튼이 자동으로 나타난다 -
+		// draft/private/비밀번호 보호 상태일 때는 olt_get_public_page_url()이 숨겨준다.
+		$checklist_url = olt_get_public_page_url( 'checklist' );
+		if ( $checklist_url ) : ?>
+			<a class="olx-inline-link" href="<?php echo esc_url( $checklist_url ); ?>">
 				사무실 임대 체크리스트 보기 <span>→</span>
 			</a>
 		<?php endif; ?>
