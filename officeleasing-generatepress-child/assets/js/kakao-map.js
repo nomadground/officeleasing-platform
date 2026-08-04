@@ -40,7 +40,8 @@
 			}
 
 			var center = new kakao.maps.LatLng( lat, lng );
-			var map = new kakao.maps.Map( canvas, { center: center, level: 4 } );
+			// level 4 -> 5: 클로즈아웃(줌아웃) 1단계 - 숫자가 클수록 더 넓은 범위를 보여준다(Kakao Maps API 규약).
+			var map = new kakao.maps.Map( canvas, { center: center, level: 5 } );
 			var marker = new kakao.maps.Marker( { position: center, map: map } );
 
 			if ( name ) {
