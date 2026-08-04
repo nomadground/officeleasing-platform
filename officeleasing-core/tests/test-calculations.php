@@ -55,5 +55,13 @@ $fail += !ol_assert('전용평당 보증금 표기', ol_format_krw_per_pyeong(ol
 $fail += !ol_assert('공급평당 임대료 표기', ol_format_krw_per_pyeong(ol_calc_per_pyeong($rent, 616)), '21.2만원', 0) ? 1 : 0;
 $fail += !ol_assert('전용평당 NOC 표기', ol_format_krw_per_pyeong(ol_calc_per_pyeong($total, 327)), '51.1만원', 0) ? 1 : 0;
 
+// floor_display 자유 텍스트 -> 층수 숫자 추출 (building-cache.php의 층수 범위 캐시용)
+$fail += !ol_assert('층수 추출 - 단순', ol_extract_floor_number('17층'), 17, 0) ? 1 : 0;
+$fail += !ol_assert('층수 추출 - 지하', ol_extract_floor_number('지하1층'), -1, 0) ? 1 : 0;
+$fail += !ol_assert('층수 추출 - B표기', ol_extract_floor_number('B2'), -2, 0) ? 1 : 0;
+$fail += !ol_assert('층수 추출 - 범위 텍스트는 첫 숫자만', ol_extract_floor_number('3~5층'), 3, 0) ? 1 : 0;
+$fail += !ol_assert('층수 추출 - 숫자 없음', ol_extract_floor_number('저층부'), null, 0) ? 1 : 0;
+$fail += !ol_assert('층수 추출 - 빈 값', ol_extract_floor_number(''), null, 0) ? 1 : 0;
+
 echo $fail === 0 ? "\n전체 통과\n" : "\n실패 {$fail}건\n";
 exit($fail === 0 ? 0 : 1);
