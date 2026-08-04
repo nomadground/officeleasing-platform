@@ -55,13 +55,21 @@ $fail += !ol_assert('전용평당 보증금 표기', ol_format_krw_per_pyeong(ol
 $fail += !ol_assert('공급평당 임대료 표기', ol_format_krw_per_pyeong(ol_calc_per_pyeong($rent, 616)), '21.2만원', 0) ? 1 : 0;
 $fail += !ol_assert('전용평당 NOC 표기', ol_format_krw_per_pyeong(ol_calc_per_pyeong($total, 327)), '51.1만원', 0) ? 1 : 0;
 
-// floor_display 자유 텍스트 -> 층수 숫자 추출 (building-cache.php의 층수 범위 캐시용)
+// floor_display는 매물 1건당 대표층 하나만 담는 필드다(building-cache.php의 층수 범위 캐시 입력).
+// 범위 표기는 이 필드의 실제 용도가 아니므로 지원하지 않고 null을 반환한다(anchored 패턴 - 부분 매치 금지).
 $fail += !ol_assert('층수 추출 - 단순', ol_extract_floor_number('17층'), 17, 0) ? 1 : 0;
+$fail += !ol_assert('층수 추출 - 숫자만', ol_extract_floor_number('17'), 17, 0) ? 1 : 0;
 $fail += !ol_assert('층수 추출 - 지하', ol_extract_floor_number('지하1층'), -1, 0) ? 1 : 0;
 $fail += !ol_assert('층수 추출 - B표기', ol_extract_floor_number('B2'), -2, 0) ? 1 : 0;
-$fail += !ol_assert('층수 추출 - 범위 텍스트는 첫 숫자만', ol_extract_floor_number('3~5층'), 3, 0) ? 1 : 0;
+$fail += !ol_assert('층수 추출 - B표기 소문자', ol_extract_floor_number('b2'), -2, 0) ? 1 : 0;
+$fail += !ol_assert('층수 추출 - 마이너스 부호 표기', ol_extract_floor_number('-2층'), -2, 0) ? 1 : 0;
+$fail += !ol_assert('층수 추출 - B동 접두어는 지하 아님', ol_extract_floor_number('B동 3층'), 3, 0) ? 1 : 0;
+$fail += !ol_assert('층수 추출 - A동 접두어', ol_extract_floor_number('A동 12층'), 12, 0) ? 1 : 0;
+$fail += !ol_assert('층수 추출 - B동+지하 혼합', ol_extract_floor_number('B동 지하1층'), -1, 0) ? 1 : 0;
+$fail += !ol_assert('층수 추출 - 범위 표기는 미지원(null)', ol_extract_floor_number('3~5층'), null, 0) ? 1 : 0;
+$fail += !ol_assert('층수 추출 - 지하 범위 표기도 미지원(null)', ol_extract_floor_number('B1~B3'), null, 0) ? 1 : 0;
+$fail += !ol_assert('층수 추출 - 지하/지상 혼합 범위도 미지원(null)', ol_extract_floor_number('지하1층~지상2층'), null, 0) ? 1 : 0;
 $fail += !ol_assert('층수 추출 - 숫자 없음', ol_extract_floor_number('저층부'), null, 0) ? 1 : 0;
 $fail += !ol_assert('층수 추출 - 빈 값', ol_extract_floor_number(''), null, 0) ? 1 : 0;
-
 echo $fail === 0 ? "\n전체 통과\n" : "\n실패 {$fail}건\n";
 exit($fail === 0 ? 0 : 1);

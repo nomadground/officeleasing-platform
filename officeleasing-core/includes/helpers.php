@@ -61,21 +61,41 @@ function ol_format_krw_per_pyeong($won) {
 }
 
 /**
- * floor_display(자유 텍스트, 예: "17층", "지하1층", "3~5층")에서 층수 숫자를 추출한다.
+ * floor_display(group_ol_listing.json 기준 required text 필드, "해당층 표기" - ACF 정의에 형식 제약은
+ * 없지만 실제 사용례(tests/test-schema.php의 "21층"/"22층"/"23층", single-building.php의 "해당층/총층"
+ * 단수 표기)는 전부 매물 1건당 대표층 하나만 담는다는 것을 전제로 한다. 범위 표기("3~5층" 등)는
+ * 이 필드의 실제 용도가 아니라고 보고 - 지원하지 않는다(파싱 실패로 null, 캐시 min/max 계산에서 제외).
+ *
  * 여러 매물의 floor_display를 min/max로 묶어 building 카드에 "3~7층" 범위를 캐시하기 위한 용도.
- * 지하/B로 시작하면 음수로 취급(지하1층 -> -1)해 지상/지하가 섞인 범위도 min/max 비교가 자연스럽게 성립한다.
- * 숫자를 하나도 못 찾으면 null(캐시에서 이 매물은 층수 범위 계산에서 제외됨을 뜻함).
+ * 지하는 음수로 취급(지하1층 -> -1)해 지상/지하가 섞인 범위도 min/max 비교가 자연스럽게 성립한다.
+ *
+ * 인식하는 형식(공백 무시, 대소문자 무시, 전체 문자열이 아래 패턴 중 하나와 정확히 일치해야 함 - 부분
+ * 매치 금지. "3~5층"처럼 패턴에 없는 여분 문자가 있으면 매치 자체가 안 되어 null을 반환한다):
+ *  - "17층", "17"           -> 17  (지상)
+ *  - "지하1층", "B1"        -> -1  (지하)
+ *  - "-2층", "-2"           -> -2  (지하, 마이너스 부호 표기)
+ *  - "B동 3층"처럼 앞에 "…동" 접두어가 붙으면 그 접두어는 지하/지상 판정에서 먼저 떼어낸다 -
+ *    "B동"의 B는 지하가 아니라 건물 동(棟) 이름이므로, 이 접두어를 실수로 지하 표기로 오인하면 안 된다.
  */
 function ol_extract_floor_number($floor_display) {
-    $floor_display = trim((string) $floor_display);
-    if ($floor_display === '' || !preg_match('/(\d+)/', $floor_display, $m)) {
+    $s = trim((string) $floor_display);
+    if ($s === '') {
         return null;
     }
-    $num = (int) $m[1];
-    if (preg_match('/(지하|B)/iu', $floor_display)) {
-        $num = -$num;
+
+    // "A동"/"B동" 등 건물 동 접두어는 이후 지하/지상 판정과 무관하므로 먼저 제거한다.
+    $s = preg_replace('/^[0-9a-z가-힣]+동\s*/iu', '', $s);
+
+    if (preg_match('/^(지하|b)\s*(\d+)\s*층?$/iu', $s, $m)) {
+        return -1 * (int) $m[2];
     }
-    return $num;
+    if (preg_match('/^-(\d+)\s*층?$/u', $s, $m)) {
+        return -1 * (int) $m[1];
+    }
+    if (preg_match('/^(\d+)\s*층?$/u', $s, $m)) {
+        return (int) $m[1];
+    }
+    return null;
 }
 
 // save_post_{type} 훅에서 리비전/자동저장/타입불일치를 걸러내는 공통 가드
