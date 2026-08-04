@@ -263,48 +263,86 @@ if ( ! empty( $key_points ) ) : ?>
 		<div><p class="olx-eyebrow">BUILDING INFO</p><h2>빌딩 정보</h2></div>
 		<p>건물과 입지를 판단하는 핵심 정보만 정리했습니다.</p>
 	</div>
-	<div class="olx-specs">
-		<div class="row"><span>건물명</span><b><?php echo esc_html( $building_name ); ?></b></div>
-		<div class="row"><span>주소</span><b><?php echo esc_html( $address_road ); ?></b></div>
-		<div class="row"><span>권역</span><b><?php echo esc_html( trim( olt_region_label( $region_code ) . ( $district ? ' · ' . $district : '' ) ) ); ?></b></div>
-		<div class="row"><span>교통</span><b class="olx-transit">
-			<?php
-			for ( $s = 1; $s <= 2; $s++ ) {
-				$st = get_field( 'building_subway' . $s . '_station', $building_id );
-				if ( ! $st ) {
-					continue;
+	<div class="olx-bldinfo">
+		<div class="olx-specs olx-bldinfo-specs">
+			<div class="row"><span>건물명</span><b><?php echo esc_html( $building_name ); ?></b></div>
+			<div class="row"><span>주소</span><b><?php echo esc_html( $address_road ); ?></b></div>
+			<div class="row"><span>권역</span><b><?php echo esc_html( trim( olt_region_label( $region_code ) . ( $district ? ' · ' . $district : '' ) ) ); ?></b></div>
+			<div class="row"><span>교통</span><b class="olx-transit">
+				<?php
+				for ( $s = 1; $s <= 2; $s++ ) {
+					$st = get_field( 'building_subway' . $s . '_station', $building_id );
+					if ( ! $st ) {
+						continue;
+					}
+					$ln = get_field( 'building_subway' . $s . '_line', $building_id );
+					printf(
+						'<span><i style="background:%s">%s</i>%s</span>',
+						esc_attr( olt_line_color( $ln ) ),
+						esc_html( olt_line_badge( $ln ) ),
+						esc_html( $st )
+					);
 				}
-				$ln = get_field( 'building_subway' . $s . '_line', $building_id );
-				printf(
-					'<span><i style="background:%s">%s</i>%s</span>',
-					esc_attr( olt_line_color( $ln ) ),
-					esc_html( olt_line_badge( $ln ) ),
-					esc_html( $st )
-				);
+				?>
+			</b></div>
+			<?php
+			// 주차: 관리자가 이미 "대"를 포함해 입력했을 수 있어(예: "464대(지상92/지하372)") 무조건
+			// 이어붙이면 "대대"가 될 수 있다 - 문자열에 "대"가 없을 때만 단위를 붙인다.
+			$parking = get_field( 'building_parking', $building_id );
+			if ( $parking && false === mb_strpos( (string) $parking, '대' ) ) {
+				$parking .= '대';
+			}
+			$rows = array(
+				'주변 인프라' => get_field( 'building_nearby_infra', $building_id ),
+				'건물 규모'   => olt_format_building_scale( $basement_floors, $ground_floors ),
+				'방향'        => get_field( 'building_orientation', $building_id ),
+				'주차'        => $parking,
+			);
+			$completion = get_field( 'building_completion_date', $building_id );
+			$elevator   = get_field( 'building_elevator_count', $building_id );
+			foreach ( $rows as $label => $val ) {
+				if ( $val ) {
+					printf( '<div class="row"><span>%s</span><b>%s</b></div>', esc_html( $label ), esc_html( $val ) );
+				}
+			}
+			if ( $completion ) {
+				printf( '<div class="row"><span>사용승인일</span><b>%s</b></div>', esc_html( date_i18n( 'Y.m.d', strtotime( $completion ) ) ) );
+			}
+			if ( $elevator ) {
+				printf( '<div class="row"><span>엘리베이터</span><b>%s대</b></div>', esc_html( $elevator ) );
 			}
 			?>
-		</b></div>
+		</div>
 		<?php
-		$rows = array(
-			'주변 인프라' => get_field( 'building_nearby_infra', $building_id ),
-			'건물 규모'   => olt_format_building_scale( $basement_floors, $ground_floors ),
-			'방향'        => get_field( 'building_orientation', $building_id ),
-			'주차'        => get_field( 'building_parking', $building_id ),
-		);
-		$completion = get_field( 'building_completion_date', $building_id );
-		$elevator   = get_field( 'building_elevator_count', $building_id );
-		foreach ( $rows as $label => $val ) {
-			if ( $val ) {
-				printf( '<div class="row"><span>%s</span><b>%s</b></div>', esc_html( $label ), esc_html( $val ) );
-			}
-		}
-		if ( $completion ) {
-			printf( '<div class="row"><span>사용승인일</span><b>%s</b></div>', esc_html( date_i18n( 'Y.m.d', strtotime( $completion ) ) ) );
-		}
-		if ( $elevator ) {
-			printf( '<div class="row"><span>엘리베이터</span><b>%s대</b></div>', esc_html( $elevator ) );
-		}
-		?>
+		// 빌딩 자체 사진(building_image_1~8) - 매물 Hero 갤러리와 별개로 항상 렌더한다.
+		// [버그 수정] 이전엔 Hero(.olx-hero)만 매물 사진 우선/빌딩 사진 폴백으로 노출했기 때문에,
+		// 매물에 사진을 올린 순간 빌딩 자체 사진은 페이지 어디에도 안 보이게 됐다 - 이 갤러리가
+		// 그 사진의 상시 노출 자리다. 크기는 Hero 썸네일 스트립과 동일한 ol-interior(600x400)로 통일.
+		$building_gallery = olt_collect_images( $building_id, 'building_image_', 8, 'ol-interior' );
+		if ( ! empty( $building_gallery ) ) : ?>
+			<div class="olx-bldinfo-gallery">
+				<?php foreach ( $building_gallery as $g ) : ?>
+					<div class="olx-bldinfo-gallery-item">
+						<?php
+						if ( ! empty( $g['id'] ) ) {
+							echo wp_get_attachment_image( (int) $g['id'], 'ol-interior', false, array(
+								'alt'      => $g['alt'] ? $g['alt'] : $building_name . ' 건물 사진',
+								'loading'  => 'lazy',
+								'decoding' => 'async',
+								'sizes'    => '(max-width: 900px) 45vw, 280px',
+							) );
+						} else {
+							printf(
+								'<img src="%s" alt="%s" loading="lazy" decoding="async">',
+								esc_url( $g['url'] ),
+								esc_attr( $building_name . ' 건물 사진' )
+							);
+						}
+						?>
+					</div>
+				<?php endforeach; ?>
+			</div>
+		<?php endif; ?>
 	</div>
 </section>
 
