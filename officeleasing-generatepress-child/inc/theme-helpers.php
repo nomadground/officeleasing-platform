@@ -266,6 +266,13 @@ function olt_format_range( $min, $max, callable $formatter ) {
  * @param callable $formatter 값 하나를 받아 단위 포함 문자열로 포맷하는 콜백(예: olt_won).
  */
 function olt_format_money_range( $min, $max, callable $formatter ) {
+	// [3차 리뷰 수정] -1 sentinel만 보고 (float)로 먼저 캐스팅하면, 이 캐시 필드가 아직 한 번도
+	// 쓰인 적 없는 경우(신규 빌딩에 매물이 아직 하나도 연결 안 됨 / 이 필드가 추가되기 전부터 있던
+	// 빌딩이 재계산 전인 경우)에 get_field()가 돌려주는 null/false/''가 전부 (float)로 0이 되어
+	// "데이터 없음"이 "0원"으로 잘못 보인다. -1 체크보다 먼저 걸러야 한다.
+	if ( null === $min || false === $min || '' === $min || null === $max || false === $max || '' === $max ) {
+		return '';
+	}
 	$min = (float) $min;
 	$max = (float) $max;
 	if ( $min < 0 || $max < 0 ) {
