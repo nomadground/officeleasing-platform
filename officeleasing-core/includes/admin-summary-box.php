@@ -35,10 +35,13 @@ function ol_render_building_summary_box($post) {
     $generation_status = get_field('aio_generation_status', $post->ID);
 
     // building_min_rent는 building-cache.php에서 "데이터 없음"을 0이 아니라 -1로 저장한다(0원은
-    // 실제 유효값일 수 있어서). ol_format_manwon()은 음수를 0으로 clamp해 "0만원"으로 보여주므로,
-    // 여기서 먼저 -1을 걸러 "-"로 표시해야 "임대료 0원"과 "집계할 매물 없음"이 안 헷갈린다.
-    $min_rent = (float) get_field('building_min_rent', $post->ID);
-    $min_rent_label = $min_rent < 0 ? '-' : ol_format_manwon($min_rent);
+    // 실제 유효값일 수 있어서). 다만 이 필드가 아직 한 번도 쓰인 적 없는 빌딩(신규 빌딩에 매물이
+    // 아직 안 연결됐거나, 이 필드가 추가되기 전부터 있던 빌딩이 재계산 전인 경우)에는 get_field()가
+    // null/false/''를 돌려줄 수 있다 - (float)로 먼저 캐스팅하면 이것도 0이 되어 ol_format_manwon()이
+    // "0만원"으로 잘못 보여준다. -1 체크보다 먼저 원시값 자체를 걸러야 한다.
+    $min_rent_raw = get_field('building_min_rent', $post->ID);
+    $min_rent_unset = (null === $min_rent_raw || false === $min_rent_raw || '' === $min_rent_raw);
+    $min_rent_label = ($min_rent_unset || (float) $min_rent_raw < 0) ? '-' : ol_format_manwon($min_rent_raw);
 
     ol_render_summary_table([
         '연면적' => ol_format_pyeong_value(get_field('building_total_area_pyeong', $post->ID)),
