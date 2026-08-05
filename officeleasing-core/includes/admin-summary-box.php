@@ -34,12 +34,18 @@ function ol_render_building_summary_box($post) {
     $generation_labels = ['auto_generated' => '자동 생성', 'human_written' => '직접 작성'];
     $generation_status = get_field('aio_generation_status', $post->ID);
 
+    // building_min_rent는 building-cache.php에서 "데이터 없음"을 0이 아니라 -1로 저장한다(0원은
+    // 실제 유효값일 수 있어서). ol_format_manwon()은 음수를 0으로 clamp해 "0만원"으로 보여주므로,
+    // 여기서 먼저 -1을 걸러 "-"로 표시해야 "임대료 0원"과 "집계할 매물 없음"이 안 헷갈린다.
+    $min_rent = (float) get_field('building_min_rent', $post->ID);
+    $min_rent_label = $min_rent < 0 ? '-' : ol_format_manwon($min_rent);
+
     ol_render_summary_table([
         '연면적' => ol_format_pyeong_value(get_field('building_total_area_pyeong', $post->ID)),
         '기준층면적' => ol_format_pyeong_value(get_field('building_standard_floor_area_pyeong', $post->ID)),
         '활성 매물 수' => (int) get_field('building_active_listing_count', $post->ID) . '건',
         '전용면적 범위' => $area_range,
-        '최저 임대료' => ol_format_manwon(get_field('building_min_rent', $post->ID)),
+        '최저 임대료' => $min_rent_label,
         // 검수 상태는 위쪽 필드(aio_review_status)에서 직접 바꿀 수 있으므로 여기선 참고용 읽기전용 표시만.
         'AIO 입지요약 생성방식' => $generation_labels[$generation_status] ?? '-',
     ]);

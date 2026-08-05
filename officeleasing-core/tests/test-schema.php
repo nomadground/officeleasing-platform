@@ -61,6 +61,10 @@ function ol_active_listing_statuses() {
     return ['available', 'reserved', 'contract_pending'];
 }
 
+// schema.php가 ol_money_field_value()(helpers.php)를 쓴다 - 실제 플러그인 부트스트랩에서는
+// officeleasing-core.php가 helpers.php를 schema.php보다 먼저 로드해 문제 없지만, 이 테스트는
+// 부트스트랩을 거치지 않고 schema.php만 직접 require하므로 여기서도 순서를 맞춰야 한다.
+require __DIR__ . '/../includes/helpers.php';
 require __DIR__ . '/../includes/schema.php';
 require __DIR__ . '/../includes/schema-home.php';
 
@@ -154,6 +158,26 @@ check('활성 매물 3개 -> ID 3개 반환', count($ids3), 3);
 $node502 = ol_schema_real_estate_listing_node(502, 100, 'https://officeleasing.co.kr/b/');
 check('두 번째 매물 availability -> LimitedAvailability', $node502['offers']['availability'], 'https://schema.org/LimitedAvailability');
 check('두 번째 매물 @id가 첫 번째와 다름(고유)', $node502['@id'] !== $listing_node['@id'], true);
+
+// ── 6-1. 보증금/임대료/관리비 0원은 "값 없음"이 아니라 실제 0으로 구조화 데이터에 들어가야 한다
+// (2차 리뷰 지적: ol_money_field_value() 적용 전엔 >0 체크 때문에 0원이 통째로 빠졌었다) ──
+$GLOBALS['__fields'][504] = [
+    'floor_display' => '5층',
+    'listing_status' => 'available',
+    'monthly_rent' => 0,
+    'deposit_amount' => 0,
+    'maintenance_fee' => 500000,
+];
+$node504 = ol_schema_real_estate_listing_node(504, 100, 'https://officeleasing.co.kr/b/');
+check('임대료 0원도 offers.price에 포함(생략 아님)', $node504['offers']['price'], '0');
+check('보증금 0원도 additionalProperty에 포함', $node504['offers']['additionalProperty'][0]['value'], '0');
+check('관리비는 정상값 그대로 포함', $node504['offers']['additionalProperty'][1]['value'], '500000');
+
+// ── 6-2. 필드 자체가 입력된 적 없는 매물은 여전히 생략(0원과는 다름) ──
+$GLOBALS['__fields'][505] = ['floor_display' => '6층', 'listing_status' => 'available'];
+$node505 = ol_schema_real_estate_listing_node(505, 100, 'https://officeleasing.co.kr/b/');
+check('금액 필드 자체가 없는 매물은 offers.price 자체가 없음(0으로 채워지지 않음)', isset($node505['offers']['price']), false);
+check('금액 필드 자체가 없는 매물은 additionalProperty 자체가 없음', isset($node505['offers']['additionalProperty']), false);
 
 // ── 7. 전체 payload가 JSON으로 안전하게 인코딩되는지(한글 깨짐/에러 없음) ──
 $json = wp_json_encode_stub([$node, $listing_node, $node502]);

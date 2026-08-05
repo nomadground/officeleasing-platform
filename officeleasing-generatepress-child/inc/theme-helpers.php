@@ -236,9 +236,14 @@ function olt_collect_images( $post_id, $prefix, $count, $size = 'ol-interior' ) 
 /**
  * 두 숫자(빌딩 캐시의 min/max)를 값 포맷 콜백에 넘겨 범위 문자열로 합친다.
  * min==max(매물 1건) 또는 둘 중 하나만 있으면 단일값, 둘 다 없으면 빈 문자열.
- * building-card.php/single-building.php에서 면적·보증금·임대료·관리비 범위 표기에 공통으로 쓴다.
  *
- * @param callable $formatter 값 하나를 받아 단위 포함 문자열로 포맷하는 콜백(예: olt_won).
+ * [면적 전용] "0 = 데이터 없음"이 항상 성립하는 필드에만 써야 한다(전용/임대면적 등 - 매물이 실제
+ * 면적 0으로 존재할 수는 없으므로 0을 "미입력"으로 취급해도 안전하다). 보증금/임대료/관리비처럼 0이
+ * 실제 유효값일 수 있는 금액 필드에는 이 함수를 쓰면 안 된다 - olt_format_money_range()를 쓸 것
+ * (2차 리뷰에서 지적됨: 이 함수를 금액에도 그대로 재사용해서 "0원~50만원"이 "50만원"으로,
+ * "0원~0원"이 빈 문자열로 잘못 나오는 문제가 있었다).
+ *
+ * @param callable $formatter 값 하나를 받아 단위 포함 문자열로 포맷하는 콜백(예: olt_pyeong).
  */
 function olt_format_range( $min, $max, callable $formatter ) {
 	$min = (float) $min;
@@ -250,6 +255,26 @@ function olt_format_range( $min, $max, callable $formatter ) {
 		return call_user_func( $formatter, $min ) . ' ~ ' . call_user_func( $formatter, $max );
 	}
 	return call_user_func( $formatter, $max > 0 ? $max : $min );
+}
+
+/**
+ * [금액 전용] 두 숫자(빌딩 캐시의 min/max 보증금/임대료/관리비)를 범위 문자열로 합친다.
+ * building-cache.php는 "이 필드를 입력한 매물이 하나도 없음"을 -1로 저장한다(0은 관리비 없음 등
+ * 실제 유효값이라 캐시 sentinel로 못 쓴다 - ol_money_field_value() 참고). 그래서 olt_format_range()의
+ * "0 이하면 없는 값" 판정과 달리, 여기서는 min/max가 음수(-1)일 때만 "데이터 없음"으로 본다.
+ *
+ * @param callable $formatter 값 하나를 받아 단위 포함 문자열로 포맷하는 콜백(예: olt_won).
+ */
+function olt_format_money_range( $min, $max, callable $formatter ) {
+	$min = (float) $min;
+	$max = (float) $max;
+	if ( $min < 0 || $max < 0 ) {
+		return '';
+	}
+	if ( round( $min, 4 ) !== round( $max, 4 ) ) {
+		return call_user_func( $formatter, $min ) . ' ~ ' . call_user_func( $formatter, $max );
+	}
+	return call_user_func( $formatter, $max );
 }
 
 /** 캐시된 층수(정수, 지하는 음수) 하나를 "17층"/"지하1층"으로 표기. 0은 "데이터 없음"이라 호출부에서 걸러야 한다. */

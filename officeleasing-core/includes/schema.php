@@ -186,9 +186,12 @@ function ol_schema_real_estate_listing_node($listing_id, $building_id, $permalin
     $floor_display = get_field('floor_display', $listing_id);
     $status = get_field('listing_status', $listing_id);
     $exclusive_sqm = (float) get_field('exclusive_area_sqm', $listing_id);
-    $monthly_rent = (float) get_field('monthly_rent', $listing_id);
-    $deposit = (float) get_field('deposit_amount', $listing_id);
-    $maintenance = (float) get_field('maintenance_fee', $listing_id);
+    // 보증금/임대료/관리비는 0이 실제 유효값일 수 있어(building-cache.php와 동일 근거 - ACF 필드가
+    // required=1 + min=0) ol_money_field_value()로 "입력 안 됨"(null)과 "0으로 입력됨"을 구분한다.
+    // 아래 $monthly_rent > 0 등 단순 >0 체크로는 0원 조건이 구조화 데이터에서 빠졌다(2차 리뷰 지적).
+    $monthly_rent = ol_money_field_value(get_field('monthly_rent', $listing_id));
+    $deposit = ol_money_field_value(get_field('deposit_amount', $listing_id));
+    $maintenance = ol_money_field_value(get_field('maintenance_fee', $listing_id));
 
     $availability_map = [
         'available' => 'https://schema.org/InStock',
@@ -213,17 +216,17 @@ function ol_schema_real_estate_listing_node($listing_id, $building_id, $permalin
         'businessFunction' => 'http://purl.org/goodrelations/v1#LeaseOut',
         'seller' => ['@id' => ol_schema_organization_id()],
     ];
-    if ($monthly_rent > 0) {
+    if ($monthly_rent !== null) {
         $offer['price'] = (string) $monthly_rent;
     }
     if (isset($availability_map[$status])) {
         $offer['availability'] = $availability_map[$status];
     }
     $offer_additional = [];
-    if ($deposit > 0) {
+    if ($deposit !== null) {
         $offer_additional[] = ['@type' => 'PropertyValue', 'name' => '보증금', 'value' => (string) $deposit];
     }
-    if ($maintenance > 0) {
+    if ($maintenance !== null) {
         $offer_additional[] = ['@type' => 'PropertyValue', 'name' => '관리비', 'value' => (string) $maintenance];
     }
     if (!empty($offer_additional)) {

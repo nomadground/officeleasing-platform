@@ -60,17 +60,20 @@ $exclusive_area_range = olt_format_range(
 	get_field( 'building_max_exclusive_area_pyeong', $building_id ),
 	$pyeong_plain
 );
-$deposit_range = olt_format_range(
+// 보증금/임대료/관리비는 0이 실제 유효값일 수 있어(캐시가 -1로 "데이터 없음"을 구분) 면적용
+// olt_format_range()가 아니라 olt_format_money_range()를 쓴다 - "0원~50만원"이 "50만원"으로,
+// "0원~0원"이 빈 문자열로 잘못 나오던 문제(2차 리뷰 지적)가 여기 있었다.
+$deposit_range = olt_format_money_range(
 	get_field( 'building_min_deposit', $building_id ),
 	get_field( 'building_max_deposit', $building_id ),
 	'olt_won'
 );
-$rent_range = olt_format_range(
+$rent_range = olt_format_money_range(
 	get_field( 'building_min_rent', $building_id ),
 	get_field( 'building_max_rent', $building_id ),
 	'olt_won'
 );
-$maintenance_range = olt_format_range(
+$maintenance_range = olt_format_money_range(
 	get_field( 'building_min_maintenance_fee', $building_id ),
 	get_field( 'building_max_maintenance_fee', $building_id ),
 	'olt_won'
