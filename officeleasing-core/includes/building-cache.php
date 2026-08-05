@@ -103,12 +103,18 @@ function ol_recount_building_cache($building_id, $exclude_listing_id = 0) {
     update_field('building_max_exclusive_area_pyeong', $max_area ?? 0, $building_id);
     update_field('building_min_lease_area_pyeong', $min_lease_area ?? 0, $building_id);
     update_field('building_max_lease_area_pyeong', $max_lease_area ?? 0, $building_id);
-    update_field('building_min_rent', $min_rent ?? 0, $building_id);
-    update_field('building_max_rent', $max_rent ?? 0, $building_id);
-    update_field('building_min_deposit', $min_deposit ?? 0, $building_id);
-    update_field('building_max_deposit', $max_deposit ?? 0, $building_id);
-    update_field('building_min_maintenance_fee', $min_maintenance ?? 0, $building_id);
-    update_field('building_max_maintenance_fee', $max_maintenance ?? 0, $building_id);
+    // [2차 리뷰 수정] 보증금/임대료/관리비는 "데이터 없음"을 0이 아니라 -1로 저장한다. 이 셋은 0이
+    // 실제 유효값일 수 있어(위 $rent/$deposit/$maintenance 집계에서 ol_money_field_value()로 이미
+    // 구분함) 0을 그대로 sentinel로 쓰면 "모든 매물이 0원" 상태와 "집계할 매물이 없음" 상태를
+    // 캐시에 저장하는 순간 다시 구분이 안 된다. 금액은 음수가 나올 일이 없는 도메인이라 -1이 안전한
+    // sentinel. 읽는 쪽은 olt_format_money_range()(카드)와 ol_money_field_value() 재사용(schema.php)
+    // 이 이 규약을 안다 - admin-summary-box.php의 "최저 임대료" 표시도 함께 맞춰 고쳤다.
+    update_field('building_min_rent', $min_rent ?? -1, $building_id);
+    update_field('building_max_rent', $max_rent ?? -1, $building_id);
+    update_field('building_min_deposit', $min_deposit ?? -1, $building_id);
+    update_field('building_max_deposit', $max_deposit ?? -1, $building_id);
+    update_field('building_min_maintenance_fee', $min_maintenance ?? -1, $building_id);
+    update_field('building_max_maintenance_fee', $max_maintenance ?? -1, $building_id);
     // 층수는 0이 "지상 1층 미만"이라는 유효값이 될 수 없는 도메인이라, 캐시 없음(0)과 실제 값을
     // 구분하는 데 다른 min/max 캐시와 동일한 "0 = 데이터 없음" 규약을 그대로 써도 안전하다.
     update_field('building_min_floor', $min_floor ?? 0, $building_id);
