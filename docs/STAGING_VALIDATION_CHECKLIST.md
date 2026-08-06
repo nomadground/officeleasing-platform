@@ -84,6 +84,44 @@
 
 ---
 
+## 4-1. 캐시 재생성(`wp officeleasing rebuild-cache`) — 실행 절차 및 시점
+
+이 문서 작성 이후 `feature/listing-detail-ux-pass1`이 main에 병합되면서(build card 통계 확장,
+0원 금액 처리 수정 등 4라운드) `building_min/max_rent`·`building_min/max_deposit`·
+`building_min/max_maintenance_fee` 6개 캐시 필드의 **"데이터 없음" sentinel이 `0` → `-1`로 바뀌었다**
+(`officeleasing-core/includes/building-cache.php`). 근거: 보증금·임대료·관리비는 ACF 필드 정의상
+(`deposit_manwon`/`monthly_rent_manwon`/`maintenance_fee_manwon`, `required=1, min=0`) **0이 실제
+유효값일 수 있어서**(예: 관리비 없음 조건) 기존처럼 0을 "데이터 없음"으로 쓰면 실제 0원과 구분이
+안 됐다.
+
+**반드시 실행해야 하는 이유:** 이 변경 이전에 이미 매물이 연결돼 있던 빌딩들은 캐시 필드에 여전히
+**옛 규약(0 = 데이터 없음)** 으로 저장된 값이 남아있다. 새 코드는 이 값을 "실제 0원"으로 해석하므로,
+재생성 전까지는 원래 "데이터 없음"이었던 빌딩이 카드에 "0원"으로 잘못 노출될 수 있다. 반대로 매물을
+새로 저장하면 그 시점에 해당 빌딩만 자동으로 새 규약으로 재계산되므로(`save-hooks.php` →
+`ol_recount_building_cache()`), 이 명령은 **"이미 매물이 있던 기존 빌딩" 전체를 한 번에 새 규약으로
+맞추는 일회성 작업**이다.
+
+**실행 시점:** 이번 배포(코드 업로드) 직후, 다른 검증(§6)을 시작하기 **전에** 1회 실행한다.
+
+**실행 명령:**
+```
+wp officeleasing rebuild-cache
+```
+WP-CLI 접근이 없으면 관리자 화면 → 빌딩 목록 상단의 "지금 전체 재생성" 버튼(`cache-rebuild.php`의
+`admin_notices`/`admin_post_ol_rebuild_cache`)을 대신 사용한다.
+
+**확인 절차:**
+1. 재생성 실행 전, 매물이 2건 이상 연결된 빌딩 하나를 골라 관리자 사이드바 "계산값 요약" 박스에서
+   "최저 임대료" 값을 기록해둔다.
+2. `wp officeleasing rebuild-cache` 실행 → 완료 메시지(`N개 빌딩의 매물 집계 캐시를 재생성했습니다`)
+   확인.
+3. 같은 빌딩을 다시 열어 "최저 임대료"가 실제 매물 데이터와 일치하는지, 관리비/보증금 등이 0원인
+   매물이 있다면 그 값이 반영됐는지 확인.
+4. 매물이 하나도 없는 빌딩(§5 빌딩 C)의 "최저 임대료"가 "0만원"이 아니라 "-"로 표시되는지 확인
+   (`admin-summary-box.php`).
+
+---
+
 ## 5. Building/Listing 샘플 데이터 최소 세트
 
 권역 시딩은 `officeleasing-core` 활성화 시 자동으로 이뤄진다(강남/도심권/여의도/기타권역 4개 부모 +
@@ -158,6 +196,70 @@
 - 공개 URL(`/list/...`)에서 발행된 Flyer가 정상 출력되는지
 - 인쇄 미리보기(`templates/public/partials/print-item-detail.php` 경로) 레이아웃이 깨지지 않는지
 - "officeleasing에서 가져오기" 기능은 officeleasing-core+ACF 활성 상태에서 실제 building/listing 데이터가 정확히 매핑되는지(§1 매핑 근거 표 참고 — `building_address_road`, `deposit_manwon` 등 특정 필드명 대조)
+
+### 6-11. 금액 왕복 검증 (미입력 / 0원 / 일반값 — 캐시·카드·Schema)
+`feature/listing-detail-ux-pass1` 4라운드 리뷰에서 확정된 규약(§4-1 참고): 빌딩 캐시는 `-1`=데이터
+없음, `0`=실제 0원을 구분한다. 아래 4가지 케이스를 매물 저장 → 카드/Schema 확인 순서로 각각 검증한다.
+- **미입력**: 신규 빌딩을 만들고 매물을 아직 하나도 연결하지 않은 상태 → 빌딩 카드에 보증금/임대료/
+  관리비 칩 자체가 안 뜨는지(`olt_format_money_range()`가 null/false/''를 -1보다 먼저 걸러야 함)
+- **명시적 0원**: 매물 1건의 관리비를 0으로 저장 → 카드에 "0만원"으로 노출되는지(빈 문자열 아님)
+- **0원 + 일반값 혼합**: 같은 빌딩에 관리비 0원 매물과 50만원 매물을 함께 연결 → 카드에 "0만원 ~
+  50만원" 범위로 노출되는지
+- **일반값만**: 관리비 50만원/100만원 매물 두 건 → "50만원 ~ 100만원" 범위로 노출되는지
+- 위 각 케이스에서 빌딩 상세 페이지 소스보기의 `<script type="application/ld+json">`을 확인 —
+  명시적 0원 매물은 `offers.price`/`additionalProperty`에 `"0"`이 그대로 포함되고, 필드 자체가
+  입력 안 된 매물은 해당 속성이 아예 생략되는지(`officeleasing-core/includes/schema.php`)
+- 관리자 사이드바 "계산값 요약"의 "최저 임대료"도 같은 3구분(미입력="-", 0원="0만원", 일반값=정상
+  표기)을 따르는지(`admin-summary-box.php`)
+
+### 6-12. Contact 버튼 1개/2개/3개 조합
+빌딩 상세 하단 Contact 카드(`contact-cta.php`)는 렌더되는 버튼 수에 따라 레이아웃이 달라진다.
+- **전화만(1개)**: 카카오톡 URL도, `insight`/`contact` slug 페이지도 없는 상태 → 버튼 1개가 전체
+  폭으로, 노란색(`olx-contact-action--phone`)으로 뜨는지 — 예전 `:first-child`/`:last-of-type`
+  버그였다면 이 케이스에서 검은색으로 잘못 나왔을 것이므로 반드시 확인
+- **전화+온라인(2개)**: `contact` 페이지를 publish 상태로 만들거나 카카오 채널 URL을 설정 → 50:50
+  레이아웃, 온라인 문의 버튼이 검은색(`--online`)인지
+- **전화+인사이트(2개)**: `insight` slug 페이지를 publish 상태로 만들고 온라인 문의는 비활성 상태로
+  → 50:50 레이아웃, 인사이트 버튼이 아웃라인 스타일(`--insight`)인지
+- **전화+온라인+인사이트(3개)**: 데스크톱에서 3열 균등폭, **모바일(≤640px)에서는 2+1**(전화+온라인
+  한 줄, 인사이트가 그 아래 전체폭 한 줄)로 바뀌는지 브라우저 폭을 줄여가며 확인
+
+### 6-13. 비공개 페이지 링크 숨김 (Insight / 체크리스트 / 온라인 문의)
+`checklist`/`insight`/`contact` slug 페이지가 아래 상태일 때 관련 버튼·링크가 **노출되면 안 된다**
+(`olt_get_public_page_url()` — `officeleasing-generatepress-child/inc/theme-helpers.php`).
+- 페이지를 **draft**(임시글) 상태로 저장 → 빌딩 상세의 AT A GLANCE "체크리스트 보기" 링크,
+  Contact의 인사이트/온라인 문의 버튼이 사라지는지
+- 페이지를 **비공개(private)**로 설정 → 동일하게 사라지는지
+- 페이지에 **비밀번호 보호**를 설정 → 동일하게 사라지는지(관리자로 로그인해 미리보기 중이어도
+  일반 방문자 기준으로는 숨겨져야 함)
+- 페이지를 다시 **publish**로 되돌리면 버튼이 다시 나타나는지
+
+### 6-14. 매물 상태변경 → 휴지통 → 복원 → 빌딩 재배정 시 캐시 재집계
+`building-cache.php`의 `ol_recount_building_cache()`가 아래 각 상황에서 실제로 다시 호출되는지
+확인한다(카드에 반영되는 값이 최신인지로 판별).
+- 매물 상태를 `available` → `leased`(거래완료)로 변경·저장 → 그 매물이 속한 빌딩 카드의 "매물 N건"
+  카운트와 금액 범위가 즉시 줄어드는지
+- 매물을 휴지통으로 이동 → 빌딩 카드에서 바로 빠지는지
+- 휴지통에서 복원 → 다시 카운트에 포함되는지
+- 매물의 "연결 빌딩"을 다른 빌딩으로 변경·저장 → 예전 빌딩 카드에서는 빠지고 새 빌딩 카드에는
+  더해지는지(양쪽 빌딩 모두 재계산돼야 함)
+
+### 6-15. Footer 데스크톱·모바일 레이아웃
+모든 페이지 공통(`footer.php`).
+- 데스크톱: 좌측 "OFFICE LEASING" 볼드 큰 글씨(태그라인 문구 없음), 중앙 법인명·주소·전화·등록번호
+  (볼드 없이 일반 텍스트), 우측 상단에 볼드+tel 링크 전화번호가 영문 카피라이트 위에 배치되고
+  우측 정렬되는지, 전화번호 클릭 시 실제 전화 연결(`tel:`)이 뜨는지(모바일 브라우저에서 확인)
+- 모바일(≤900px): 3개 블록이 세로로 쌓이면서 우측 전화번호 블록도 다른 블록과 동일하게 좌측 정렬로
+  바뀌는지
+
+### 6-16. floor_display 파싱 — 지원/미지원 형식
+매물의 "해당층 표기" 필드에 아래 값을 각각 입력해 저장한 뒤, 소속 빌딩 카드의 "규모(층수)" 표시를
+확인한다(`ol_extract_floor_number()` — `officeleasing-core/includes/helpers.php`).
+- **지원**: `17층`, `지하1층`, `B1`, `-2층`, `B동 3층` — 각각 올바른 층수(마지막 항목은 지하가 아니라
+  지상 3층)로 카드에 반영되는지
+- **미지원(정책대로 null 처리)**: `3~5층`, `B1~B3`, `지하1층~지상2층` — 이 매물은 층수 범위 집계에서
+  제외되고(다른 매물의 층수만으로 범위가 표시되거나, 이 매물이 유일하면 층수 행 자체가 안 보임)
+  잘못된 값(예: 첫 숫자만 취해 "3층"으로 추측)이 나오지 않는지
 
 ---
 
@@ -262,13 +364,22 @@ define( 'WP_DEBUG_DISPLAY', false ); // 화면에는 안 띄우고 로그에만
 
 ## 10. 이번 브랜치 범위 확인
 
-이 브랜치(`test/wordpress-staging-baseline`)에서 변경된 파일은 이 문서 하나뿐이다. `officeleasing-core`,
-`officeleasing-generatepress-child`, `hint-leasing-flyer`의 실제 코드는 **한 줄도 수정하지 않았다** —
-`git diff main..test/wordpress-staging-baseline --stat`로 확인 가능.
+이 문서가 처음 작성된 `test/wordpress-staging-baseline` 브랜치에서 변경된 파일은 이 문서 하나뿐이었다
+(`officeleasing-core`/`officeleasing-generatepress-child`/`hint-leasing-flyer` 코드는 한 줄도 수정하지
+않음). 이 브랜치는 이후 `main`에 병합됐다.
+
+### 10-1. 이후 보강 이력
+
+`main` 병합 후 `feature/listing-detail-ux-pass1`(매물 카드 통계, 빌딩정보 갤러리, Contact 재구성,
+Footer 재구성, floor_display 파싱, 0원 금액 sentinel 등 9커밋)이 추가로 병합됐다. 그 변경사항을
+검증 항목으로 반영하기 위해 `fix/staging-runtime-pass1` 브랜치에서 §4-1, §6-11~§6-16을 추가했다 —
+이번에도 문서만 변경했고 코드는 건드리지 않았다(`git diff main..fix/staging-runtime-pass1 --stat`으로
+확인 가능, 코드 수정이 있었다면 이 표를 갱신한다).
 
 ## 다음 단계
 이 체크리스트로 실 스테이징 검증을 마친 뒤:
-1. §8에서 기록된 실환경 오류 수정 (별도 브랜치)
-2. §7 이미지 재생성 실행
-3. §9 카드 비율 결정 (실사진 비교 후)
-4. 이후 Sprint A(For Lease MVP 완성) → Sprint B(운영 관리자 기능) → Sprint C(콘텐츠·SEO 허브) → Sprint D(AI Agent) 순서로 진행
+1. §4-1 캐시 재생성 실행 (다른 검증보다 먼저)
+2. §8에서 기록된 실환경 오류 수정 (별도 브랜치)
+3. §7 이미지 재생성 실행
+4. §9 카드 비율 결정 (실사진 비교 후)
+5. 이후 Sprint A(For Lease MVP 완성) → Sprint B(운영 관리자 기능) → Sprint C(콘텐츠·SEO 허브) → Sprint D(AI Agent) 순서로 진행
