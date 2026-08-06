@@ -181,7 +181,7 @@ $noc_range = olt_format_money_range(
 			</div>
 		<?php endif; ?>
 		<?php if ( $deposit_range || $rent_range || $maintenance_range ) : ?>
-			<div class="olx-card-prices">
+			<div class="olx-card-prices olx-card-prices--building">
 				<?php if ( $deposit_range ) : ?><span><i class="chip-deposit">보</i><b><?php echo esc_html( $deposit_range ); ?></b></span><?php endif; ?>
 				<?php if ( $rent_range ) : ?><span><i class="chip-rent">월</i><b><?php echo esc_html( $rent_range ); ?></b></span><?php endif; ?>
 				<?php if ( $maintenance_range ) : ?><span><i class="chip-maintenance">관</i><b><?php echo esc_html( $maintenance_range ); ?></b></span><?php endif; ?>
