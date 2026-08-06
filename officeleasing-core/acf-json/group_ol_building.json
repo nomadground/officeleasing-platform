@@ -487,6 +487,48 @@
             "placeholder": ""
         },
         {
+            "key": "field_ol_bld_min_noc",
+            "label": "최소 전용평당 NOC 원 (자동계산)",
+            "name": "building_min_noc",
+            "type": "number",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "min": "",
+            "max": "",
+            "step": "",
+            "readonly": 1,
+            "prepend": "",
+            "append": "",
+            "placeholder": ""
+        },
+        {
+            "key": "field_ol_bld_max_noc",
+            "label": "최대 전용평당 NOC 원 (자동계산)",
+            "name": "building_max_noc",
+            "type": "number",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "min": "",
+            "max": "",
+            "step": "",
+            "readonly": 1,
+            "prepend": "",
+            "append": "",
+            "placeholder": ""
+        },
+        {
             "key": "field_ol_bld_min_floor",
             "label": "최소 층수 (자동계산, 지하는 음수)",
             "name": "building_min_floor",
@@ -1210,5 +1252,5 @@
     "active": true,
     "description": "",
     "show_in_rest": 0,
-    "modified": 1785825822
+    "modified": 1785990679
 }

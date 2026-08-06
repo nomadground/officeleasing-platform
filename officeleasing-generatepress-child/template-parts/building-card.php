@@ -78,6 +78,15 @@ $maintenance_range = olt_format_money_range(
 	get_field( 'building_max_maintenance_fee', $building_id ),
 	'olt_won'
 );
+// NOC(전용평당 환산임대료)는 임대료·관리비를 합쳐 면적당으로 정규화한 "비교 지표"라 보증금/임대료/
+// 관리비(실제 비용 항목)와 성격이 다르다 - 같은 칩 줄에 나란히 놓으면 "네 번째 비용"처럼 보여
+// 오해를 살 수 있어, 가격 칩 아래 별도의 보조 지표 줄로 분리한다. olt_won() 대신 올림평당가 표기
+// (olt_pyeong_price, "51.1만원" 형식)를 쓴다 - single-building.php 임대정보표의 "환산임대료" 표기와 동일.
+$noc_range = olt_format_money_range(
+	get_field( 'building_min_noc', $building_id ),
+	get_field( 'building_max_noc', $building_id ),
+	'olt_pyeong_price'
+);
 ?>
 <a class="<?php echo esc_attr( $card_class ); ?>" href="<?php echo esc_url( $building_link ); ?>">
 	<div class="olx-card-img">
@@ -152,6 +161,9 @@ $maintenance_range = olt_format_money_range(
 				<?php if ( $rent_range ) : ?><span><i class="chip-rent">월</i><?php echo esc_html( $rent_range ); ?></span><?php endif; ?>
 				<?php if ( $maintenance_range ) : ?><span><i class="chip-maintenance">관</i><?php echo esc_html( $maintenance_range ); ?></span><?php endif; ?>
 			</div>
+		<?php endif; ?>
+		<?php if ( $noc_range ) : ?>
+			<p class="olx-card-noc">전용평당 NOC <b><?php echo esc_html( $noc_range ); ?></b></p>
 		<?php endif; ?>
 	</div>
 </a>

@@ -50,6 +50,8 @@ function ol_recount_building_cache($building_id, $exclude_listing_id = 0) {
     $max_maintenance = null;
     $min_floor = null;
     $max_floor = null;
+    $min_noc = null;
+    $max_noc = null;
     $last_verified = 0;
 
     foreach ($listing_ids as $lid) {
@@ -64,6 +66,9 @@ function ol_recount_building_cache($building_id, $exclude_listing_id = 0) {
         $rent = ol_money_field_value(get_field('monthly_rent', $lid));
         $deposit = ol_money_field_value(get_field('deposit_amount', $lid));
         $maintenance = ol_money_field_value(get_field('maintenance_fee', $lid));
+        // noc_per_exclusive_pyeong(전용평당 NOC)은 monthly_rent+maintenance_fee의 파생값이라 같은
+        // 이유로 0이 유효할 수 있다(둘 다 0이면 NOC도 0) - 동일하게 ol_money_field_value()로 구분한다.
+        $noc = ol_money_field_value(get_field('noc_per_exclusive_pyeong', $lid));
         $floor = ol_extract_floor_number(get_field('floor_display', $lid));
 
         if ($area > 0) {
@@ -90,6 +95,10 @@ function ol_recount_building_cache($building_id, $exclude_listing_id = 0) {
             $min_floor = ($min_floor === null) ? $floor : min($min_floor, $floor);
             $max_floor = ($max_floor === null) ? $floor : max($max_floor, $floor);
         }
+        if ($noc !== null) {
+            $min_noc = ($min_noc === null) ? $noc : min($min_noc, $noc);
+            $max_noc = ($max_noc === null) ? $noc : max($max_noc, $noc);
+        }
         // verified_at은 ACF date_picker return_format="Ymd" (예: "20260716") 이므로
         // 정수로 캐스팅해 그대로 최댓값 비교가 가능하다. 비어있으면 0이 되어 자동 제외.
         $verified = (int) get_field('verified_at', $lid);
@@ -115,6 +124,9 @@ function ol_recount_building_cache($building_id, $exclude_listing_id = 0) {
     update_field('building_max_deposit', $max_deposit ?? -1, $building_id);
     update_field('building_min_maintenance_fee', $min_maintenance ?? -1, $building_id);
     update_field('building_max_maintenance_fee', $max_maintenance ?? -1, $building_id);
+    // NOC도 0이 유효값일 수 있는 금액 파생값이라 -1 sentinel을 그대로 쓴다(위 보증금/임대료/관리비와 동일 이유).
+    update_field('building_min_noc', $min_noc ?? -1, $building_id);
+    update_field('building_max_noc', $max_noc ?? -1, $building_id);
     // 층수는 0이 "지상 1층 미만"이라는 유효값이 될 수 없는 도메인이라, 캐시 없음(0)과 실제 값을
     // 구분하는 데 다른 min/max 캐시와 동일한 "0 = 데이터 없음" 규약을 그대로 써도 안전하다.
     update_field('building_min_floor', $min_floor ?? 0, $building_id);
