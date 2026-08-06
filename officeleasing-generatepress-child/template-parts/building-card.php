@@ -45,21 +45,41 @@ $floor_display = olt_floor_range(
 	get_field( 'building_min_floor', $building_id ),
 	get_field( 'building_max_floor', $building_id )
 );
-// 카드 칩 안에서는 괄호 없는 "298~342평" 형태로 쓴다(olt_pyeong()의 "(327평)" 표기는
-// sqm 값 아래 보조 텍스트로 붙일 때 전용이라 여기서는 안 맞는다).
-$pyeong_plain = function ( $v ) {
-	return number_format( (float) $v ) . '평';
+// listing-card.php의 "해당층 / 총층F" 표기와 동일하게, 건물 총 지상층수를 뒤에 붙인다.
+// building_ground_floors는 빌딩 자체 필드라 매물 재쿼리 없이 바로 읽을 수 있다.
+$total_floors = (int) get_field( 'building_ground_floors', $building_id );
+if ( $floor_display && $total_floors ) {
+	$floor_display .= ' / ' . $total_floors . 'F';
+}
+
+// 임대/전용면적은 listing-card.php와 동일하게 ㎡(큰 숫자) + 평(괄호, 보조) 둘 다 보여준다.
+// 캐시엔 평 min/max만 있으므로, ㎡ 범위는 같은 상수(ol_calc_sqm_from_pyeong, Core helpers.php)로
+// 그 자리에서 환산한다 - 별도 building_min/max_*_sqm 캐시 필드를 새로 안 만들어도 된다(단순 단위 변환이라
+// 캐시 시점의 min/max 관계가 sqm으로 바꿔도 그대로 유지되므로 안전).
+$sqm_plain = function ( $v ) {
+	return number_format( (float) $v, 1 ) . '㎡';
 };
-$lease_area_range = olt_format_range(
-	get_field( 'building_min_lease_area_pyeong', $building_id ),
-	get_field( 'building_max_lease_area_pyeong', $building_id ),
-	$pyeong_plain
+$pyeong_paren = function ( $v ) {
+	return '(' . number_format( (float) $v ) . '평)';
+};
+
+$lease_min_pyeong = (float) get_field( 'building_min_lease_area_pyeong', $building_id );
+$lease_max_pyeong = (float) get_field( 'building_max_lease_area_pyeong', $building_id );
+$lease_area_sqm_range = olt_format_range(
+	ol_calc_sqm_from_pyeong( $lease_min_pyeong ),
+	ol_calc_sqm_from_pyeong( $lease_max_pyeong ),
+	$sqm_plain
 );
-$exclusive_area_range = olt_format_range(
-	get_field( 'building_min_exclusive_area_pyeong', $building_id ),
-	get_field( 'building_max_exclusive_area_pyeong', $building_id ),
-	$pyeong_plain
+$lease_area_pyeong_range = olt_format_range( $lease_min_pyeong, $lease_max_pyeong, $pyeong_paren );
+
+$exclusive_min_pyeong = (float) get_field( 'building_min_exclusive_area_pyeong', $building_id );
+$exclusive_max_pyeong = (float) get_field( 'building_max_exclusive_area_pyeong', $building_id );
+$exclusive_area_sqm_range = olt_format_range(
+	ol_calc_sqm_from_pyeong( $exclusive_min_pyeong ),
+	ol_calc_sqm_from_pyeong( $exclusive_max_pyeong ),
+	$sqm_plain
 );
+$exclusive_area_pyeong_range = olt_format_range( $exclusive_min_pyeong, $exclusive_max_pyeong, $pyeong_paren );
 // 보증금/임대료/관리비는 0이 실제 유효값일 수 있어(캐시가 -1로 "데이터 없음"을 구분) 면적용
 // olt_format_range()가 아니라 olt_format_money_range()를 쓴다 - "0원~50만원"이 "50만원"으로,
 // "0원~0원"이 빈 문자열로 잘못 나오던 문제(2차 리뷰 지적)가 여기 있었다.
@@ -136,30 +156,35 @@ $noc_range = olt_format_money_range(
 		<?php if ( $address ) : ?>
 			<p><?php echo esc_html( $address ); ?></p>
 		<?php endif; ?>
-		<?php if ( $floor_display || $lease_area_range || $exclusive_area_range ) : ?>
-			<div class="olx-card-areas">
+		<?php if ( $floor_display || $lease_area_sqm_range || $exclusive_area_sqm_range ) : ?>
+			<div class="olx-card-areas olx-card-areas--building">
 				<?php if ( $floor_display ) : ?>
-					<span class="olx-card-floor"><?php echo esc_html( $floor_display ); ?></span>
-				<?php endif; ?>
-				<?php if ( $lease_area_range ) : ?>
 					<span>
-						<b>임대</b>
-						<strong><?php echo esc_html( $lease_area_range ); ?></strong>
+						<b>층수</b>
+						<strong><?php echo esc_html( $floor_display ); ?></strong>
 					</span>
 				<?php endif; ?>
-				<?php if ( $exclusive_area_range ) : ?>
+				<?php if ( $lease_area_sqm_range ) : ?>
+					<span>
+						<b>임대</b>
+						<strong><?php echo esc_html( $lease_area_sqm_range ); ?></strong>
+						<?php if ( $lease_area_pyeong_range ) : ?><small><?php echo esc_html( $lease_area_pyeong_range ); ?></small><?php endif; ?>
+					</span>
+				<?php endif; ?>
+				<?php if ( $exclusive_area_sqm_range ) : ?>
 					<span>
 						<b>전용</b>
-						<strong><?php echo esc_html( $exclusive_area_range ); ?></strong>
+						<strong><?php echo esc_html( $exclusive_area_sqm_range ); ?></strong>
+						<?php if ( $exclusive_area_pyeong_range ) : ?><small><?php echo esc_html( $exclusive_area_pyeong_range ); ?></small><?php endif; ?>
 					</span>
 				<?php endif; ?>
 			</div>
 		<?php endif; ?>
 		<?php if ( $deposit_range || $rent_range || $maintenance_range ) : ?>
 			<div class="olx-card-prices">
-				<?php if ( $deposit_range ) : ?><span><i class="chip-deposit">보</i><?php echo esc_html( $deposit_range ); ?></span><?php endif; ?>
-				<?php if ( $rent_range ) : ?><span><i class="chip-rent">월</i><?php echo esc_html( $rent_range ); ?></span><?php endif; ?>
-				<?php if ( $maintenance_range ) : ?><span><i class="chip-maintenance">관</i><?php echo esc_html( $maintenance_range ); ?></span><?php endif; ?>
+				<?php if ( $deposit_range ) : ?><span><i class="chip-deposit">보</i><b><?php echo esc_html( $deposit_range ); ?></b></span><?php endif; ?>
+				<?php if ( $rent_range ) : ?><span><i class="chip-rent">월</i><b><?php echo esc_html( $rent_range ); ?></b></span><?php endif; ?>
+				<?php if ( $maintenance_range ) : ?><span><i class="chip-maintenance">관</i><b><?php echo esc_html( $maintenance_range ); ?></b></span><?php endif; ?>
 			</div>
 		<?php endif; ?>
 		<?php if ( $noc_range ) : ?>
