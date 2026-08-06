@@ -10,9 +10,10 @@ if (!defined('ABSPATH')) {
 }
 
 $ol_hidden_calculated_fields = [
-    // listing
-    'exclusive_area_sqm',
-    'lease_area_sqm',
+    // listing - ㎡가 원본 입력이라 자동계산되는 평 값을 숨긴다(building_total_area_pyeong 등과
+    // 동일한 방향으로 통일 - README-ACF.md 참고, 예전엔 매물만 반대 방향이었다)
+    'exclusive_area_pyeong',
+    'lease_area_pyeong',
     'deposit_amount',
     'monthly_rent',
     'maintenance_fee',

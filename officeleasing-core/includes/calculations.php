@@ -6,10 +6,14 @@ if (!defined('ABSPATH')) {
 }
 
 function ol_calculate_listing_fields($post_id) {
-    $exclusive_pyeong = (float) get_field('exclusive_area_pyeong', $post_id);
-    $lease_pyeong = (float) get_field('lease_area_pyeong', $post_id);
-    update_field('exclusive_area_sqm', ol_calc_sqm_from_pyeong($exclusive_pyeong), $post_id);
-    update_field('lease_area_sqm', ol_calc_sqm_from_pyeong($lease_pyeong), $post_id);
+    // 면적은 ㎡가 원본 입력, 평은 역산이다(building_total_area_sqm 등 건물 면적과 동일한 방향으로
+    // 통일 - 예전에는 매물만 평이 입력이라 건물과 방향이 반대였다, README-ACF.md 참고).
+    $exclusive_sqm = (float) get_field('exclusive_area_sqm', $post_id);
+    $lease_sqm = (float) get_field('lease_area_sqm', $post_id);
+    $exclusive_pyeong = ol_calc_pyeong_from_sqm($exclusive_sqm);
+    $lease_pyeong = ol_calc_pyeong_from_sqm($lease_sqm);
+    update_field('exclusive_area_pyeong', $exclusive_pyeong, $post_id);
+    update_field('lease_area_pyeong', $lease_pyeong, $post_id);
 
     // 보증금/임대료/관리비는 전부 "만원 단위 단일 입력" -> 원 단위로 환산만 한다
     $deposit_amount = ol_calc_won_from_manwon(get_field('deposit_manwon', $post_id));

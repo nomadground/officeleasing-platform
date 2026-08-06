@@ -6,7 +6,7 @@
 // 그 뒤에 채운 필드값이 계산·동기화에 반영되지 않는다 (계산이 빈 값 기준으로 도는 문제).
 //
 // 이 함수를 쓰면 "필드 세팅 -> 계산/동기화 강제 재실행"이 한 번에 묶여서 이 문제가 원천 차단된다.
-// 사용법: $post_id = wp_insert_post([...]); ol_save_listing_fields($post_id, ['exclusive_area_pyeong' => 327, ...]);
+// 사용법: $post_id = wp_insert_post([...]); ol_save_listing_fields($post_id, ['exclusive_area_sqm' => 1081.0, ...]);
 //
 // [보안] 이 함수는 관리자 컨텍스트 전용이다. capability 체크 + 쓰기 가능 필드 화이트리스트로
 // 자동계산/내부 필드가 임의로 덮어써지는 것을 막는다. AJAX/REST 엔드포인트에서 이 함수를 부를 때는
@@ -22,7 +22,9 @@ function ol_listing_writable_fields() {
         'related_building', 'listing_status',
         'move_in_type', 'move_in_date',
         'verified_at', 'expires_at', 'leased_at',
-        'floor_display', 'exclusive_area_pyeong', 'lease_area_pyeong',
+        // ㎡가 원본 입력이다(pyeong은 자동계산 - ol_calculate_listing_fields()가 채움) -
+        // building_total_area_sqm 등 빌딩 면적과 동일한 방향으로 통일했다.
+        'floor_display', 'exclusive_area_sqm', 'lease_area_sqm',
         'deposit_manwon', 'monthly_rent_manwon', 'maintenance_fee_manwon',
         'listing_image_1', 'listing_image_2', 'listing_image_3',
         'listing_image_4', 'listing_image_5', 'listing_image_6',

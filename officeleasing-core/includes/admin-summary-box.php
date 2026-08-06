@@ -12,8 +12,11 @@ add_action('add_meta_boxes', function () {
 
 function ol_render_listing_summary_box($post) {
     ol_render_summary_table([
-        '전용면적' => ol_format_sqm(get_field('exclusive_area_sqm', $post->ID)),
-        '공급면적' => ol_format_sqm(get_field('lease_area_sqm', $post->ID)),
+        // ㎡가 원본 입력이 됐으므로(입력값 자체는 폼에 그대로 보임) 요약 박스는 평 환산값(자동계산
+        // 결과)을 보여준다 - building 요약 박스가 building_total_area_pyeong(자동계산)을 보여주는
+        // 것과 동일한 패턴("입력값이 올바르게 환산됐는지" 확인용).
+        '전용면적' => ol_format_pyeong_value(get_field('exclusive_area_pyeong', $post->ID)),
+        '공급면적' => ol_format_pyeong_value(get_field('lease_area_pyeong', $post->ID)),
         '보증금' => ol_format_manwon(get_field('deposit_amount', $post->ID)),
         '임대료' => ol_format_manwon(get_field('monthly_rent', $post->ID)),
         '관리비' => ol_format_manwon(get_field('maintenance_fee', $post->ID)),
@@ -56,10 +59,6 @@ function ol_render_building_summary_box($post) {
 
 function ol_format_pyeong_value($value) {
     return $value ? number_format((float) $value, 1) . ' 평' : '-';
-}
-
-function ol_format_sqm($value) {
-    return $value ? number_format((float) $value, 1) . ' ㎡' : '-';
 }
 
 function ol_render_summary_table(array $rows) {

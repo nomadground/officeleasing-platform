@@ -71,7 +71,8 @@ officeleasing-core/
 ## 이번 라운드 필드 구조 변경
 - **보증금/임대료: 억+만원 Group 입력 폐기 → 만원 단위 단일 Number 필드로 회귀** (`deposit_manwon`, `monthly_rent_manwon`). 오타 방지 목적으로 분리했었지만 실사용 시 불편하다는 피드백 반영.
 - **부가세 포함(`vat_included`) 필드 삭제** — 이 사업은 항상 부가세 별도라 토글 자체가 불필요.
-- **건물 연면적/기준층면적: 입력 단위를 평 → ㎡로 전환**. `building_total_area_sqm`/`building_standard_floor_area_sqm`이 이제 입력(필수), `building_total_area_pyeong`/`building_standard_floor_area_pyeong`이 자동계산(readonly). 매물의 전용/공급면적은 여전히 평이 입력이라 **건물과 매물의 입력 방향이 서로 다릅니다** — 헷갈리지 않도록 주의.
+- **건물 연면적/기준층면적: 입력 단위를 평 → ㎡로 전환**. `building_total_area_sqm`/`building_standard_floor_area_sqm`이 이제 입력(필수), `building_total_area_pyeong`/`building_standard_floor_area_pyeong`이 자동계산(readonly).
+- **[후속 라운드] 매물 전용/공급면적도 평 → ㎡로 입력 방향 통일**. 처음엔 매물만 평이 입력이라 건물과 방향이 반대였는데(바로 위 항목과 헷갈리는 원인이었음), `exclusive_area_sqm`/`lease_area_sqm`이 입력(필수)으로, `exclusive_area_pyeong`/`lease_area_pyeong`이 자동계산(readonly)으로 바뀌어 이제 건물·매물 전부 ㎡가 원본 입력으로 통일됐다. `ol_calculate_listing_fields()`(calculations.php)가 계산 방향을 반대로 뒤집었고, `admin-hidden-fields.php`/`validation.php`/`save-api.php`의 화이트리스트도 함께 sqm 쪽으로 바뀌었다.
 - **`building_total_floors`(총층수) + `building_scale_text`(층규모 텍스트) 삭제 → `building_basement_floors`(지하층수) + `building_ground_floors`(지상층수) 2개로 대체**. "지하 7층 ~ 지상 40층" 같은 표시 문구는 이제 저장하지 않고 테마의 `olt_format_building_scale()`이 두 숫자로 매번 조합해서 보여줍니다. 필터/정렬은 `building_ground_floors` 기준(예전 `building_total_floors` 역할을 이어받음).
 - **지하철 도보시간(`building_subway1_walk`, `building_subway2_walk`) 필드 삭제**. 역명+노선만 남기고, 도보시간처럼 세부적인 내용은 필요하면 AIO 요약/핵심포인트 자유 텍스트에 녹여서 쓰는 방향.
 - **주소/좌표 4필드를 readonly로 잠금**: `building_address_road`, `building_address_jibun`, `building_lat`, `building_lng`는 관리자가 직접 타이핑 못 하고, 편집화면 맨 위 "위치 찾기"(카카오맵) 위젯으로만 채워집니다. 위젯은 새로 만든 `field_ol_bld_map_picker_slot`(message 타입, 필드 목록 맨 앞)에 렌더됩니다.
@@ -87,18 +88,18 @@ officeleasing-core/
 
 | 자동계산 필드 | 원본 입력 필드 |
 |---|---|
-| `exclusive_area_sqm` | `exclusive_area_pyeong` (매물: 평이 입력) |
-| `lease_area_sqm` | `lease_area_pyeong` (매물: 평이 입력) |
+| `exclusive_area_pyeong` | `exclusive_area_sqm` (매물도 건물과 동일하게 ㎡가 입력 — 후속 라운드에서 통일) |
+| `lease_area_pyeong` | `lease_area_sqm` (매물도 건물과 동일하게 ㎡가 입력) |
 | `deposit_amount` | `deposit_manwon` (만원 단위 단일 입력) |
 | `monthly_rent` | `monthly_rent_manwon` (만원 단위 단일 입력) |
 | `maintenance_fee` | `maintenance_fee_manwon` |
 | `monthly_total_cost` | `monthly_rent` + `maintenance_fee` |
-| `rent_per_lease_pyeong` | `monthly_rent` ÷ `lease_area_pyeong` |
-| `maintenance_per_lease_pyeong` | `maintenance_fee` ÷ `lease_area_pyeong` |
-| `noc_per_exclusive_pyeong` | `monthly_total_cost` ÷ `exclusive_area_pyeong` |
-| `deposit_per_exclusive_pyeong` | `deposit_amount` ÷ `exclusive_area_pyeong` |
-| `building_total_area_pyeong` | `building_total_area_sqm` (**건물은 ㎡가 입력** — 매물과 입력 방향이 반대) |
-| `building_standard_floor_area_pyeong` | `building_standard_floor_area_sqm` (**건물은 ㎡가 입력**) |
+| `rent_per_lease_pyeong` | `monthly_rent` ÷ `lease_area_pyeong`(자동계산값을 다시 씀) |
+| `maintenance_per_lease_pyeong` | `maintenance_fee` ÷ `lease_area_pyeong`(자동계산값을 다시 씀) |
+| `noc_per_exclusive_pyeong` | `monthly_total_cost` ÷ `exclusive_area_pyeong`(자동계산값을 다시 씀) |
+| `deposit_per_exclusive_pyeong` | `deposit_amount` ÷ `exclusive_area_pyeong`(자동계산값을 다시 씀) |
+| `building_total_area_pyeong` | `building_total_area_sqm` |
+| `building_standard_floor_area_pyeong` | `building_standard_floor_area_sqm` |
 
 보증금/임대료는 만원 단위 숫자 하나만 입력합니다(예: `1532` 입력 → 저장 시 15,320,000원으로 환산, 화면엔 "1,532만원"으로 표기). 억+만원 분리 입력은 폐기했습니다.
 
@@ -119,7 +120,7 @@ officeleasing-core/
 **단, 미래 커스텀 관리자 페이지가 아래 패턴으로 짜면 깨집니다:**
 ```php
 $post_id = wp_insert_post([...]);   // 이 시점에 save_post_listing이 이미 실행되고 지나감
-update_field('exclusive_area_pyeong', $value, $post_id); // 이후에 채운 값은 계산에 반영 안 됨
+update_field('exclusive_area_sqm', $value, $post_id); // 이후에 채운 값은 계산에 반영 안 됨
 ```
 `wp_insert_post()`가 먼저 `save_post_listing`을 실행시켜 버리기 때문에, 그 뒤에 `update_field()`로 채우는 값은 계산 시점에 아직 없던 값이라 반영되지 않습니다.
 
@@ -127,8 +128,8 @@ update_field('exclusive_area_pyeong', $value, $post_id); // 이후에 채운 값
 ```php
 $post_id = wp_insert_post(['post_type' => 'listing', 'post_title' => '...', 'post_status' => 'publish']);
 ol_save_listing_fields($post_id, [
-    'exclusive_area_pyeong' => 327,
-    'lease_area_pyeong' => 616,
+    'exclusive_area_sqm' => 1081.0,
+    'lease_area_sqm' => 2036.4,
     'related_building' => $building_id,
     // ...
 ]);

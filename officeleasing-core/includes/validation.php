@@ -22,8 +22,9 @@ function ol_validate_non_negative_number($valid, $value, $field, $input) {
 }
 
 $ol_non_negative_fields = [
-    // listing
-    'exclusive_area_pyeong', 'lease_area_pyeong',
+    // listing - ㎡가 원본 입력이다(exclusive_area_pyeong/lease_area_pyeong은 이제 자동계산이라
+    // 여기서 검증할 대상이 아니다 - 사람이 직접 입력하는 sqm 쪽만 방어하면 된다)
+    'exclusive_area_sqm', 'lease_area_sqm',
     'deposit_manwon', 'monthly_rent_manwon', 'maintenance_fee_manwon',
     // building
     'building_total_area_sqm', 'building_standard_floor_area_sqm',
@@ -34,13 +35,14 @@ foreach ($ol_non_negative_fields as $ol_field_name) {
     add_filter("acf/validate_value/name={$ol_field_name}", 'ol_validate_non_negative_number', 10, 4);
 }
 
-// 전용면적이 공급면적보다 크면 저장을 막는다 (필드키는 acf-json/group_ol_listing.json 기준 고정값)
-add_filter('acf/validate_value/name=exclusive_area_pyeong', function ($valid, $value, $field, $input) {
+// 전용면적이 공급면적보다 크면 저장을 막는다 (필드키는 acf-json/group_ol_listing.json 기준 고정값).
+// ㎡가 원본 입력이 됐으므로 이제 exclusive_area_sqm/lease_area_sqm을 비교한다.
+add_filter('acf/validate_value/name=exclusive_area_sqm', function ($valid, $value, $field, $input) {
     if ($valid !== true || !is_numeric($value)) {
         return $valid;
     }
-    $lease_value = isset($_POST['acf']['field_ol_lst_lease_area_pyeong'])
-        ? $_POST['acf']['field_ol_lst_lease_area_pyeong']
+    $lease_value = isset($_POST['acf']['field_ol_lst_lease_area_sqm'])
+        ? $_POST['acf']['field_ol_lst_lease_area_sqm']
         : null;
     if ($lease_value !== null && is_numeric($lease_value) && (float) $value > (float) $lease_value) {
         return '전용면적은 공급면적보다 클 수 없습니다.';

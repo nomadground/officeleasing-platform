@@ -172,11 +172,11 @@
         },
         {
             "key": "field_ol_lst_exclusive_area_pyeong",
-            "label": "전용면적 (평, 원본입력)",
+            "label": "전용면적 (평, 자동계산)",
             "name": "exclusive_area_pyeong",
             "type": "number",
             "instructions": "",
-            "required": 1,
+            "required": 0,
             "conditional_logic": 0,
             "wrapper": {
                 "width": "",
@@ -185,37 +185,16 @@
             },
             "min": "",
             "max": "",
-            "step": "0.01",
-            "readonly": 0,
+            "step": "",
+            "readonly": 1,
             "prepend": "",
             "append": "",
             "placeholder": ""
         },
         {
             "key": "field_ol_lst_exclusive_area_sqm",
-            "label": "전용면적 (㎡, 자동계산)",
+            "label": "전용면적 (㎡, 원본입력)",
             "name": "exclusive_area_sqm",
-            "type": "number",
-            "instructions": "",
-            "required": 0,
-            "conditional_logic": 0,
-            "wrapper": {
-                "width": "",
-                "class": "",
-                "id": ""
-            },
-            "min": "",
-            "max": "",
-            "step": "",
-            "readonly": 1,
-            "prepend": "",
-            "append": "",
-            "placeholder": ""
-        },
-        {
-            "key": "field_ol_lst_lease_area_pyeong",
-            "label": "공급면적 (평, 원본입력)",
-            "name": "lease_area_pyeong",
             "type": "number",
             "instructions": "",
             "required": 1,
@@ -234,9 +213,9 @@
             "placeholder": ""
         },
         {
-            "key": "field_ol_lst_lease_area_sqm",
-            "label": "공급면적 (㎡, 자동계산)",
-            "name": "lease_area_sqm",
+            "key": "field_ol_lst_lease_area_pyeong",
+            "label": "공급면적 (평, 자동계산)",
+            "name": "lease_area_pyeong",
             "type": "number",
             "instructions": "",
             "required": 0,
@@ -250,6 +229,27 @@
             "max": "",
             "step": "",
             "readonly": 1,
+            "prepend": "",
+            "append": "",
+            "placeholder": ""
+        },
+        {
+            "key": "field_ol_lst_lease_area_sqm",
+            "label": "공급면적 (㎡, 원본입력)",
+            "name": "lease_area_sqm",
+            "type": "number",
+            "instructions": "",
+            "required": 1,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "min": "",
+            "max": "",
+            "step": "0.01",
+            "readonly": 0,
             "prepend": "",
             "append": "",
             "placeholder": ""
@@ -806,5 +806,5 @@
     "active": true,
     "description": "",
     "show_in_rest": 0,
-    "modified": 1785233658
+    "modified": 1785990926
 }
