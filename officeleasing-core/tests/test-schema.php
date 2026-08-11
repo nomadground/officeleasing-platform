@@ -107,8 +107,19 @@ check('OfficeBuilding @id는 permalink 기반', $node['@id'], 'https://officelea
 check('description 필드 자체가 없어 항상 미포함', isset($node['description']), false);
 check('address.addressLocality는 자식 term(삼성동)', $node['address']['addressLocality'], '삼성동');
 check('geo 좌표 포함', $node['geo'], ['@type' => 'GeoCoordinates', 'latitude' => 37.5089, 'longitude' => 127.0632]);
-check('additionalProperty에 용도 포함(화면 임대정보 섹션과 동일 소스)', $node['additionalProperty'][3], ['@type' => 'PropertyValue', 'name' => '용도', 'value' => '업무시설']);
-check('additionalProperty에 냉난방방식 포함', $node['additionalProperty'][4], ['@type' => 'PropertyValue', 'name' => '냉난방방식', 'value' => '개별 냉난방(EHP)']);
+// [리뷰 반영] additionalProperty 배열 인덱스로 직접 찾으면(예: [3]) 다른 PropertyValue가 앞에
+// 추가/삭제될 때마다 로직은 멀쩡한데 테스트만 깨진다 - name으로 찾도록 바꿔 순서 변경에 강하게 한다.
+check('additionalProperty에 용도 포함(화면 빌딩정보 섹션과 동일 소스)', find_property($node['additionalProperty'], '용도'), ['@type' => 'PropertyValue', 'name' => '용도', 'value' => '업무시설']);
+check('additionalProperty에 냉난방방식 포함', find_property($node['additionalProperty'], '냉난방방식'), ['@type' => 'PropertyValue', 'name' => '냉난방방식', 'value' => '개별 냉난방(EHP)']);
+
+function find_property($additional_properties, $name) {
+    foreach ((array) $additional_properties as $prop) {
+        if (($prop['name'] ?? null) === $name) {
+            return $prop;
+        }
+    }
+    return null;
+}
 
 // ── 3. 좌표가 없으면 geo 자체를 넣지 않는다(값이 없는데 0,0으로 지어내지 않음) ──
 $GLOBALS['__fields'][101] = ['building_address_road' => '', 'building_lat' => 0, 'building_lng' => 0];

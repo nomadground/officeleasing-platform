@@ -1,7 +1,9 @@
 <?php
 // building 단일 페이지(빌딩 URL) JSON-LD: OfficeBuilding + RealEstateListing.
 //
-// 범위(Sprint 01.5 3-5 확정): OfficeBuilding + RealEstateListing + AIO 요약만.
+// 범위(Sprint 01.5 3-5 확정): OfficeBuilding + RealEstateListing만.
+// [listing-detail-ux-pass3] "AIO 요약"(building_location_summary 등)은 화면 "Leasing Point" 섹션
+// 삭제와 함께 필드 자체가 사라졌다 - description 소스가 없어졌을 뿐 이 파일의 나머지 로직은 그대로.
 // ItemList/CollectionPage/Hub Breadcrumb/FAQPage는 허브(권역·동) 단계 스키마이므로 이번 범위가 아니다
 // (Sprint 02.5로 별도 분리 - archive-building.php/taxonomy-office_region.php는 아직 스키마 없음).
 //

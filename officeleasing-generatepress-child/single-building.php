@@ -401,6 +401,17 @@ if ( ! empty( $key_points ) ) : ?>
 				'주차'        => $parking,
 				'방향'        => get_field( 'building_orientation', $building_id ),
 				'주변 인프라' => get_field( 'building_nearby_infra', $building_id ),
+				// [listing-detail-ux-pass3, 리뷰 반영] 원 요청은 "임대정보 섹션"에 넣는 것이었지만,
+				// 그 섹션은 활성 매물이 1건일 때만 표(.row) 형태로 렌더되고 2건 이상/0건이면 카드
+				// 그리드나 안내 문구로 바뀌어 표 자체가 없다 - 용도/냉난방방식을 거기 두면 매물이
+				// 1건이 아닌 빌딩에서는 화면에 아예 안 보이는데, schema.php는 매물 수와 무관하게
+				// 값이 있으면 항상 additionalProperty에 넣고 있어 "화면에 없는데 구조화 데이터엔
+				// 있다"는 불일치가 생겼다(GPT/Codex 교차 리뷰 공통 지적, P1). 이 두 필드는 애초에
+				// 매물이 아니라 건물 자체의 물리적 속성(방향/주차/엘리베이터와 동일 성격)이라, 항상
+				// 렌더되는 이 빌딩정보 표로 옮기면 매물 개수(0/1/2~3/4+)와 무관하게 화면·schema가
+				// 항상 일치한다 - 화면 위치만 바뀔 뿐 ACF 필드/schema 로직은 그대로다.
+				'용도'        => get_field( 'building_usage_type', $building_id ),
+				'냉난방방식'  => get_field( 'building_hvac_type', $building_id ),
 			);
 			foreach ( $rows as $label => $val ) {
 				if ( $val ) {
@@ -415,6 +426,13 @@ if ( ! empty( $key_points ) ) : ?>
 		// 매물에 사진을 올린 순간 빌딩 자체 사진은 페이지 어디에도 안 보이게 됐다 - 이 갤러리가
 		// 그 사진의 상시 노출 자리다. 크기는 Hero 썸네일 스트립과 동일한 ol-interior(600x400)로 통일.
 		$building_gallery = olt_collect_images( $building_id, 'building_image_', 8, 'ol-interior' );
+		// [listing-detail-ux-pass3, 리뷰 반영] 왼쪽 표(.olx-bldinfo-specs)와 세로 높이를 맞추려고
+		// 이 그리드에 grid-auto-rows:1fr을 썼는데, 관리자가 5~8장을 올리면 3~4행이 되어 사진 쪽이
+		// 훨씬 커지고 표는 그 높이에 끌려 늘어나며 하단에 빈 여백만 남는 불안정한 조합이 된다(GPT/Codex
+		// 공통 지적). Hero 썸네일(.olx-gallery-thumbs)이 이미 같은 이유로 최대 4개만 렌더하는 것과
+		// 동일한 패턴으로, 여기도 항상 2행(2×2)까지만 보이게 고정한다 - ACF엔 여전히 최대 8장 저장
+		// 가능하고(위 olt_collect_images 호출은 그대로 8), 화면에 처음 4장만 노출할 뿐이다.
+		$building_gallery = array_slice( $building_gallery, 0, 4 );
 		if ( ! empty( $building_gallery ) ) : ?>
 			<div class="olx-bldinfo-gallery">
 				<?php foreach ( $building_gallery as $g ) : ?>
@@ -459,19 +477,6 @@ if ( ! empty( $key_points ) ) : ?>
 			<div class="row"><span>임대료</span><b class="accent"><?php echo esc_html( olt_won( get_field( 'monthly_rent', $primary_id ) ) ); ?> <small>임대평당 <?php echo esc_html( olt_pyeong_price( get_field( 'rent_per_lease_pyeong', $primary_id ) ) ); ?></small></b></div>
 			<div class="row"><span>관리비</span><b class="accent"><?php echo esc_html( olt_won( get_field( 'maintenance_fee', $primary_id ) ) ); ?> <small>임대평당 <?php echo esc_html( olt_pyeong_price( get_field( 'maintenance_per_lease_pyeong', $primary_id ) ) ); ?></small></b></div>
 			<div class="row"><span>환산임대료</span><b>전용평당 <?php echo esc_html( olt_pyeong_price( get_field( 'noc_per_exclusive_pyeong', $primary_id ) ) ); ?> <small>NOC</small></b></div>
-			<?php
-			// [listing-detail-ux-pass3] 용도/냉난방방식 요청 추가 - 매물이 아니라 건물 자체의 물리적
-			// 속성(방향/주차/엘리베이터와 같은 성격)이라 빌딩 정보 섹션과 마찬가지로 $building_id로
-			// 조회한다(같은 건물의 여러 매물이 서로 다른 값을 갖게 되는 걸 막기 위함).
-			$usage_type = get_field( 'building_usage_type', $building_id );
-			$hvac_type  = get_field( 'building_hvac_type', $building_id );
-			if ( $usage_type ) {
-				printf( '<div class="row"><span>용도</span><b>%s</b></div>', esc_html( $usage_type ) );
-			}
-			if ( $hvac_type ) {
-				printf( '<div class="row"><span>냉난방방식</span><b>%s</b></div>', esc_html( $hvac_type ) );
-			}
-			?>
 		</div>
 	</section>
 <?php elseif ( $count >= 2 && $count <= 3 ) : ?>
