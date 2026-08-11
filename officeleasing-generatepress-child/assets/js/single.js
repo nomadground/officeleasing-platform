@@ -70,7 +70,9 @@
 		} catch ( e ) {
 			return;
 		}
-		var fieldEls = document.querySelectorAll( '.olx-floor-fact [data-toggle-field], .olx-price [data-toggle-field]' );
+		// [listing-detail-ux-pass5] "층수" 표시 칸(.olx-floor-fact)이 삭제되면서 이제 갱신 대상은
+		// .olx-price(보증금/임대료/관리비)뿐이다.
+		var fieldEls = document.querySelectorAll( '.olx-price [data-toggle-field]' );
 		var cards = document.querySelectorAll( '#olx-toggle-cards .olx-toggle-card' );
 
 		function select( index ) {

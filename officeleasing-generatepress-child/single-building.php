@@ -54,9 +54,6 @@ if ( $count >= 2 && $count <= 3 ) {
 		$lease_pyeong_raw = (float) get_field( 'lease_area_pyeong', $lid );
 		$toggle_listings[] = array(
 			'id'                          => $lid,
-			// [listing-detail-ux-pass3] 정확한 층수 대신 고층/중층/저층으로 단순화(요청 반영) -
-			// 이 값이 위 Hero(#olx-toggle-specs)와 면적 슬라이더가 연동하는 필드 둘 다에 쓰인다.
-			'floor'                       => olt_floor_tier( get_field( 'floor_display', $lid ), $total_floors ),
 			'lease_pyeong_raw'            => $lease_pyeong_raw,
 			'lease_pyeong'                => olt_pyeong( $lease_pyeong_raw ),
 			'lease_sqm'                   => olt_sqm( get_field( 'lease_area_sqm', $lid ) ),
@@ -257,16 +254,11 @@ $gallery_captions = array( '외관', '오피스', '라운지', '회의실', '', 
 
 		<?php if ( 1 === $count ) : ?>
 			<?php
-			// [listing-detail-ux-pass4] "네모난 칸" 스타일(칩) 요청 철회 - 층수는 원래처럼 상자 없는
-			// 단순 표시로 되돌리고, 면적(임대/전용)만 아래 면적 슬라이더로 대체한다. 매물이 1건이라
-			// 실제로 고를 대상은 없지만, Hero/임대정보 두 군데가 같은 시각 언어를 쓰도록 점 하나짜리
-			// 슬라이더를 그대로 재사용한다(olt_area_slider()가 1건이면 최소/최대 라벨을 자동으로 뺀다).
+			// [listing-detail-ux-pass5] 층수 표시 칸 삭제 요청 - 면적(임대/전용)만 면적 슬라이더로 보여준다.
+			// 매물이 1건이라 실제로 고를 대상은 없지만, Hero/임대정보 두 군데가 같은 시각 언어를 쓰도록
+			// 점 하나짜리 슬라이더를 그대로 재사용한다(olt_area_slider()가 1건이면 최소/최대 라벨을 뺀다).
+			echo olt_area_slider( $area_slider_stop_single, 0 );
 			?>
-			<div class="olx-floor-fact">
-				<span>층수</span>
-				<strong><?php echo esc_html( olt_floor_tier( get_field( 'floor_display', $primary_id ), $total_floors ) ); ?></strong>
-			</div>
-			<?php echo olt_area_slider( $area_slider_stop_single, 0 ); ?>
 			<div class="olx-price">
 				<div>
 					<span>보증금</span>
@@ -285,19 +277,10 @@ $gallery_captions = array( '외관', '오피스', '라운지', '회의실', '', 
 				</div>
 			</div>
 		<?php elseif ( $count >= 2 && $count <= 3 ) : ?>
-			<?php $t0 = $toggle_listings[ $area_slider_default_index ]; ?>
-			<div class="olx-floor-fact">
-				<span>층수</span>
-				<?php
-				// [listing-detail-ux-pass3] $tl['floor']가 고층/중층/저층으로 이미 단순화돼 있어
-				// (위 $toggle_listings 계산부 참고) 예전처럼 "/ 40F" 정적 접미사를 붙일 필요가 없다.
-				?>
-				<strong data-toggle-field="floor"><?php echo esc_html( $t0['floor'] ); ?></strong>
-			</div>
 			<?php
-			// [listing-detail-ux-pass4] "슬라이드 형식으로 최소면적ㅇㅡㅇㅡㅇ최대면적, 동그라미 위에
-			// 임대면적, 아래 전용면적, 기본세팅은 기준층면적으로" 요청 - 기존 "칩" 버튼 행을 대체한다.
-			// 점 클릭/hover 트리거는 single.js의 select(index)를 그대로 재사용(마크업만 새로 바뀜).
+			$t0 = $toggle_listings[ $area_slider_default_index ];
+			// [listing-detail-ux-pass5] 층수 표시 칸 삭제 요청. 아래 면적 슬라이더가 여전히 매물 선택
+			// 트리거 역할을 한다 - 점 클릭/hover 시 select(index)가 보증금/임대료/관리비를 갱신한다.
 			echo olt_area_slider( $area_slider_stops, $area_slider_default_index );
 			?>
 			<div class="olx-price">
@@ -470,12 +453,15 @@ if ( ! empty( $key_points ) ) : ?>
 		// 매물에 사진을 올린 순간 빌딩 자체 사진은 페이지 어디에도 안 보이게 됐다 - 이 갤러리가
 		// 그 사진의 상시 노출 자리다. 크기는 Hero 썸네일 스트립과 동일한 ol-interior(600x400)로 통일.
 		$building_gallery = olt_collect_images( $building_id, 'building_image_', 8, 'ol-interior' );
-		// [listing-detail-ux-pass4] "그림을 표에 맞추지 말고, 표를 사진 4장 구조 높이에 맞춰줘" 요청 -
-		// 사진은 원래처럼 고정 가로비(aspect-ratio:1.6)의 2×2 구조로 두고(officeleasing.css), 왼쪽 표
-		// (.olx-bldinfo-specs)에 그 높이만큼 max-height + overflow-y:auto를 줘서 표가 사진 높이를
-		// 따라가게 한다(내용이 넘치면 표 안에서 스크롤). max-height 값은 이 열 너비(약 260px)에서
-		// aspect-ratio:1.6 사진 2행이 실제로 차지하는 높이를 근사한 고정값이라, 사이드바 레이아웃
-		// 너비가 크게 바뀌면 재조정이 필요할 수 있다(완벽한 픽셀 일치를 CSS만으로 보장하진 않음).
+		// [listing-detail-ux-pass4/5] "그림을 표에 맞추지 말고, 표를 사진 4장 구조 높이에 맞춰줘" 요청 -
+		// 사진은 고정 가로비(aspect-ratio:1.3, officeleasing.css)의 2×2 구조로 두고, 왼쪽 표
+		// (.olx-bldinfo-specs)에 그 높이만큼 max-height(420px) + overflow-y:auto를 줘서 표가 사진
+		// 높이를 따라가게 한다(내용이 넘치면 표 안에서 스크롤). [pass5] 처음 aspect-ratio:1.6·
+		// max-height:340px 조합에서 표 쪽에 세로 스크롤바가 실제로 생겼다는 피드백을 받아, 사진 비율을
+		// 세로로 더 키우고(1.6->1.3) max-height도 함께 늘렸다(340px->420px) - 여전히 이 열 너비(약
+		// 260px) 기준의 근사 고정값이라, 사이드바 레이아웃 너비가 크게 바뀌면 재조정이 필요할 수 있고
+		// 건물 정보 항목이 유난히 많이 채워진 경우 스크롤이 다시 나타날 수 있다(overflow-y:auto가
+		// 안전장치로 남아있음 - 완벽한 픽셀 일치를 CSS만으로 보장하진 않는다).
 		// 사진을 항상 4장(2행)까지만 보이게 고정하는 것도 이 근사가 유효하려면 필요하다 - Hero 썸네일
 		// (.olx-gallery-thumbs)이 같은 이유로 최대 4개만 렌더하는 것과 동일한 패턴. ACF엔 여전히 최대 8장 저장
 		// 가능하고(위 olt_collect_images 호출은 그대로 8), 화면에 처음 4장만 노출할 뿐이다.
@@ -655,8 +641,8 @@ $region_link = $parent_term ? array(
 ) : null;
 
 get_template_part( 'template-parts/contact-cta', null, array(
-	// [listing-detail-ux-pass4] "사무실 임대차," 에서 "차" 삭제 요청 -> "사무실 임대,".
-	'title'         => '사무실 임대, 계약 전 꼭! 확인하세요',
+	// [listing-detail-ux-pass5] 배너형 재구성과 함께 문구도 새로 요청됨(참고 이미지).
+	'title'         => '사무실 임대차, 한번 더 확인하세요!',
 	'district_link' => $district_link,
 	'region_link'   => $region_link,
 ) );

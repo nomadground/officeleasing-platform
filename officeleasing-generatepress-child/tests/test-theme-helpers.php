@@ -127,6 +127,10 @@ check('area slider - 매물 1건은 최소/최대 라벨 없음(비교 대상 �
 check('area slider - 매물 1건짜리 점도 기본 active', str_contains($single_html, 'olx-area-slider-dot is-active'), true);
 check('area slider - 임대면적 값 포함', str_contains($single_html, '363평'), true);
 check('area slider - 전용면적 값 포함', str_contains($single_html, '227평'), true);
+// [listing-detail-ux-pass5] "좌측 상단 임대면적, 좌측하단 전용면적" 축 라벨 요청 - 매물 1건이어도(비교
+// 대상이 없어 최소/최대 라벨은 빠지지만) 축 라벨은 항상 나온다.
+check('area slider - 축 라벨(임대면적) 항상 포함', str_contains($single_html, 'olx-area-slider-axis-lease">임대면적'), true);
+check('area slider - 축 라벨(전용면적) 항상 포함', str_contains($single_html, 'olx-area-slider-axis-exclusive">전용면적'), true);
 
 $multi_stops = array(
 	array('index' => 2, 'lease_pyeong' => '200평', 'lease_sqm' => '661.2㎡', 'exclusive_pyeong' => '121평', 'exclusive_sqm' => '400.0㎡'),

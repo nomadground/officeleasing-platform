@@ -11,8 +11,9 @@
  * 아래 fixture는 각 매물마다 점을 2개씩(heroDots/leaseDots) 만들어, 한쪽 인스턴스의 점을 눌러도
  * 반대쪽 인스턴스의 is-active까지 함께 갱신되는지("어느 쪽을 조작해도 전부 동기화") 확인한다.
  *
- * [listing-detail-ux-pass3] "floor" 값은 PHP(olt_floor_tier())가 정확한 층수 대신 고층/중층/저층으로
- * 미리 단순화해서 JSON에 담아준다(single-building.php).
+ * [listing-detail-ux-pass5] "층수" 칸 삭제 요청으로 data-toggle-field="floor" 타겟이 더 이상 없다 -
+ * 아래 fixture/listingsData도 floor 필드를 뺐다(select()는 여전히 임의의 data-toggle-field를 범용으로
+ * 처리하므로 로직 자체는 안 바뀜, 그냥 이 필드를 쓰는 실제 마크업이 없어졌을 뿐).
  *
  * [listing-detail-ux-pass3] "마우스오버나 선택 시" 요청으로 click에 더해 mouseenter도 같은 select()를
  * 트리거한다 - 아래 hover() 테스트가 그 동작을 검증한다.
@@ -77,21 +78,21 @@ function makeElement(initialAttrs, initialClasses, initialText) {
 
 const listingsData = [
     {
-        id: 101, floor: '3층', lease_pyeong: '363평', lease_sqm: '1,200.0㎡',
+        id: 101, lease_pyeong: '363평', lease_sqm: '1,200.0㎡',
         exclusive_pyeong: '227평', exclusive_sqm: '750.4㎡',
         deposit: '150,000만원', deposit_per_lease_pyeong: '413.2만원',
         rent: '15,000만원', rent_per_lease_pyeong: '41.3만원',
         maintenance: '3,500만원', maintenance_per_lease_pyeong: '9.6만원',
     },
     {
-        id: 102, floor: '5층', lease_pyeong: '280평', lease_sqm: '925.6㎡',
+        id: 102, lease_pyeong: '280평', lease_sqm: '925.6㎡',
         exclusive_pyeong: '170평', exclusive_sqm: '562.0㎡',
         deposit: '110,000만원', deposit_per_lease_pyeong: '392.9만원',
         rent: '11,000만원', rent_per_lease_pyeong: '39.3만원',
         maintenance: '2,600만원', maintenance_per_lease_pyeong: '9.3만원',
     },
     {
-        id: 103, floor: '7층', lease_pyeong: '200평', lease_sqm: '661.2㎡',
+        id: 103, lease_pyeong: '200평', lease_sqm: '661.2㎡',
         exclusive_pyeong: '121평', exclusive_sqm: '400.0㎡',
         deposit: '80,000만원', deposit_per_lease_pyeong: '400.0만원',
         rent: '8,000만원', rent_per_lease_pyeong: '40.0만원',
@@ -103,7 +104,7 @@ function run() {
     const dataEl = makeElement({}, [], JSON.stringify(listingsData));
 
     const fields = {};
-    ['floor', 'lease_pyeong', 'lease_sqm', 'exclusive_pyeong', 'exclusive_sqm',
+    ['lease_pyeong', 'lease_sqm', 'exclusive_pyeong', 'exclusive_sqm',
         'deposit', 'deposit_per_lease_pyeong', 'rent', 'rent_per_lease_pyeong',
         'maintenance', 'maintenance_per_lease_pyeong'].forEach((f) => {
         fields[f] = makeElement({ 'data-toggle-field': f });
@@ -135,7 +136,7 @@ function run() {
             if (sel === '.olx-area-slider-dot') {
                 return buttons;
             }
-            if (sel === '.olx-floor-fact [data-toggle-field], .olx-price [data-toggle-field]') {
+            if (sel === '.olx-price [data-toggle-field]') {
                 return fieldEls;
             }
             if (sel === '#olx-toggle-cards .olx-toggle-card') {
@@ -178,7 +179,7 @@ function run() {
     // 이번엔 반대로 임대정보 슬라이더의 3번째 점(인덱스 2)을 클릭 - 값이 계속 정확히 전환되는지,
     // 이전 선택이 깔끔히 풀리는지, 그리고 Hero 쪽도 함께 따라오는지.
     leaseDots[2].click();
-    check('임대정보 점3 클릭 - floor 필드가 매물3 값으로 갱신', fields.floor.textContent, listingsData[2].floor);
+    check('임대정보 점3 클릭 - lease_pyeong 필드가 매물3 값으로 갱신', fields.lease_pyeong.textContent, listingsData[2].lease_pyeong);
     check('임대정보 점3 클릭 - deposit_per_lease_pyeong 갱신', fields.deposit_per_lease_pyeong.textContent, listingsData[2].deposit_per_lease_pyeong);
     check('임대정보 점3 클릭 - 임대정보 점3만 active', leaseDots[2].classList.contains('is-active'), true);
     check('임대정보 점3 클릭 - 임대정보 점2 active 해제', leaseDots[1].classList.contains('is-active'), false);
@@ -189,14 +190,14 @@ function run() {
 
     // 1번째 점(인덱스 0)으로 되돌아가기
     heroDots[0].click();
-    check('점1로 복귀 - floor 필드가 매물1 값으로 갱신', fields.floor.textContent, listingsData[0].floor);
+    check('점1로 복귀 - lease_pyeong 필드가 매물1 값으로 갱신', fields.lease_pyeong.textContent, listingsData[0].lease_pyeong);
     check('점1로 복귀 - Hero 점1만 active', heroDots[0].classList.contains('is-active'), true);
     check('점1로 복귀 - 카드1만 active', cards[0].classList.contains('is-active'), true);
 
     // [listing-detail-ux-pass3] hover(mouseenter)만으로도 클릭과 동일하게 전환되는지 - "마우스오버나
     // 선택 시" 요청 검증. 지금 활성 상태는 점1(위에서 복귀) - 점3에 마우스를 올린다.
     heroDots[2].hover();
-    check('점3 hover - floor 필드가 매물3 값으로 갱신', fields.floor.textContent, listingsData[2].floor);
+    check('점3 hover - lease_pyeong 필드가 매물3 값으로 갱신', fields.lease_pyeong.textContent, listingsData[2].lease_pyeong);
     check('점3 hover - Hero 점3만 active', heroDots[2].classList.contains('is-active'), true);
     check('점3 hover - Hero 점1 active 해제', heroDots[0].classList.contains('is-active'), false);
     check('점3 hover - 카드3만 active(하단 섹션도 hover로 동기화)', cards[2].classList.contains('is-active'), true);
