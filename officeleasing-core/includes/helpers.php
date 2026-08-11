@@ -148,6 +148,10 @@ function ol_company_info() {
         // 카카오톡 채널 URL. 실제 채널 주소가 확정되면 여기(또는 ol_company_info 필터)에만 넣으면
         // Contact CTA가 자동으로 버튼을 노출한다. 비어있으면 임의의 외부 URL을 만들지 않고 버튼을 숨긴다.
         'kakao_url'       => '',
+        // [listing-detail-ux-pass4] "온라인 문의" 버튼의 마지막 폴백. kakao_url도 없고 "contact" 페이지도
+        // 아직 없으면 여기(또는 필터)에 실제 이메일을 채워야 mailto: 링크로라도 버튼이 뜬다 - 셋 다
+        // 비어있으면 여전히 버튼 자체를 숨긴다(동작하지 않는 링크를 만들지 않는다는 기존 원칙 유지).
+        'email'           => '',
     ];
     if (function_exists('apply_filters')) {
         $info = apply_filters('ol_company_info', $info);

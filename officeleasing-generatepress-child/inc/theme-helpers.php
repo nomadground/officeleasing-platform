@@ -77,9 +77,14 @@ function olt_sqm( $value ) {
 	return $value ? number_format( (float) $value, 1 ) . '㎡' : '';
 }
 
-/** 평 표기: (327평) */
+/**
+ * 평 표기: 327평.
+ * [listing-detail-ux-pass4] 예전엔 "(327평)"처럼 괄호로 감쌌다 - 요청("자꾸 면적에 평을 괄호안에
+ * 넣는데 그렇게 말고")에 따라 괄호를 뺀다. 이 함수를 쓰는 모든 화면(Hero/빌딩정보/임대정보/매물
+ * 카드)에 한 번에 적용된다 - 개별 호출부를 따로 고칠 필요 없음.
+ */
 function olt_pyeong( $value ) {
-	return $value ? '(' . number_format( (float) $value ) . '평)' : '';
+	return $value ? number_format( (float) $value ) . '평' : '';
 }
 
 /** 서울 지하철 노선 색상(원형 뱃지 배경). 목업 .line-* 대신 인라인 style로 임의 노선 대응. */
@@ -407,6 +412,56 @@ function olt_floor_tier( $floor_display, $total_floors ) {
 }
 
 /**
+ * [listing-detail-ux-pass4] "면적 슬라이더" - 매물 임대면적을 최소~최대 순으로 늘어놓은 점-선 UI.
+ * 요청: "슬라이드 형식으로 최소면적ㅇㅡㅇㅡㅇ최대면적, 동그라미 위에 임대면적, 동그라미 아래 전용면적
+ * 색깔 다르게, 마우스오버나 클릭, 터치시 그에 맞는 층수/보증금/임대료/관리비로 전환".
+ *
+ * single.js의 initListingToggle()이 이미 구현한 select(index) 메커니즘을 그대로 재사용한다 -
+ * 이 함수는 그 트리거 역할을 하던 기존 "칩" 버튼 행을 대체하는 새 마크업만 만든다
+ * (.olx-area-slider-dot에 동일한 data-listing-index를 붙여서, JS 쪽 변경 없이 셀렉터만
+ * 넓히면 된다). 매물이 1건이면 점도 하나뿐이라 실질적 토글 동작은 없지만, Hero/임대정보 양쪽에서
+ * 같은 시각 언어를 쓰기 위해 단일 점 형태로도 렌더한다(비교 대상이 없다는 표시로 최소/최대 라벨은 뺀다).
+ *
+ * 점 간격은 실제 면적 비율에 비례하지 않고 균등 배치한다(단순 스텝퍼) - 면적 차이가 작은 매물들이
+ * 한 점에 겹쳐 보이는 문제를 피하기 위한 의도적 단순화.
+ *
+ * @param array $stops 임대면적 오름차순으로 이미 정렬된 [ ['index'=>원본 $toggle_listings 인덱스,
+ *                      'lease_pyeong'=>, 'lease_sqm'=>, 'exclusive_pyeong'=>, 'exclusive_sqm'=> ], ... ].
+ *                      정렬 자체는 호출부 책임 - 카드 그리드(#olx-toggle-cards)는 별도로 가격순 원본
+ *                      순서를 유지해야 하므로, 이 함수는 순서를 건드리지 않고 넘겨받은 그대로 그린다.
+ * @param int $default_index 처음 활성 상태로 표시할 원본 인덱스(기준층면적에 가장 가까운 매물).
+ * @return string 이미 이스케이프된 HTML(호출부는 그대로 echo).
+ */
+function olt_area_slider( $stops, $default_index ) {
+	if ( empty( $stops ) ) {
+		return '';
+	}
+	$multi = count( $stops ) > 1;
+	ob_start();
+	?>
+	<div class="olx-area-slider<?php echo $multi ? '' : ' olx-area-slider--single'; ?>" role="tablist" aria-label="면적으로 매물 비교">
+		<?php if ( $multi ) : ?><span class="olx-area-slider-end">최소면적</span><?php endif; ?>
+		<div class="olx-area-slider-line">
+			<?php foreach ( $stops as $stop ) :
+				$i         = (int) $stop['index'];
+				$is_active = ( $i === (int) $default_index );
+				?>
+				<button type="button" class="olx-area-slider-dot<?php echo $is_active ? ' is-active' : ''; ?>"
+					role="tab" aria-selected="<?php echo $is_active ? 'true' : 'false'; ?>"
+					data-listing-index="<?php echo esc_attr( (string) $i ); ?>">
+					<span class="olx-area-slider-lease"><b><?php echo esc_html( $stop['lease_pyeong'] ); ?></b><small><?php echo esc_html( $stop['lease_sqm'] ); ?></small></span>
+					<i class="olx-area-slider-node"></i>
+					<span class="olx-area-slider-exclusive"><b><?php echo esc_html( $stop['exclusive_pyeong'] ); ?></b><small><?php echo esc_html( $stop['exclusive_sqm'] ); ?></small></span>
+				</button>
+			<?php endforeach; ?>
+		</div>
+		<?php if ( $multi ) : ?><span class="olx-area-slider-end">최대면적</span><?php endif; ?>
+	</div>
+	<?php
+	return ob_get_clean();
+}
+
+/**
  * slug로 페이지를 찾아, "지금 이 사이트 방문자에게 실제로 보여줘도 되는" 상태일 때만 permalink를 반환.
  * contact-cta.php(contact/insight)와 single-building.php(checklist)가 각자 get_page_by_path()만
  * 호출하던 것을 여기로 모았다 - 페이지가 draft/private/비밀번호 보호 상태여도 "존재는 한다"는 이유로
@@ -556,6 +611,7 @@ function olt_company( $key ) {
 		'address_full'   => '서울 강남구 언주로 550 청광빌딩 2층',
 		'license_number' => '11680-2026-00163',
 		'hours'          => '평일 09:00 – 18:00',
+		'email'          => '',
 	);
 	return isset( $fallback[ $key ] ) ? $fallback[ $key ] : '';
 }

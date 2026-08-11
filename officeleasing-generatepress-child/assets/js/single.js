@@ -47,17 +47,20 @@
 	}
 
 	/**
-	 * 매물 2~3건 빌딩의 "면적 버튼 토글" (single-building.php).
+	 * 매물 2~3건 빌딩의 "면적 슬라이더" (single-building.php).
 	 * 각 매물의 표시값은 PHP가 <script type="application/json" id="olx-toggle-data">에 미리 임베드해둔다 -
-	 * 버튼 클릭 시 이 값들 사이에서만 DOM 텍스트를 바꿔치기하고, 서버 재쿼리는 절대 하지 않는다
+	 * 점 클릭/hover 시 이 값들 사이에서만 DOM 텍스트를 바꿔치기하고, 서버 재쿼리는 절대 하지 않는다
 	 * (카드 렌더 시 매물 재쿼리 금지 원칙, single-building.php 상단 주석과 동일 취지).
-	 * 상단 Hero(.olx-specs3/.olx-price)와 하단 "임대 정보" 섹션의 매물 카드가 같은 선택 상태를 공유한다 -
-	 * 다만 카드 자체(listing-card.php, 다른 페이지에서도 재사용되는 컴포넌트)는 그대로 빌딩 링크이므로
-	 * 클릭을 가로채지 않는다 - 동기화는 "상단 버튼 -> 상단 값 + 하단 카드 하이라이트" 단방향이다.
+	 *
+	 * [listing-detail-ux-pass4] 트리거가 되는 .olx-area-slider-dot이 이제 페이지에 두 벌 있다 -
+	 * Hero(.olx-side)와 "임대 정보" 섹션 둘 다에 같은 마크업(olt_area_slider())을 심었기 때문(요청:
+	 * "임대정보 섹션에서도... 슬라이드"). querySelectorAll은 문서 전체를 뒤지므로 두 벌 모두 자동으로
+	 * 잡히고, 아래 select()가 fieldEls/양쪽 slider의 is-active/카드 하이라이트를 한 번에 갱신한다 -
+	 * 즉 Hero 슬라이더를 눌러도, 임대정보 슬라이더를 눌러도 결과는 동일하게 전부 동기화된다.
 	 */
 	function initListingToggle() {
 		var dataEl = document.getElementById( 'olx-toggle-data' );
-		var buttons = document.querySelectorAll( '.olx-listing-toggle button' );
+		var buttons = document.querySelectorAll( '.olx-area-slider-dot' );
 		if ( ! dataEl || ! buttons.length ) {
 			return;
 		}
@@ -67,7 +70,7 @@
 		} catch ( e ) {
 			return;
 		}
-		var fieldEls = document.querySelectorAll( '#olx-toggle-specs [data-toggle-field], .olx-price [data-toggle-field]' );
+		var fieldEls = document.querySelectorAll( '.olx-floor-fact [data-toggle-field], .olx-price [data-toggle-field]' );
 		var cards = document.querySelectorAll( '#olx-toggle-cards .olx-toggle-card' );
 
 		function select( index ) {

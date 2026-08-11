@@ -22,6 +22,12 @@ if (!function_exists('esc_html')) {
         return htmlspecialchars((string) $text, ENT_QUOTES);
     }
 }
+// olt_area_slider()가 esc_attr()도 쓴다(data-listing-index) - 같은 이유로 최소 폴백을 둔다.
+if (!function_exists('esc_attr')) {
+    function esc_attr($text) {
+        return htmlspecialchars((string) $text, ENT_QUOTES);
+    }
+}
 // olt_format_area_sqm_pyeong()이 Core의 ol_calc_sqm_from_pyeong()(순수 계산 함수, ABSPATH 가드 없음)을
 // 호출하므로 theme-helpers.php보다 먼저 requires - test-schema.php가 schema.php를 위해 하는 것과 동일 이유.
 require __DIR__ . '/../../officeleasing-core/includes/helpers.php';
@@ -101,6 +107,44 @@ check('floor tier - 하위 1/3(40층 중 10층)', olt_floor_tier('10층', 40), '
 check('floor tier - 지하는 항상 지하(등급 없음)', olt_floor_tier('지하2층', 40), '지하');
 check('floor tier - 파싱 불가(범위 표기)는 원문 그대로', olt_floor_tier('3~5층', 40), '3~5층');
 check('floor tier - 총 층수 모르면(0) 원문 그대로', olt_floor_tier('17층', 0), '17층');
+
+// ── olt_pyeong() - [listing-detail-ux-pass4] 괄호 제거 요청("자꾸 면적에 평을 괄호안에 넣는데") ──
+check('pyeong - 정상값은 괄호 없이', olt_pyeong(327), '327평');
+check('pyeong - 소수는 반올림(number_format 기본)', olt_pyeong(226.7), '227평');
+check('pyeong - 0/빈값은 빈 문자열', olt_pyeong(0), '');
+check('pyeong - null도 빈 문자열', olt_pyeong(null), '');
+
+// ── olt_area_slider() - [listing-detail-ux-pass4] "면적 슬라이더" 점-선 UI ──
+check('area slider - 빈 배열이면 빈 문자열(마크업 자체를 안 만듦)', olt_area_slider(array(), 0), '');
+
+$single_stop = array( array(
+	'index' => 0, 'lease_pyeong' => '363평', 'lease_sqm' => '1,200.0㎡',
+	'exclusive_pyeong' => '227평', 'exclusive_sqm' => '750.4㎡',
+) );
+$single_html = olt_area_slider($single_stop, 0);
+check('area slider - 매물 1건은 --single 수정자 클래스', str_contains($single_html, 'olx-area-slider--single'), true);
+check('area slider - 매물 1건은 최소/최대 라벨 없음(비교 대상 없음)', str_contains($single_html, 'olx-area-slider-end'), false);
+check('area slider - 매물 1건짜리 점도 기본 active', str_contains($single_html, 'olx-area-slider-dot is-active'), true);
+check('area slider - 임대면적 값 포함', str_contains($single_html, '363평'), true);
+check('area slider - 전용면적 값 포함', str_contains($single_html, '227평'), true);
+
+$multi_stops = array(
+	array('index' => 2, 'lease_pyeong' => '200평', 'lease_sqm' => '661.2㎡', 'exclusive_pyeong' => '121평', 'exclusive_sqm' => '400.0㎡'),
+	array('index' => 1, 'lease_pyeong' => '280평', 'lease_sqm' => '925.6㎡', 'exclusive_pyeong' => '170평', 'exclusive_sqm' => '562.0㎡'),
+	array('index' => 0, 'lease_pyeong' => '363평', 'lease_sqm' => '1,200.0㎡', 'exclusive_pyeong' => '227평', 'exclusive_sqm' => '750.4㎡'),
+);
+$multi_html = olt_area_slider($multi_stops, 1);
+check('area slider - 매물 2건 이상은 최소/최대 라벨 있음', substr_count($multi_html, 'olx-area-slider-end'), 2);
+check('area slider - --single 클래스 없음', str_contains($multi_html, 'olx-area-slider--single'), false);
+// 정렬은 호출부 책임(이 함수는 넘겨받은 순서 그대로 그린다) - index=1(두 번째 넘긴 stop)이 기본 활성.
+check('area slider - 넘겨받은 순서 그대로 렌더(정렬은 호출부 책임) - 첫 번째 점의 인덱스',
+	strpos($multi_html, 'data-listing-index="2"') < strpos($multi_html, 'data-listing-index="1"'), true);
+// 마크업은 항상 class="olx-area-slider-dot[ is-active]" 다음에 data-listing-index가 오므로
+// (olt_area_slider() 내부 순서 고정) 이 순서를 그대로 정규식으로 확인한다.
+check('area slider - default_index=1인 점만 is-active',
+	preg_match('/class="olx-area-slider-dot is-active"[^>]*data-listing-index="1"/', $multi_html) === 1, true);
+check('area slider - default_index=1이 아닌 점(index=2)은 is-active 없음',
+	preg_match('/class="olx-area-slider-dot"[^>]*data-listing-index="2"/', $multi_html) === 1, true);
 
 printf("\n%d passed, %d failed\n", $pass, $fail);
 if ($fail > 0) {

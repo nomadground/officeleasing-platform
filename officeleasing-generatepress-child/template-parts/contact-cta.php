@@ -20,8 +20,8 @@ $desc  = $args['desc'] ?? '공실 현황·임대 조건 협의·면적 분할·�
 $phone = $args['phone'] ?? olt_company( 'phone' );
 $tel   = olt_tel_href( $phone );
 
-// 온라인 문의 링크 결정 순서: 명시 인자 -> 회사정보의 카카오 채널 -> 실제 존재하는 contact 페이지.
-// 셋 다 없으면 동작하지 않는 임시 링크를 만들지 않고 버튼 자체를 숨긴다.
+// 온라인 문의 링크 결정 순서: 명시 인자 -> 회사정보의 카카오 채널 -> 실제 존재하는 contact 페이지 ->
+// 회사정보의 이메일(mailto:). 넷 다 없으면 동작하지 않는 임시 링크를 만들지 않고 버튼 자체를 숨긴다.
 $online_url    = $args['kakao_url'] ?? olt_company( 'kakao_url' );
 $online_label  = '카카오톡으로 문의하기';
 $online_note   = '실시간 상담';
@@ -34,6 +34,19 @@ if ( ! $online_url ) {
 		$online_url    = $contact_url;
 		$online_label  = '온라인 문의';
 		$online_note   = '문의 양식';
+		$online_target = false;
+	}
+}
+if ( ! $online_url ) {
+	// [listing-detail-ux-pass4] "전화상담 좌측, 온라인문의 우측 50:50" 요청 - kakao_url도 contact
+	// 페이지도 아직 없는 사이트에서는 이 버튼 자체가 계속 숨어 있어 전화 버튼 혼자 100%로 보였다.
+	// 회사 이메일이 설정돼 있으면(ol_company_info()의 'email') mailto:로라도 마지막 폴백을 준다 -
+	// 이 값도 비어있으면 여전히 버튼을 숨긴다(가짜 링크를 만들지 않는다는 원칙은 유지).
+	$email = olt_company( 'email' );
+	if ( $email ) {
+		$online_url    = 'mailto:' . $email;
+		$online_label  = '이메일 문의';
+		$online_note   = $email;
 		$online_target = false;
 	}
 }
@@ -61,7 +74,6 @@ $secondary_count = ( $insight_url ? 1 : 0 ) + ( $checklist_url ? 1 : 0 );
 ?>
 <section class="olx-contact" id="contact" aria-labelledby="contact-title">
 	<div>
-		<p>CONTACT</p>
 		<h2 id="contact-title"><?php echo esc_html( $title ); ?></h2>
 		<span><?php echo esc_html( $desc ); ?></span>
 	</div>
@@ -69,10 +81,10 @@ $secondary_count = ( $insight_url ? 1 : 0 ) + ( $checklist_url ? 1 : 0 );
 		<?php if ( $links_count > 0 ) : ?>
 			<div class="olx-contact-links olx-contact-links--<?php echo esc_attr( (string) $links_count ); ?>">
 				<?php if ( $district_link ) : ?>
-					<a href="<?php echo esc_url( $district_link['url'] ); ?>"><?php echo esc_html( $district_link['label'] ); ?></a>
+					<a class="olx-contact-links-district" href="<?php echo esc_url( $district_link['url'] ); ?>"><?php echo esc_html( $district_link['label'] ); ?></a>
 				<?php endif; ?>
 				<?php if ( $region_link ) : ?>
-					<a href="<?php echo esc_url( $region_link['url'] ); ?>"><?php echo esc_html( $region_link['label'] ); ?></a>
+					<a class="olx-contact-links-region" href="<?php echo esc_url( $region_link['url'] ); ?>"><?php echo esc_html( $region_link['label'] ); ?></a>
 				<?php endif; ?>
 			</div>
 		<?php endif; ?>

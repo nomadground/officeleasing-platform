@@ -37,8 +37,9 @@ $address_jibun = get_field( 'building_address_jibun', $building_id );
 $basement_floors = get_field( 'building_basement_floors', $building_id );
 $ground_floors   = get_field( 'building_ground_floors', $building_id );
 $total_floors  = $ground_floors; // "해당층/총층" 등 기존 표기에서 총층은 지상층수를 가리킨다
+$standard_floor_area_pyeong = get_field( 'building_standard_floor_area_pyeong', $building_id );
 
-// 매물 2~3건일 때만 쓰는 "면적 버튼 토글"용 데이터. 4건 이상은 기존 카드 그리드를 그대로 쓴다
+// 매물 2~3건일 때만 쓰는 "면적 슬라이더"용 데이터. 4건 이상은 기존 카드 그리드를 그대로 쓴다
 // (버튼이 4개 이상이면 한눈에 비교하기보다 오히려 산만해진다는 판단, 확정 임계값).
 // Hero(.olx-side)와 아래쪽 "임대 정보" 섹션 둘 다 이 배열을 쓰므로 여기서 한 번만 계산해둔다 -
 // 매물 재쿼리 금지 원칙을 지키면서, 전환 시 서버 재쿼리 없이 클라이언트 JS가 이 값들 사이를
@@ -48,12 +49,16 @@ $toggle_listings = array();
 if ( $count >= 2 && $count <= 3 ) {
 	foreach ( $listings as $l ) {
 		$lid = $l->ID;
+		// [listing-detail-ux-pass4] 슬라이더 점 정렬/기본 선택 계산에 쓸 원값(평, 숫자)도 같이 담아둔다 -
+		// 아래 표시용 문자열(lease_pyeong 등)은 이미 포맷된 텍스트라 정렬/거리 비교에 못 쓴다.
+		$lease_pyeong_raw = (float) get_field( 'lease_area_pyeong', $lid );
 		$toggle_listings[] = array(
 			'id'                          => $lid,
 			// [listing-detail-ux-pass3] 정확한 층수 대신 고층/중층/저층으로 단순화(요청 반영) -
-			// 이 값이 위 Hero칩(#olx-toggle-specs)과 아래 토글 버튼 라벨(.olx-listing-toggle) 둘 다에 쓰인다.
+			// 이 값이 위 Hero(#olx-toggle-specs)와 면적 슬라이더가 연동하는 필드 둘 다에 쓰인다.
 			'floor'                       => olt_floor_tier( get_field( 'floor_display', $lid ), $total_floors ),
-			'lease_pyeong'                => olt_pyeong( get_field( 'lease_area_pyeong', $lid ) ),
+			'lease_pyeong_raw'            => $lease_pyeong_raw,
+			'lease_pyeong'                => olt_pyeong( $lease_pyeong_raw ),
 			'lease_sqm'                   => olt_sqm( get_field( 'lease_area_sqm', $lid ) ),
 			'exclusive_pyeong'            => olt_pyeong( get_field( 'exclusive_area_pyeong', $lid ) ),
 			'exclusive_sqm'               => olt_sqm( get_field( 'exclusive_area_sqm', $lid ) ),
@@ -65,6 +70,56 @@ if ( $count >= 2 && $count <= 3 ) {
 			'maintenance_per_lease_pyeong' => olt_pyeong_price( get_field( 'maintenance_per_lease_pyeong', $lid ) ),
 		);
 	}
+}
+
+// [listing-detail-ux-pass4] 면적 슬라이더 점 순서(임대면적 오름차순, 최소→최대)와 기본 선택 매물
+// (기준층면적에 가장 가까운 매물 - 요청: "기본세팅은 기준층면적으로")을 여기서 한 번만 계산해서
+// Hero/임대정보 두 군데 슬라이더가 그대로 재사용한다. $toggle_listings 자체의 순서(가격순, 카드
+// 그리드가 쓰는 순서)는 건드리지 않고, 인덱스만 별도로 재배열한다.
+$area_slider_stops = array();
+$area_slider_default_index = 0;
+if ( ! empty( $toggle_listings ) ) {
+	$area_slider_stops = array_map(
+		function ( $i, $tl ) {
+			return array(
+				'index'            => $i,
+				'lease_pyeong'     => $tl['lease_pyeong'],
+				'lease_sqm'        => $tl['lease_sqm'],
+				'exclusive_pyeong' => $tl['exclusive_pyeong'],
+				'exclusive_sqm'    => $tl['exclusive_sqm'],
+			);
+		},
+		array_keys( $toggle_listings ),
+		$toggle_listings
+	);
+	usort( $area_slider_stops, function ( $a, $b ) use ( $toggle_listings ) {
+		return $toggle_listings[ $a['index'] ]['lease_pyeong_raw'] <=> $toggle_listings[ $b['index'] ]['lease_pyeong_raw'];
+	} );
+
+	if ( $standard_floor_area_pyeong ) {
+		$closest_diff = null;
+		foreach ( $toggle_listings as $i => $tl ) {
+			$diff = abs( $tl['lease_pyeong_raw'] - (float) $standard_floor_area_pyeong );
+			if ( null === $closest_diff || $diff < $closest_diff ) {
+				$closest_diff = $diff;
+				$area_slider_default_index = $i;
+			}
+		}
+	}
+}
+
+// [listing-detail-ux-pass4] 매물 1건일 때는 비교 대상이 없어 실제 토글은 못 하지만, Hero/임대정보
+// 양쪽에서 매물 2~3건일 때와 동일한 "점 하나짜리" 슬라이더 시각 언어로 통일한다(요청: "면적에
+// 대한 부분만 이런 방식이 좋을것 같아").
+$area_slider_stop_single = array();
+if ( 1 === $count ) {
+	$area_slider_stop_single = array( array(
+		'index'            => 0,
+		'lease_pyeong'     => olt_pyeong( get_field( 'lease_area_pyeong', $primary_id ) ),
+		'lease_sqm'        => olt_sqm( get_field( 'lease_area_sqm', $primary_id ) ),
+		'exclusive_pyeong' => olt_pyeong( get_field( 'exclusive_area_pyeong', $primary_id ) ),
+		'exclusive_sqm'    => olt_sqm( get_field( 'exclusive_area_sqm', $primary_id ) ),
+	) );
 }
 
 // 갤러리: 매물 사진 우선(1개 매물 케이스), 없으면 빌딩 사진.
@@ -202,26 +257,16 @@ $gallery_captions = array( '외관', '오피스', '라운지', '회의실', '', 
 
 		<?php if ( 1 === $count ) : ?>
 			<?php
-			// [listing-detail-ux-pass3] 매물이 1건이어도 2~3건일 때(아래 olx-listing-toggle)와 같은
-			// "칩(chip)"형 시각 언어로 통일한다 - 선택할 다른 매물이 없어 실제 토글 동작은 없지만,
-			// 정확한 층수 대신 고층/중층/저층 3단계로 단순화(olt_floor_tier())하는 것도 함께 적용한다.
+			// [listing-detail-ux-pass4] "네모난 칸" 스타일(칩) 요청 철회 - 층수는 원래처럼 상자 없는
+			// 단순 표시로 되돌리고, 면적(임대/전용)만 아래 면적 슬라이더로 대체한다. 매물이 1건이라
+			// 실제로 고를 대상은 없지만, Hero/임대정보 두 군데가 같은 시각 언어를 쓰도록 점 하나짜리
+			// 슬라이더를 그대로 재사용한다(olt_area_slider()가 1건이면 최소/최대 라벨을 자동으로 뺀다).
 			?>
-			<div class="olx-specs3 olx-specs3--chip">
-				<div>
-					<span>층수</span>
-					<strong><?php echo esc_html( olt_floor_tier( get_field( 'floor_display', $primary_id ), $total_floors ) ); ?></strong>
-				</div>
-				<div>
-					<span>임대면적</span>
-					<strong><?php echo esc_html( olt_pyeong( get_field( 'lease_area_pyeong', $primary_id ) ) ); ?></strong>
-					<small><?php echo esc_html( olt_sqm( get_field( 'lease_area_sqm', $primary_id ) ) ); ?></small>
-				</div>
-				<div>
-					<span>전용면적</span>
-					<strong><?php echo esc_html( olt_pyeong( get_field( 'exclusive_area_pyeong', $primary_id ) ) ); ?></strong>
-					<small><?php echo esc_html( olt_sqm( get_field( 'exclusive_area_sqm', $primary_id ) ) ); ?></small>
-				</div>
+			<div class="olx-floor-fact">
+				<span>층수</span>
+				<strong><?php echo esc_html( olt_floor_tier( get_field( 'floor_display', $primary_id ), $total_floors ) ); ?></strong>
 			</div>
+			<?php echo olt_area_slider( $area_slider_stop_single, 0 ); ?>
 			<div class="olx-price">
 				<div>
 					<span>보증금</span>
@@ -240,28 +285,21 @@ $gallery_captions = array( '외관', '오피스', '라운지', '회의실', '', 
 				</div>
 			</div>
 		<?php elseif ( $count >= 2 && $count <= 3 ) : ?>
-			<?php $t0 = $toggle_listings[0]; ?>
-			<div class="olx-specs3 olx-specs3--chip" id="olx-toggle-specs">
-				<div>
-					<span>층수</span>
-					<?php
-					// [listing-detail-ux-pass3] $tl['floor']가 이제 고층/중층/저층으로 이미 단순화돼 있어
-					// (위 $toggle_listings 계산부 참고) 예전처럼 "/ 40F" 정적 접미사를 붙일 필요가 없다 -
-					// 매물 1건일 때(Hero 위쪽 count===1 분기)와 동일한 "층수" 단일 라벨로 통일한다.
-					?>
-					<strong data-toggle-field="floor"><?php echo esc_html( $t0['floor'] ); ?></strong>
-				</div>
-				<div>
-					<span>임대면적</span>
-					<strong data-toggle-field="lease_pyeong"><?php echo esc_html( $t0['lease_pyeong'] ); ?></strong>
-					<small data-toggle-field="lease_sqm"><?php echo esc_html( $t0['lease_sqm'] ); ?></small>
-				</div>
-				<div>
-					<span>전용면적</span>
-					<strong data-toggle-field="exclusive_pyeong"><?php echo esc_html( $t0['exclusive_pyeong'] ); ?></strong>
-					<small data-toggle-field="exclusive_sqm"><?php echo esc_html( $t0['exclusive_sqm'] ); ?></small>
-				</div>
+			<?php $t0 = $toggle_listings[ $area_slider_default_index ]; ?>
+			<div class="olx-floor-fact">
+				<span>층수</span>
+				<?php
+				// [listing-detail-ux-pass3] $tl['floor']가 고층/중층/저층으로 이미 단순화돼 있어
+				// (위 $toggle_listings 계산부 참고) 예전처럼 "/ 40F" 정적 접미사를 붙일 필요가 없다.
+				?>
+				<strong data-toggle-field="floor"><?php echo esc_html( $t0['floor'] ); ?></strong>
 			</div>
+			<?php
+			// [listing-detail-ux-pass4] "슬라이드 형식으로 최소면적ㅇㅡㅇㅡㅇ최대면적, 동그라미 위에
+			// 임대면적, 아래 전용면적, 기본세팅은 기준층면적으로" 요청 - 기존 "칩" 버튼 행을 대체한다.
+			// 점 클릭/hover 트리거는 single.js의 select(index)를 그대로 재사용(마크업만 새로 바뀜).
+			echo olt_area_slider( $area_slider_stops, $area_slider_default_index );
+			?>
 			<div class="olx-price">
 				<div>
 					<span>보증금</span>
@@ -278,16 +316,6 @@ $gallery_captions = array( '외관', '오피스', '라운지', '회의실', '', 
 					<strong data-toggle-field="maintenance"><?php echo esc_html( $t0['maintenance'] ); ?></strong>
 					<em>공급평당 <span data-toggle-field="maintenance_per_lease_pyeong"><?php echo esc_html( $t0['maintenance_per_lease_pyeong'] ); ?></span></em>
 				</div>
-			</div>
-			<div class="olx-listing-toggle" role="tablist" aria-label="매물 선택(면적으로 비교)">
-				<?php foreach ( $toggle_listings as $i => $tl ) : ?>
-					<button type="button" class="<?php echo 0 === $i ? 'is-active' : ''; ?>"
-						role="tab" aria-selected="<?php echo 0 === $i ? 'true' : 'false'; ?>"
-						data-listing-index="<?php echo esc_attr( (string) $i ); ?>">
-						<span><?php echo esc_html( $tl['floor'] ?: ( $i + 1 ) . '번 매물' ); ?></span>
-						<b><?php echo esc_html( $tl['lease_pyeong'] ); ?> / <?php echo esc_html( $tl['exclusive_pyeong'] ); ?></b>
-					</button>
-				<?php endforeach; ?>
 			</div>
 			<?php
 			// JSON_HEX_TAG: floor_display 등은 관리자가 자유 입력하는 텍스트 필드라, 이론상 "</script>"
@@ -349,14 +377,14 @@ if ( ! empty( $key_points ) ) : ?>
 	<div class="olx-bldinfo">
 		<div class="olx-specs olx-bldinfo-specs">
 			<?php
-			// [listing-detail-ux-pass3] 표기 순서 재요청: 주소, 건물명 / 권역, 교통 / 건물 규모, 연면적 /
-			// 사용승인일, 기준층 면적 / 엘리베이터, 주차 / 방향, 주변인프라 - 딱 하나 예외가 주소다.
-			// 2열 그리드에서 주소를 다른 항목과 한 행에 나눠 쓰면(약 260px) 실제 도로명주소가 자주
-			// 한 줄에 안 들어가 2줄로 넘어간다("옆에 여백이 있으니 한줄에 나오게" 요청 원인) - 그래서
-			// 주소만 grid-column:1/-1로 전체 폭을 그대로 써서(약 560px) 어떤 주소든 한 줄에 들어가게
-			// 하고, 나머지 항목은 요청한 순서 그대로 이어서 2열에 채운다(전체 읽는 순서 자체는 요청한
-			// 순서와 동일 - 다만 주소가 자기 행을 통째로 차지해서 이후 항목들의 좌/우 짝은 한 칸씩
-			// 밀린다: 건물명·권역이 한 행, 교통·건물규모가 한 행... 마지막 주변인프라만 홀로 남는다).
+			// [listing-detail-ux-pass4, 요청 재조정] 표기 순서: 주소·건물명 / 권역·교통 / 건물규모·연면적 /
+			// 사용승인일·기준층면적 / 엘리베이터·주차 / 방향·주변인프라(정확히 2열 6행). 지난 라운드엔
+			// 주소가 좁은 칸(약 260px)에서 줄바꿈되는 문제를 grid-column:1/-1(전체 폭)로 풀었는데,
+			// 이번엔 "전체적으로 한 칸씩 땡겨서 2열 6행"으로 되돌려 달라는 요청이라 정상적인 짝(주소+
+			// 건물명 한 행)으로 복귀한다 - 대신 줄바꿈 문제는 이 행(row-address)만 라벨 폭을 좁히고
+			// (82px -> 44px) 값 글자를 살짝 줄여서 완화한다(officeleasing.css). 다만 이건 근본적으로
+			// "칸 폭 안에서 최대한 줄이는" 미봉책이라, 매우 긴 도로명주소는 여전히 2줄로 넘어갈 수
+			// 있다 - 완전한 보장은 지난 라운드의 전체 폭 방식뿐이었다는 점을 명확히 알려드린다.
 			?>
 			<div class="row row-address"><span>주소</span><b><?php echo esc_html( $address_road ); ?></b></div>
 			<div class="row"><span>건물명</span><b><?php echo esc_html( $building_name ); ?></b></div>
@@ -389,18 +417,31 @@ if ( ! empty( $key_points ) ) : ?>
 			$elevator   = get_field( 'building_elevator_count', $building_id );
 			// 연면적/기준층 면적: 둘 다 이미 있던 ACF 필드다(building_total_area_*, 사이드바 count>3
 			// 케이스의 specs3가 기준층 면적을 이미 쓰고 있었다) - 새 필드 추가 없이 표시만 추가한다.
-			// 임대정보 섹션의 면적 표기(평 먼저, ㎡ 작게 뒤에)와 동일한 순서로 통일한다.
-			$total_area = trim( olt_pyeong( get_field( 'building_total_area_pyeong', $building_id ) ) . ' ' . olt_sqm( get_field( 'building_total_area_sqm', $building_id ) ) );
-			$standard_floor_area = trim( olt_pyeong( get_field( 'building_standard_floor_area_pyeong', $building_id ) ) . ' ' . olt_sqm( get_field( 'building_standard_floor_area_sqm', $building_id ) ) );
+			// [listing-detail-ux-pass4] 평 값을 <b>에, ㎡는 <small>로 분리한다("괄호 삭제, 제곱미터만
+			// 볼드 제거·차콜색" 요청) - 이전엔 "1,200평 3,966.9㎡"처럼 한 덩어리 문자열이라 좁은 칸에서
+			// ㎡ 부분이 다음 줄로 넘어갈 수 있었다. row-nowrap 클래스(officeleasing.css)로 이 두 행만
+			// 줄바꿈을 막는다 - 값 자체는 평/㎡ 둘 다 esc_html() 처리 후 조립하므로 안전.
+			$total_area_html = '';
+			$pyeong_total = olt_pyeong( get_field( 'building_total_area_pyeong', $building_id ) );
+			if ( $pyeong_total ) {
+				$sqm_total = olt_sqm( get_field( 'building_total_area_sqm', $building_id ) );
+				$total_area_html = esc_html( $pyeong_total ) . ( $sqm_total ? ' <small>' . esc_html( $sqm_total ) . '</small>' : '' );
+			}
+			$standard_floor_area_html = '';
+			$pyeong_standard = olt_pyeong( get_field( 'building_standard_floor_area_pyeong', $building_id ) );
+			if ( $pyeong_standard ) {
+				$sqm_standard = olt_sqm( get_field( 'building_standard_floor_area_sqm', $building_id ) );
+				$standard_floor_area_html = esc_html( $pyeong_standard ) . ( $sqm_standard ? ' <small>' . esc_html( $sqm_standard ) . '</small>' : '' );
+			}
 			$rows = array(
-				'건물 규모'   => olt_format_building_scale( $basement_floors, $ground_floors ),
-				'연면적'      => $total_area,
-				'사용승인일'  => $completion ? date_i18n( 'Y.m.d', strtotime( $completion ) ) : '',
-				'기준층 면적' => $standard_floor_area,
-				'엘리베이터'  => $elevator ? $elevator . '대' : '',
-				'주차'        => $parking,
-				'방향'        => get_field( 'building_orientation', $building_id ),
-				'주변 인프라' => get_field( 'building_nearby_infra', $building_id ),
+				'건물 규모'   => array( 'text' => olt_format_building_scale( $basement_floors, $ground_floors ) ),
+				'연면적'      => array( 'html' => $total_area_html, 'nowrap' => true ),
+				'사용승인일'  => array( 'text' => $completion ? date_i18n( 'Y.m.d', strtotime( $completion ) ) : '' ),
+				'기준층 면적' => array( 'html' => $standard_floor_area_html, 'nowrap' => true ),
+				'엘리베이터'  => array( 'text' => $elevator ? $elevator . '대' : '' ),
+				'주차'        => array( 'text' => $parking ),
+				'방향'        => array( 'text' => get_field( 'building_orientation', $building_id ) ),
+				'주변 인프라' => array( 'text' => get_field( 'building_nearby_infra', $building_id ) ),
 				// [listing-detail-ux-pass3, 리뷰 반영] 원 요청은 "임대정보 섹션"에 넣는 것이었지만,
 				// 그 섹션은 활성 매물이 1건일 때만 표(.row) 형태로 렌더되고 2건 이상/0건이면 카드
 				// 그리드나 안내 문구로 바뀌어 표 자체가 없다 - 용도/냉난방방식을 거기 두면 매물이
@@ -410,13 +451,16 @@ if ( ! empty( $key_points ) ) : ?>
 				// 매물이 아니라 건물 자체의 물리적 속성(방향/주차/엘리베이터와 동일 성격)이라, 항상
 				// 렌더되는 이 빌딩정보 표로 옮기면 매물 개수(0/1/2~3/4+)와 무관하게 화면·schema가
 				// 항상 일치한다 - 화면 위치만 바뀔 뿐 ACF 필드/schema 로직은 그대로다.
-				'용도'        => get_field( 'building_usage_type', $building_id ),
-				'냉난방방식'  => get_field( 'building_hvac_type', $building_id ),
+				'용도'        => array( 'text' => get_field( 'building_usage_type', $building_id ) ),
+				'냉난방방식'  => array( 'text' => get_field( 'building_hvac_type', $building_id ) ),
 			);
-			foreach ( $rows as $label => $val ) {
-				if ( $val ) {
-					printf( '<div class="row"><span>%s</span><b>%s</b></div>', esc_html( $label ), esc_html( $val ) );
+			foreach ( $rows as $label => $row ) {
+				$content = isset( $row['html'] ) ? $row['html'] : esc_html( $row['text'] ?? '' );
+				if ( '' === $content ) {
+					continue;
 				}
+				$class = 'row' . ( ! empty( $row['nowrap'] ) ? ' row-nowrap' : '' );
+				printf( '<div class="%s"><span>%s</span><b>%s</b></div>', esc_attr( $class ), esc_html( $label ), $content );
 			}
 			?>
 		</div>
@@ -426,11 +470,14 @@ if ( ! empty( $key_points ) ) : ?>
 		// 매물에 사진을 올린 순간 빌딩 자체 사진은 페이지 어디에도 안 보이게 됐다 - 이 갤러리가
 		// 그 사진의 상시 노출 자리다. 크기는 Hero 썸네일 스트립과 동일한 ol-interior(600x400)로 통일.
 		$building_gallery = olt_collect_images( $building_id, 'building_image_', 8, 'ol-interior' );
-		// [listing-detail-ux-pass3, 리뷰 반영] 왼쪽 표(.olx-bldinfo-specs)와 세로 높이를 맞추려고
-		// 이 그리드에 grid-auto-rows:1fr을 썼는데, 관리자가 5~8장을 올리면 3~4행이 되어 사진 쪽이
-		// 훨씬 커지고 표는 그 높이에 끌려 늘어나며 하단에 빈 여백만 남는 불안정한 조합이 된다(GPT/Codex
-		// 공통 지적). Hero 썸네일(.olx-gallery-thumbs)이 이미 같은 이유로 최대 4개만 렌더하는 것과
-		// 동일한 패턴으로, 여기도 항상 2행(2×2)까지만 보이게 고정한다 - ACF엔 여전히 최대 8장 저장
+		// [listing-detail-ux-pass4] "그림을 표에 맞추지 말고, 표를 사진 4장 구조 높이에 맞춰줘" 요청 -
+		// 사진은 원래처럼 고정 가로비(aspect-ratio:1.6)의 2×2 구조로 두고(officeleasing.css), 왼쪽 표
+		// (.olx-bldinfo-specs)에 그 높이만큼 max-height + overflow-y:auto를 줘서 표가 사진 높이를
+		// 따라가게 한다(내용이 넘치면 표 안에서 스크롤). max-height 값은 이 열 너비(약 260px)에서
+		// aspect-ratio:1.6 사진 2행이 실제로 차지하는 높이를 근사한 고정값이라, 사이드바 레이아웃
+		// 너비가 크게 바뀌면 재조정이 필요할 수 있다(완벽한 픽셀 일치를 CSS만으로 보장하진 않음).
+		// 사진을 항상 4장(2행)까지만 보이게 고정하는 것도 이 근사가 유효하려면 필요하다 - Hero 썸네일
+		// (.olx-gallery-thumbs)이 같은 이유로 최대 4개만 렌더하는 것과 동일한 패턴. ACF엔 여전히 최대 8장 저장
 		// 가능하고(위 olt_collect_images 호출은 그대로 8), 화면에 처음 4장만 노출할 뿐이다.
 		$building_gallery = array_slice( $building_gallery, 0, 4 );
 		if ( ! empty( $building_gallery ) ) : ?>
@@ -471,8 +518,12 @@ if ( ! empty( $key_points ) ) : ?>
 			<div class="row"><span>입주가능일</span><b><?php
 				echo esc_html( olt_format_move_in( get_field( 'move_in_type', $primary_id ), get_field( 'move_in_date', $primary_id ) ) );
 			?></b></div>
-			<div class="row"><span>임대면적</span><b><?php echo esc_html( olt_pyeong( get_field( 'lease_area_pyeong', $primary_id ) ) . ' ' . olt_sqm( get_field( 'lease_area_sqm', $primary_id ) ) ); ?></b></div>
-			<div class="row"><span>전용면적</span><b><?php echo esc_html( olt_pyeong( get_field( 'exclusive_area_pyeong', $primary_id ) ) . ' ' . olt_sqm( get_field( 'exclusive_area_sqm', $primary_id ) ) ); ?></b></div>
+			<?php
+			// [listing-detail-ux-pass4] 임대면적/전용면적 두 행을 Hero와 같은 면적 슬라이더로 교체
+			// (요청: "임대정보 섹션에서도 임대면적과 전용면적에 ㅇㅡㅇㅡㅇ 구조 평수 슬라이드").
+			// 매물 1건이라 실제 토글 대상은 없어 점 하나만 표시되지만, Hero와 동일한 시각 언어를 쓴다.
+			?>
+			<div class="olx-lease-area-slider"><?php echo olt_area_slider( $area_slider_stop_single, 0 ); ?></div>
 			<div class="row"><span>보증금</span><b class="accent"><?php echo esc_html( olt_won( get_field( 'deposit_amount', $primary_id ) ) ); ?> <small>임대평당 <?php echo esc_html( olt_pyeong_price( get_field( 'deposit_per_lease_pyeong', $primary_id ) ) ); ?></small></b></div>
 			<div class="row"><span>임대료</span><b class="accent"><?php echo esc_html( olt_won( get_field( 'monthly_rent', $primary_id ) ) ); ?> <small>임대평당 <?php echo esc_html( olt_pyeong_price( get_field( 'rent_per_lease_pyeong', $primary_id ) ) ); ?></small></b></div>
 			<div class="row"><span>관리비</span><b class="accent"><?php echo esc_html( olt_won( get_field( 'maintenance_fee', $primary_id ) ) ); ?> <small>임대평당 <?php echo esc_html( olt_pyeong_price( get_field( 'maintenance_per_lease_pyeong', $primary_id ) ) ); ?></small></b></div>
@@ -483,11 +534,17 @@ if ( ! empty( $key_points ) ) : ?>
 	<section class="olx-section" id="lease-info">
 		<div class="olx-section-head">
 			<div><p class="olx-eyebrow">LEASING INFO</p><h2>임대 가능 매물 <?php echo esc_html( (string) $count ); ?>건</h2></div>
-			<p>위에서 매물을 선택하면 조건이 함께 바뀝니다.</p>
+			<p>위 또는 아래에서 면적을 선택하면 조건이 함께 바뀝니다.</p>
 		</div>
+		<?php
+		// [listing-detail-ux-pass4] Hero와 동일한 면적 슬라이더를 여기도 둔다(요청: "임대정보
+		// 섹션에서도... 슬라이드 넣어서") - Hero 것과 데이터/인덱스가 동일해서 어느 쪽을 조작해도
+		// single.js의 select(index)가 둘 다(그리고 아래 카드 하이라이트까지) 함께 갱신한다.
+		?>
+		<div class="olx-lease-area-slider"><?php echo olt_area_slider( $area_slider_stops, $area_slider_default_index ); ?></div>
 		<div class="olx-rel" id="olx-toggle-cards">
 			<?php foreach ( $listings as $i => $l ) : ?>
-				<div class="olx-toggle-card <?php echo 0 === $i ? 'is-active' : ''; ?>" data-listing-index="<?php echo esc_attr( (string) $i ); ?>">
+				<div class="olx-toggle-card <?php echo $area_slider_default_index === $i ? 'is-active' : ''; ?>" data-listing-index="<?php echo esc_attr( (string) $i ); ?>">
 					<?php get_template_part( 'template-parts/listing-card', null, array( 'listing_id' => $l->ID ) ); ?>
 				</div>
 			<?php endforeach; ?>
@@ -598,8 +655,8 @@ $region_link = $parent_term ? array(
 ) : null;
 
 get_template_part( 'template-parts/contact-cta', null, array(
-	// [listing-detail-ux-pass3] 빌딩명 대신 고정 문구로 변경 요청(체크리스트 CTA 성격 강조).
-	'title'         => '사무실 임대차, 계약 전 꼭! 확인하세요',
+	// [listing-detail-ux-pass4] "사무실 임대차," 에서 "차" 삭제 요청 -> "사무실 임대,".
+	'title'         => '사무실 임대, 계약 전 꼭! 확인하세요',
 	'district_link' => $district_link,
 	'region_link'   => $region_link,
 ) );
