@@ -2,20 +2,19 @@
  * single.js의 initListingToggle()(매물 2~3건 빌딩 전용 "면적 버튼 토글")을 최소 DOM fixture로 검증한다.
  * test-single-gallery.js와 동일한 방식 - Node vm 모듈에서 실제 single.js 파일을 그대로 실행시킨다.
  *
- * 검증 대상: 버튼 클릭 시 (1) 상단 Hero의 data-toggle-field 요소들이 클릭한 매물의 값으로 바뀌고,
- * (2) 클릭한 버튼만 is-active가 되고, (3) 하단 "임대 정보" 섹션의 매물 카드도 같은 인덱스만
- * is-active가 되는지 - 이 세 가지가 서버 재쿼리 없이 미리 임베드된 JSON 데이터만으로 동기화되는지.
+ * 검증 대상: 버튼 클릭(또는 hover) 시 (1) 상단 Hero의 data-toggle-field 요소들이 선택한 매물의
+ * 값으로 바뀌고, (2) 그 버튼만 is-active가 되고, (3) 하단 "임대 정보" 섹션의 매물 카드도 같은
+ * 인덱스만 is-active가 되는지 - 이 세 가지가 서버 재쿼리 없이 미리 임베드된 JSON 데이터만으로
+ * 동기화되는지.
  *
- * [리뷰 지적, 실제 버그였음] "해당층 / 총층" 칸은 실제 마크업에서
- * <strong><span data-toggle-field="floor">3층</span> / 40F</strong> 구조다(single-building.php) -
- * "/ 40F"는 빌딩 고정값이라 span 밖 정적 텍스트로 둬야 한다. 예전엔 data-toggle-field가 <strong>
- * 자체에 붙어 있어서, 클릭 시 textContent를 통째로 갈아치우면 "/ 40F"가 함께 사라졌다.
- * 이 fixture는 각 필드를 독립된 fake 엘리먼트로 다루기 때문에(진짜 부모/자식 DOM 트리를 흉내내지
- * 않음) "부모의 다른 텍스트가 안 지워진다"는 것 자체를 여기서 직접 재현하지는 못한다 - 그 보장은
- * span으로 감싸는 것 자체가 DOM 구조상 자동으로 성립한다(형제 텍스트 노드는 별도 노드라 JS가
- * el.textContent를 span에만 할당하면 절대 못 건드림). 이 테스트가 실질적으로 확인하는 건 JS가
- * "floor" 필드에 넣는 값 자체가 매물별로 정확한지(아래) - 마크업이 실제로 값만 span으로 감쌌는지는
- * single-building.php 코드 리뷰로 별도 확인했다(grep 'data-toggle-field="floor"').
+ * [listing-detail-ux-pass3] "floor" 값은 이제 PHP(olt_floor_tier())가 정확한 층수 대신
+ * 고층/중층/저층으로 미리 단순화해서 JSON에 담아준다(single-building.php) - "/ 40F" 같은 빌딩
+ * 고정값 접미사는 더 이상 없다(과거엔 이게 별도 정적 텍스트라 안 지워지는지가 쟁점이었지만,
+ * 그 접미사 자체가 이번에 삭제됐다). data-toggle-field="floor"는 이제 <strong> 자체에 바로 붙어
+ * 있어(단일 값이라 안쪽에 별도 span으로 감쌀 대상이 없음) textContent를 통째로 갈아치워도 안전하다.
+ *
+ * [listing-detail-ux-pass3] "마우스오버나 선택 시" 요청으로 click에 더해 mouseenter도 같은 select()를
+ * 트리거한다 - 아래 hover() 테스트가 그 동작을 검증한다.
  *
  * 실행: node tests/test-single-listing-toggle.js
  */
@@ -67,6 +66,9 @@ function makeElement(initialAttrs, initialClasses, initialText) {
         },
         click() {
             (listeners.click || []).forEach((fn) => fn());
+        },
+        hover() {
+            (listeners.mouseenter || []).forEach((fn) => fn());
         },
         textContent: initialText || '',
     };
@@ -176,6 +178,14 @@ function run() {
     check('버튼1로 복귀 - floor 필드가 매물1 값으로 갱신', fields.floor.textContent, listingsData[0].floor);
     check('버튼1로 복귀 - 버튼1만 active', buttons[0].classList.contains('is-active'), true);
     check('버튼1로 복귀 - 카드1만 active', cards[0].classList.contains('is-active'), true);
+
+    // [listing-detail-ux-pass3] hover(mouseenter)만으로도 클릭과 동일하게 전환되는지 - "마우스오버나
+    // 선택 시" 요청 검증. 지금 활성 상태는 버튼1(위에서 복귀) - 버튼3에 마우스를 올린다.
+    buttons[2].hover();
+    check('버튼3 hover - floor 필드가 매물3 값으로 갱신', fields.floor.textContent, listingsData[2].floor);
+    check('버튼3 hover - 버튼3만 active', buttons[2].classList.contains('is-active'), true);
+    check('버튼3 hover - 버튼1 active 해제', buttons[0].classList.contains('is-active'), false);
+    check('버튼3 hover - 카드3만 active(하단 섹션도 hover로 동기화)', cards[2].classList.contains('is-active'), true);
 }
 
 run();

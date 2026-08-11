@@ -1,6 +1,6 @@
 /**
  * 매물/빌딩 상세 갤러리 썸네일 전환. 프로토타입에 있던 동작을 이식.
- * 썸네일 클릭 -> 메인 이미지 교체 + active 표시 + 인덱스(01 / 04) 갱신.
+ * 썸네일 클릭 -> 메인 이미지 교체 + active 표시.
  * 요소가 없으면 조용히 종료(다른 페이지/구조 변경에도 안전).
  *
  * [버그 수정] Hero가 <picture><source media="(max-width:900px)">...<img srcset>...</picture>
@@ -16,19 +16,13 @@
 (function () {
 	'use strict';
 
-	function pad2( n ) {
-		return ( '0' + n ).slice( -2 );
-	}
-
 	function init() {
 		var main = document.querySelector( '.olx-gallery-main img' );
 		var source = document.querySelector( '.olx-gallery-main picture source' );
 		var thumbs = document.querySelectorAll( '.olx-gallery-thumbs button' );
-		var indexEl = document.querySelector( '.olx-image-index' );
 		if ( ! main || ! thumbs.length ) {
 			return;
 		}
-		var total = thumbs.length;
 
 		thumbs.forEach( function ( btn, i ) {
 			btn.addEventListener( 'click', function () {
@@ -48,9 +42,6 @@
 					b.classList.remove( 'is-active' );
 				} );
 				btn.classList.add( 'is-active' );
-				if ( indexEl ) {
-					indexEl.textContent = pad2( i + 1 ) + ' / ' + pad2( total );
-				}
 			} );
 		} );
 	}
@@ -101,7 +92,16 @@
 		}
 
 		buttons.forEach( function ( btn ) {
+			// [listing-detail-ux-pass3] "마우스오버나 선택 시" 요청 반영 - 클릭(선택 고정)에 더해
+			// hover만으로도 미리보기 전환이 되도록 mouseenter를 추가한다. 별도 상태 플래그 없이
+			// 그냥 동일한 select()를 재사용한다 - 마우스가 버튼을 떠나도 원래 값으로 되돌리지 않는
+			// 이유는, 다른 버튼에도 곧 hover가 옮겨가거나 클릭으로 이어지는 경우가 대부분이라
+			// "마지막으로 본 값"을 유지하는 편이 자연스럽고, 포커스/터치 기기(hover 자체가 없음)에서도
+			// click만으로 동일하게 동작해 일관성이 깨지지 않는다.
 			btn.addEventListener( 'click', function () {
+				select( btn.getAttribute( 'data-listing-index' ) );
+			} );
+			btn.addEventListener( 'mouseenter', function () {
 				select( btn.getAttribute( 'data-listing-index' ) );
 			} );
 		} );

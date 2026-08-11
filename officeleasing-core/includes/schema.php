@@ -113,17 +113,9 @@ function ol_schema_office_building_node($building_id, $permalink) {
         'url' => $permalink,
     ];
 
-    // [Sprint 01.5 3-6] 자동생성(auto_generated) + 검수대기(pending)일 때만 description에서 뺀다.
-    // auto_generated여도 관리자가 검수완료로 승인했으면(=aio_review_status가 reviewed) 그대로 쓴다 -
-    // "생성방식"과 "검수여부"를 분리했기 때문에 이 조합이 가능해졌다. 여러 빌딩에 거의 동일한 문장이
-    // 미검수 상태로 그대로 색인되는 중복 콘텐츠 위험은 meta description뿐 아니라 구조화 데이터에도
-    // 동일하게 적용되므로, "미검수 자동생성"일 때만 걸러낸다.
-    $location_summary = get_field('building_location_summary', $building_id);
-    $is_unreviewed_draft = 'auto_generated' === get_field('aio_generation_status', $building_id)
-        && 'reviewed' !== get_field('aio_review_status', $building_id);
-    if ($location_summary && !$is_unreviewed_draft) {
-        $node['description'] = $location_summary;
-    }
+    // [listing-detail-ux-pass3] "Leasing Point"(AT A GLANCE) 섹션 전체 삭제 요청에 따라
+    // building_location_summary 필드 자체를 없앴다 - description은 그냥 채우지 않는다(SEO 설명문이
+    // 빠지는 결과가 되므로 이 변경의 트레이드오프로 최종 보고에서 별도로 알린다).
 
     if ($address_road) {
         $node['address'] = [
@@ -162,17 +154,15 @@ function ol_schema_office_building_node($building_id, $permalink) {
     if ($elevator) {
         $additional[] = ['@type' => 'PropertyValue', 'name' => '엘리베이터', 'value' => (string) $elevator . '대'];
     }
-    $transportation_summary = get_field('building_transportation_summary', $building_id);
-    if ($transportation_summary) {
-        $additional[] = ['@type' => 'PropertyValue', 'name' => '교통', 'value' => $transportation_summary];
+    // [listing-detail-ux-pass3] 임대정보 섹션에 새로 노출한 용도/냉난방방식도 같은 원칙(화면에 실제로
+    // 보이는 값만 additionalProperty로)에 따라 함께 추가한다.
+    $usage_type = get_field('building_usage_type', $building_id);
+    if ($usage_type) {
+        $additional[] = ['@type' => 'PropertyValue', 'name' => '용도', 'value' => $usage_type];
     }
-    $feature_summary = get_field('building_feature_summary', $building_id);
-    if ($feature_summary) {
-        $additional[] = ['@type' => 'PropertyValue', 'name' => '특징', 'value' => $feature_summary];
-    }
-    $tenant_summary = get_field('building_recommended_tenant_summary', $building_id);
-    if ($tenant_summary) {
-        $additional[] = ['@type' => 'PropertyValue', 'name' => '추천 입주업종', 'value' => $tenant_summary];
+    $hvac_type = get_field('building_hvac_type', $building_id);
+    if ($hvac_type) {
+        $additional[] = ['@type' => 'PropertyValue', 'name' => '냉난방방식', 'value' => $hvac_type];
     }
     if (!empty($additional)) {
         $node['additionalProperty'] = $additional;

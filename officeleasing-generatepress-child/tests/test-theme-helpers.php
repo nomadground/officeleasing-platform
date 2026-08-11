@@ -93,6 +93,15 @@ check('floor - 지하/지상 혼합', olt_floor_range(-1, 7), '지하1층~7층')
 check('floor - 지하끼리(얕은 지하 먼저)', olt_floor_range(-3, -1), '지하1층~지하3층');
 check('floor - 둘 다 0(데이터 없음)', olt_floor_range(0, 0), '');
 
+// ── olt_floor_tier() - 총 층수 대비 상/중/하위 1/3로 단순화 ──
+check('floor tier - 상위 1/3(40층 중 35층)', olt_floor_tier('35층', 40), '고층');
+check('floor tier - 경계값(40층 중 27층, 27/40=0.675>2/3)', olt_floor_tier('27층', 40), '고층');
+check('floor tier - 중간(40층 중 20층)', olt_floor_tier('20층', 40), '중층');
+check('floor tier - 하위 1/3(40층 중 10층)', olt_floor_tier('10층', 40), '저층');
+check('floor tier - 지하는 항상 지하(등급 없음)', olt_floor_tier('지하2층', 40), '지하');
+check('floor tier - 파싱 불가(범위 표기)는 원문 그대로', olt_floor_tier('3~5층', 40), '3~5층');
+check('floor tier - 총 층수 모르면(0) 원문 그대로', olt_floor_tier('17층', 0), '17층');
+
 printf("\n%d passed, %d failed\n", $pass, $fail);
 if ($fail > 0) {
     exit(1);

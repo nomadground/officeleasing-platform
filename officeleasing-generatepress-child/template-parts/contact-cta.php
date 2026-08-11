@@ -47,6 +47,9 @@ $checklist_url = olt_get_public_page_url( 'checklist' );
 
 $district_link = $args['district_link'] ?? null;
 $region_link   = $args['region_link'] ?? null;
+// [listing-detail-ux-pass3] 두 링크가 50:50 가로폭으로 나오도록 - 위 $primary_count/$secondary_count와
+// 동일한 "버튼 개수 기반 grid modifier" 패턴을 재사용한다.
+$links_count = ( $district_link ? 1 : 0 ) + ( $region_link ? 1 : 0 );
 
 // 버튼을 두 그룹으로 나눈다 - "전화/온라인"(주요 CTA)은 항상 50:50 한 줄로, "인사이트/체크리스트"
 // (보조 정보 링크)는 있는 만큼만 그 아래 별도 줄로. 기존엔 이 넷을 한 grid에 다 넣어서 인사이트까지
@@ -63,8 +66,8 @@ $secondary_count = ( $insight_url ? 1 : 0 ) + ( $checklist_url ? 1 : 0 );
 		<span><?php echo esc_html( $desc ); ?></span>
 	</div>
 	<div>
-		<?php if ( $district_link || $region_link ) : ?>
-			<div class="olx-contact-links">
+		<?php if ( $links_count > 0 ) : ?>
+			<div class="olx-contact-links olx-contact-links--<?php echo esc_attr( (string) $links_count ); ?>">
 				<?php if ( $district_link ) : ?>
 					<a href="<?php echo esc_url( $district_link['url'] ); ?>"><?php echo esc_html( $district_link['label'] ); ?></a>
 				<?php endif; ?>
@@ -104,7 +107,7 @@ $secondary_count = ( $insight_url ? 1 : 0 ) + ( $checklist_url ? 1 : 0 );
 				<?php endif; ?>
 				<?php if ( $checklist_url ) : ?>
 					<a class="olx-contact-action olx-contact-action--checklist" href="<?php echo esc_url( $checklist_url ); ?>">
-						<b>Office Leasing Checklist</b>
+						<b>OFFICE LEASING CHECKLIST</b>
 						<small>임대 체크리스트 보기</small>
 					</a>
 				<?php endif; ?>

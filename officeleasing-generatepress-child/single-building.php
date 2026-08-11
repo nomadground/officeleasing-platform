@@ -50,7 +50,9 @@ if ( $count >= 2 && $count <= 3 ) {
 		$lid = $l->ID;
 		$toggle_listings[] = array(
 			'id'                          => $lid,
-			'floor'                       => get_field( 'floor_display', $lid ),
+			// [listing-detail-ux-pass3] 정확한 층수 대신 고층/중층/저층으로 단순화(요청 반영) -
+			// 이 값이 위 Hero칩(#olx-toggle-specs)과 아래 토글 버튼 라벨(.olx-listing-toggle) 둘 다에 쓰인다.
+			'floor'                       => olt_floor_tier( get_field( 'floor_display', $lid ), $total_floors ),
 			'lease_pyeong'                => olt_pyeong( get_field( 'lease_area_pyeong', $lid ) ),
 			'lease_sqm'                   => olt_sqm( get_field( 'lease_area_sqm', $lid ) ),
 			'exclusive_pyeong'            => olt_pyeong( get_field( 'exclusive_area_pyeong', $lid ) ),
@@ -144,15 +146,9 @@ $gallery_captions = array( '외관', '오피스', '라운지', '회의실', '', 
 					<img src="<?php echo esc_url( $gallery[0]['url'] ); ?>" alt="<?php echo esc_attr( $hero_alt ); ?>" fetchpriority="high" decoding="async">
 				<?php endif;
 			endif;
+			// [listing-detail-ux-pass3] "외관 01/01" 같은 인덱스/캡션 오버레이 텍스트 삭제(요청) -
+			// 어떤 사진이 선택됐는지는 아래 썸네일의 is-active 테두리로 이미 충분히 드러난다.
 			?>
-			<?php
-			// [버그 수정] 썸네일은 최대 4개만 렌더(디자인 그리드 4열 고정)되므로, 인덱스 총계도
-			// 실제 갤러리 전체 개수(최대 8)가 아니라 "클릭 가능한 썸네일 수"와 일치시킨다.
-			// 안 그러면 초기 "01/06"이 썸네일 클릭 후 JS가 계산하는 "02/04"와 어긋난다.
-			$thumb_total = max( 1, min( count( $gallery ), 4 ) );
-			?>
-			<span class="olx-image-index">01 / <?php echo esc_html( str_pad( (string) $thumb_total, 2, '0', STR_PAD_LEFT ) ); ?></span>
-			<?php if ( ! empty( $gallery_captions[0] ) ) : ?><span class="olx-image-caption"><?php echo esc_html( $gallery_captions[0] ); ?></span><?php endif; ?>
 		</div>
 		<?php if ( count( $gallery ) > 1 ) : ?>
 			<div class="olx-gallery-thumbs">
@@ -205,10 +201,15 @@ $gallery_captions = array( '외관', '오피스', '라운지', '회의실', '', 
 		</div>
 
 		<?php if ( 1 === $count ) : ?>
-			<div class="olx-specs3">
+			<?php
+			// [listing-detail-ux-pass3] 매물이 1건이어도 2~3건일 때(아래 olx-listing-toggle)와 같은
+			// "칩(chip)"형 시각 언어로 통일한다 - 선택할 다른 매물이 없어 실제 토글 동작은 없지만,
+			// 정확한 층수 대신 고층/중층/저층 3단계로 단순화(olt_floor_tier())하는 것도 함께 적용한다.
+			?>
+			<div class="olx-specs3 olx-specs3--chip">
 				<div>
-					<span>해당층 / 총층</span>
-					<strong><?php echo esc_html( get_field( 'floor_display', $primary_id ) ); ?><?php echo $total_floors ? ' / ' . esc_html( $total_floors ) . 'F' : ''; ?></strong>
+					<span>층수</span>
+					<strong><?php echo esc_html( olt_floor_tier( get_field( 'floor_display', $primary_id ), $total_floors ) ); ?></strong>
 				</div>
 				<div>
 					<span>임대면적</span>
@@ -240,16 +241,15 @@ $gallery_captions = array( '외관', '오피스', '라운지', '회의실', '', 
 			</div>
 		<?php elseif ( $count >= 2 && $count <= 3 ) : ?>
 			<?php $t0 = $toggle_listings[0]; ?>
-			<div class="olx-specs3" id="olx-toggle-specs">
+			<div class="olx-specs3 olx-specs3--chip" id="olx-toggle-specs">
 				<div>
-					<span>해당층 / 총층</span>
+					<span>층수</span>
 					<?php
-					// [GPT 리뷰 지적, 실제 버그 확인] "/ 40F"는 빌딩 고정값이라 매물마다 안 바뀌는데,
-					// 예전엔 이 <strong> 하나에 동적 층수 + 정적 "/ 40F"가 같이 있어서 JS가
-					// textContent를 통째로 갈아치우면 "/ 40F"가 사라졌다. 동적으로 바뀌는 부분만
-					// 안쪽 <span data-toggle-field>로 감싸고, "/ 40F"는 바깥에 정적 텍스트로 둔다.
+					// [listing-detail-ux-pass3] $tl['floor']가 이제 고층/중층/저층으로 이미 단순화돼 있어
+					// (위 $toggle_listings 계산부 참고) 예전처럼 "/ 40F" 정적 접미사를 붙일 필요가 없다 -
+					// 매물 1건일 때(Hero 위쪽 count===1 분기)와 동일한 "층수" 단일 라벨로 통일한다.
 					?>
-					<strong><span data-toggle-field="floor"><?php echo esc_html( $t0['floor'] ); ?></span><?php echo $total_floors ? ' / ' . esc_html( $total_floors ) . 'F' : ''; ?></strong>
+					<strong data-toggle-field="floor"><?php echo esc_html( $t0['floor'] ); ?></strong>
 				</div>
 				<div>
 					<span>임대면적</span>
@@ -348,8 +348,18 @@ if ( ! empty( $key_points ) ) : ?>
 	</div>
 	<div class="olx-bldinfo">
 		<div class="olx-specs olx-bldinfo-specs">
+			<?php
+			// [listing-detail-ux-pass3] 표기 순서 재요청: 주소, 건물명 / 권역, 교통 / 건물 규모, 연면적 /
+			// 사용승인일, 기준층 면적 / 엘리베이터, 주차 / 방향, 주변인프라 - 딱 하나 예외가 주소다.
+			// 2열 그리드에서 주소를 다른 항목과 한 행에 나눠 쓰면(약 260px) 실제 도로명주소가 자주
+			// 한 줄에 안 들어가 2줄로 넘어간다("옆에 여백이 있으니 한줄에 나오게" 요청 원인) - 그래서
+			// 주소만 grid-column:1/-1로 전체 폭을 그대로 써서(약 560px) 어떤 주소든 한 줄에 들어가게
+			// 하고, 나머지 항목은 요청한 순서 그대로 이어서 2열에 채운다(전체 읽는 순서 자체는 요청한
+			// 순서와 동일 - 다만 주소가 자기 행을 통째로 차지해서 이후 항목들의 좌/우 짝은 한 칸씩
+			// 밀린다: 건물명·권역이 한 행, 교통·건물규모가 한 행... 마지막 주변인프라만 홀로 남는다).
+			?>
+			<div class="row row-address"><span>주소</span><b><?php echo esc_html( $address_road ); ?></b></div>
 			<div class="row"><span>건물명</span><b><?php echo esc_html( $building_name ); ?></b></div>
-			<div class="row"><span>주소</span><b><?php echo esc_html( $address_road ); ?></b></div>
 			<div class="row"><span>권역</span><b><?php echo esc_html( trim( olt_region_label( $region_code ) . ( $district ? ' · ' . $district : '' ) ) ); ?></b></div>
 			<div class="row"><span>교통</span><b class="olx-transit">
 				<?php
@@ -375,24 +385,27 @@ if ( ! empty( $key_points ) ) : ?>
 			if ( $parking && false === mb_strpos( (string) $parking, '대' ) ) {
 				$parking .= '대';
 			}
-			$rows = array(
-				'주변 인프라' => get_field( 'building_nearby_infra', $building_id ),
-				'건물 규모'   => olt_format_building_scale( $basement_floors, $ground_floors ),
-				'방향'        => get_field( 'building_orientation', $building_id ),
-				'주차'        => $parking,
-			);
 			$completion = get_field( 'building_completion_date', $building_id );
 			$elevator   = get_field( 'building_elevator_count', $building_id );
+			// 연면적/기준층 면적: 둘 다 이미 있던 ACF 필드다(building_total_area_*, 사이드바 count>3
+			// 케이스의 specs3가 기준층 면적을 이미 쓰고 있었다) - 새 필드 추가 없이 표시만 추가한다.
+			// 임대정보 섹션의 면적 표기(평 먼저, ㎡ 작게 뒤에)와 동일한 순서로 통일한다.
+			$total_area = trim( olt_pyeong( get_field( 'building_total_area_pyeong', $building_id ) ) . ' ' . olt_sqm( get_field( 'building_total_area_sqm', $building_id ) ) );
+			$standard_floor_area = trim( olt_pyeong( get_field( 'building_standard_floor_area_pyeong', $building_id ) ) . ' ' . olt_sqm( get_field( 'building_standard_floor_area_sqm', $building_id ) ) );
+			$rows = array(
+				'건물 규모'   => olt_format_building_scale( $basement_floors, $ground_floors ),
+				'연면적'      => $total_area,
+				'사용승인일'  => $completion ? date_i18n( 'Y.m.d', strtotime( $completion ) ) : '',
+				'기준층 면적' => $standard_floor_area,
+				'엘리베이터'  => $elevator ? $elevator . '대' : '',
+				'주차'        => $parking,
+				'방향'        => get_field( 'building_orientation', $building_id ),
+				'주변 인프라' => get_field( 'building_nearby_infra', $building_id ),
+			);
 			foreach ( $rows as $label => $val ) {
 				if ( $val ) {
 					printf( '<div class="row"><span>%s</span><b>%s</b></div>', esc_html( $label ), esc_html( $val ) );
 				}
-			}
-			if ( $completion ) {
-				printf( '<div class="row"><span>사용승인일</span><b>%s</b></div>', esc_html( date_i18n( 'Y.m.d', strtotime( $completion ) ) ) );
-			}
-			if ( $elevator ) {
-				printf( '<div class="row"><span>엘리베이터</span><b>%s대</b></div>', esc_html( $elevator ) );
 			}
 			?>
 		</div>
@@ -446,6 +459,19 @@ if ( ! empty( $key_points ) ) : ?>
 			<div class="row"><span>임대료</span><b class="accent"><?php echo esc_html( olt_won( get_field( 'monthly_rent', $primary_id ) ) ); ?> <small>임대평당 <?php echo esc_html( olt_pyeong_price( get_field( 'rent_per_lease_pyeong', $primary_id ) ) ); ?></small></b></div>
 			<div class="row"><span>관리비</span><b class="accent"><?php echo esc_html( olt_won( get_field( 'maintenance_fee', $primary_id ) ) ); ?> <small>임대평당 <?php echo esc_html( olt_pyeong_price( get_field( 'maintenance_per_lease_pyeong', $primary_id ) ) ); ?></small></b></div>
 			<div class="row"><span>환산임대료</span><b>전용평당 <?php echo esc_html( olt_pyeong_price( get_field( 'noc_per_exclusive_pyeong', $primary_id ) ) ); ?> <small>NOC</small></b></div>
+			<?php
+			// [listing-detail-ux-pass3] 용도/냉난방방식 요청 추가 - 매물이 아니라 건물 자체의 물리적
+			// 속성(방향/주차/엘리베이터와 같은 성격)이라 빌딩 정보 섹션과 마찬가지로 $building_id로
+			// 조회한다(같은 건물의 여러 매물이 서로 다른 값을 갖게 되는 걸 막기 위함).
+			$usage_type = get_field( 'building_usage_type', $building_id );
+			$hvac_type  = get_field( 'building_hvac_type', $building_id );
+			if ( $usage_type ) {
+				printf( '<div class="row"><span>용도</span><b>%s</b></div>', esc_html( $usage_type ) );
+			}
+			if ( $hvac_type ) {
+				printf( '<div class="row"><span>냉난방방식</span><b>%s</b></div>', esc_html( $hvac_type ) );
+			}
+			?>
 		</div>
 	</section>
 <?php elseif ( $count >= 2 && $count <= 3 ) : ?>
@@ -484,37 +510,14 @@ if ( ! empty( $key_points ) ) : ?>
 <?php endif; ?>
 
 <?php
-// ── AIO 요약(입지/교통/특징/추천 입주업종): ACF엔 있지만 지금까지 어느 템플릿에서도 안 쓰던
-// 필드였다(저장만 되는 죽은 데이터). 비어있는 항목은 렌더하지 않는다.
-$aio_blocks = array(
-	'입지'         => get_field( 'building_location_summary', $building_id ),
-	'교통'         => get_field( 'building_transportation_summary', $building_id ),
-	'특징'         => get_field( 'building_feature_summary', $building_id ),
-	'추천 입주업종' => get_field( 'building_recommended_tenant_summary', $building_id ),
-);
-$aio_blocks = array_filter( $aio_blocks );
-if ( ! empty( $aio_blocks ) ) : ?>
-	<section class="olx-section" id="building-summary">
-		<div class="olx-section-head">
-			<div><p class="olx-eyebrow">AT A GLANCE</p><h2><?php echo esc_html( $building_name ); ?> Leasing Point</h2></div>
-		</div>
-		<div class="olx-specs">
-			<?php foreach ( $aio_blocks as $label => $text ) : ?>
-				<div class="row"><span><?php echo esc_html( $label ); ?></span><b><?php echo esc_html( $text ); ?></b></div>
-			<?php endforeach; ?>
-		</div>
-		<?php
-		// 체크리스트 페이지는 아직 별도로 만들어지지 않았다(PROJECT_OVERVIEW.md의 Insight 콘텐츠 계획 참고).
-		// 관리자가 나중에 slug "checklist"로 공개(publish) 페이지를 만들면 이 버튼이 자동으로 나타난다 -
-		// draft/private/비밀번호 보호 상태일 때는 olt_get_public_page_url()이 숨겨준다.
-		$checklist_url = olt_get_public_page_url( 'checklist' );
-		if ( $checklist_url ) : ?>
-			<a class="olx-inline-link" href="<?php echo esc_url( $checklist_url ); ?>">
-				사무실 임대 체크리스트 보기 <span>→</span>
-			</a>
-		<?php endif; ?>
-	</section>
-<?php endif; ?>
+// [listing-detail-ux-pass3] "AT A GLANCE"(Leasing Point) 섹션 전체 삭제 요청 - building_location_summary/
+// building_transportation_summary/building_feature_summary/building_recommended_tenant_summary ACF
+// 필드 자체도 group_ol_building.json에서 삭제했다(admin-hidden-fields.php/admin-summary-box.php/
+// calculations.php의 ol_sync_aio_status()/save-hooks.php 호출부/schema.php의 description·additionalProperty
+// 참조까지 전부 함께 정리 - README-ACF.md 참고). 이 섹션에 있던 체크리스트 안내 링크는 Contact 카드에
+// 이미 동일한 목적의 "OFFICE LEASING CHECKLIST" 버튼이 있어(template-parts/contact-cta.php) 중복 없이
+// 그대로 대체된다.
+?>
 
 <?php
 // ── 추천 매물: 같은 권역(동)의 다른 빌딩 매물 ──
@@ -579,17 +582,19 @@ if ( ! empty( $faqs ) ) : ?>
 
 <?php
 // 세부지역/권역 링크는 별도 nav가 아니라 Contact 카드 안으로 이동했다(전체 사무실 매물 링크는 삭제).
+// [listing-detail-ux-pass3] 라벨 문구 변경 요청: "~ 사무실 임대" -> "~ 사무실 더보기".
 $district_link = $child_term ? array(
-	'label' => $district . ' 사무실 임대',
+	'label' => $district . ' 사무실 더보기',
 	'url'   => get_term_link( $child_term ),
 ) : null;
 $region_link = $parent_term ? array(
-	'label' => preg_replace( '/\(.+\)/', '', olt_region_label( $region_code ) ) . ' 사무실 임대',
+	'label' => preg_replace( '/\(.+\)/', '', olt_region_label( $region_code ) ) . ' 사무실 더보기',
 	'url'   => get_term_link( $parent_term ),
 ) : null;
 
 get_template_part( 'template-parts/contact-cta', null, array(
-	'title'         => $building_name . ', 전문 중개사와 바로 상담하세요',
+	// [listing-detail-ux-pass3] 빌딩명 대신 고정 문구로 변경 요청(체크리스트 CTA 성격 강조).
+	'title'         => '사무실 임대차, 계약 전 꼭! 확인하세요',
 	'district_link' => $district_link,
 	'region_link'   => $region_link,
 ) );

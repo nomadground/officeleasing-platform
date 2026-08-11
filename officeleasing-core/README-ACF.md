@@ -52,7 +52,6 @@ officeleasing-core/
    ├─ test-permalinks.php     ← rewrite 정규식 생성 로직만 오프라인으로 검증(실제 WP_Rewrite 매칭은 미검증)
    ├─ test-home-query.php     ← Home 지역 다양성 로직 + 회사정보 헬퍼 검증(실제 파일을 include해서 테스트)
    ├─ test-schema.php         ← 빌딩 스키마 노드 조립 검증(실제 파일을 include, 최소 WP/ACF 스텁으로 테스트)
-   ├─ test-aio-status.php     ← AIO 생성방식/검수상태 상태 전이 검증
    ├─ test-region-sync.php    ← 정/역방향 권역 동기화 검증(3-7 버그 재현 케이스 포함)
    └─ test-schema-hub.php     ← 허브 스키마 노드 조립 검증(아카이브/상위권역/동 3가지 컨텍스트)
 ```
@@ -139,9 +138,6 @@ ol_save_listing_fields($post_id, [
 
 `acf/validate_value` 검증은 ACF 자체 저장 경로(관리자 화면 AJAX)에서만 자동 적용되므로, `ol_save_listing_fields()`를 거치더라도 음수·비정상값 검증은 자동으로 안 됩니다. 커스텀 관리자 페이지에서 사용자 입력을 받는다면 저장 전에 직접 검증하거나 최소한 `helpers.php`의 방어 로직(0/음수 방어)에 의존해야 합니다.
 
-## AIO 초안 자동삽입
-`building_location_summary`가 비어있으면 템플릿 문장이 자동 삽입되고 `_ol_aio_draft` post meta가 `1`로 세팅됩니다. Rank Math 등에서 이 메타가 있는 글은 noindex 권장 — 미편집 boilerplate가 그대로 색인되면 여러 빌딩 페이지가 거의 동일한 문장으로 중복 색인되어 GEO/SEO에 역효과입니다. 관리자가 문장을 직접 수정해 저장하면 플래그가 자동 해제됩니다.
-
 ## URL Foundation (Sprint 01.5, 3-1)
 목표 형태: 권역 허브 `/강남사무실임대/`, 지역 허브 `/강남사무실임대/삼성동/`, 빌딩 `/강남사무실임대/삼성동/파르나스타워/` (자식 지역 미배정 빌딩은 `/강남사무실임대/파르나스타워/`, 권역 자체 미배정 빌딩은 기존 `/building/{slug}/` 그대로 폴백).
 
@@ -206,24 +202,15 @@ Building **ID 배열**을 반환합니다(테마는 이 ID를 기존 `building-c
 - Description: `강남 GBD·도심 CBD·여의도 YBD를 중심으로 서울 주요 업무지구의 빌딩과 사무실 임대 정보를 제공하는 OFFICE LEASING입니다.`
 
 ### 빌딩 페이지 JSON-LD — `schema.php` (Sprint 01.5 3-5)
-`is_singular('building')`에서 `OfficeBuilding` + `RealEstateListing`(활성 매물 수만큼, 0/1/N)을 출력합니다. **범위는 이 두 타입 + AIO 요약뿐**입니다 — `ItemList`/`CollectionPage`/`Hub Breadcrumb`/`FAQPage`는 허브(권역·동) 단계 스키마라 명시적으로 제외했고(Sprint 02.5로 분리), building_faq_q1-5/a1-5가 화면엔 이미 있지만 이번 범위엔 FAQPage 스키마를 넣지 않았습니다.
+`is_singular('building')`에서 `OfficeBuilding` + `RealEstateListing`(활성 매물 수만큼, 0/1/N)을 출력합니다. **범위는 이 두 타입뿐**입니다 — `ItemList`/`CollectionPage`/`Hub Breadcrumb`/`FAQPage`는 허브(권역·동) 단계 스키마라 명시적으로 제외했고(Sprint 02.5로 분리), building_faq_q1-5/a1-5가 화면엔 이미 있지만 이번 범위엔 FAQPage 스키마를 넣지 않았습니다.
 
 - **listing 전용 `<script>` 출력 지점 없음**: `single-listing.php`가 항상 building URL로 301되므로(URL 정책), listing만을 위한 스키마 페이지가 없습니다. 대신 building 페이지의 `RealEstateListing` 노드(들)가 화면에 보이는 매물 정보를 그대로 커버합니다. 매물이 0개면 노드도 0개, 1개면 1개, N개(카드 그리드로 전부 보이는 경우)면 N개 — **화면 매물 개수와 노드 개수가 항상 일치**합니다.
 - **`RealEstateListing.url`은 building permalink**입니다. listing 자체 URL(항상 리다이렉트됨)을 구조화 데이터에 넣지 않습니다.
 - **`offers.seller`는 `{home}/#organization` @id만 참조**합니다 — 매물마다 회사 정보를 통째로 재선언하지 않습니다(Home V1 패치 문서의 원칙을 실제로 적용).
-- **자동초안(`_ol_aio_draft`) 방어**: `building_location_summary`가 관리자 미편집 자동초안 상태면 `description`에 넣지 않습니다. 여러 빌딩에 거의 동일한 문장이 그대로 색인되는 중복 콘텐츠 위험은 meta description뿐 아니라 JSON-LD에도 동일하게 적용됩니다.
 - **좌표/주소가 없으면 `geo`/`address` 자체를 안 넣습니다** — `0, 0`을 지어내지 않습니다.
-- `additionalProperty`(총 층수/주차/엘리베이터/교통·특징·추천입주업종 AIO 요약, offer 쪽 보증금/관리비)는 전부 **화면(빌딩 정보·임대 정보 섹션)에 실제로 보이는 값만** 값이 있을 때만 추가합니다.
+- `additionalProperty`(총 층수/주차/엘리베이터/용도/냉난방방식, offer 쪽 보증금/관리비)는 전부 **화면(빌딩 정보·임대 정보 섹션)에 실제로 보이는 값만** 값이 있을 때만 추가합니다.
 - Rank Math/Yoast가 활성이면 `schema-home.php`와 동일한 감지 로직으로 자동 비활성됩니다(`ol_output_building_schema` 필터로 강제 가능).
-
-## Sprint 01.5 3-6 (AIO 생성방식/검수상태 분리)
-예전엔 `_ol_aio_draft`(불리언) 하나로 "미편집 자동초안"만 표현했다. 이제 두 필드로 분리한다:
-- **`aio_generation_status`**(자동계산, 폼에서 숨김) — `auto_generated` | `human_written`. `building_location_summary`가 저장된 자동초안 해시와 같은지로 매 저장마다 판정.
-- **`aio_review_status`**(관리자가 직접 조작, 폼에 노출) — `pending` | `reviewed`. 기본값 `pending`.
-
-**핵심 개선**: `aio_generation_status`가 `auto_generated`여도 관리자가 `aio_review_status`를 직접 `검수 완료`로 바꾸면 그 값을 유지합니다(다음 저장에서 pending으로 강제 리셋하지 않음) — 즉 **"자동초안 문장을 한 글자도 안 고치고 그대로 승인"하는 경로가 이제 가능**합니다. 예전 단일 불리언 방식으로는 이 조합 자체를 표현할 수 없었습니다.
-`schema.php`의 description 억제 조건도 `auto_generated && review_status !== reviewed`로 갱신했습니다(검수완료된 자동초안은 이제 구조화 데이터에도 포함됩니다).
-`tests/test-aio-status.php`(11 assertion) + `tests/test-schema.php`의 관련 케이스로 상태 전이를 검증했습니다.
+- **[listing-detail-ux-pass3] `description` 필드 없음**: 예전엔 `building_location_summary`(AIO 자동초안/직접작성 입지 요약)를 `description`에 넣었으나, 이 필드 자체가 "Leasing Point" 섹션 삭제 요청으로 함께 삭제됐습니다. `OfficeBuilding` 노드에 이제 `description`이 없습니다 — 필요해지면 다른 소스(예: 별도 SEO 설명 필드)를 새로 설계해야 합니다.
 
 ## Sprint 01.5 3-7 (Region Sync Engine 업그레이드)
 - **버그 수정**: `ol_cascade_region_to_listings()`(빌딩→매물 역방향 동기화)가 `empty($terms)`일 때 early-return 하는 버그가 남아있었습니다. 정방향 함수(`ol_sync_region_from_building`)는 이전 라운드에 이미 고쳤는데 역방향엔 반영이 안 돼 있었던 것 — **빌딩의 권역을 전부 지우고 저장해도 이미 연결된 매물들엔 예전 권역이 그대로 남는 실제 버그**였습니다. 동일 기준(`is_wp_error`만 체크)으로 통일했습니다.
@@ -250,8 +237,7 @@ Building **ID 배열**을 반환합니다(테마는 이 ID를 기존 `building-c
 - **`available_from` → `move_in_type`(즉시입주/협의가능/날짜지정) + `move_in_date`(조건부 노출)**로 교체. save-api 화이트리스트도 동기화
 
 ## 아직 안 만든 것 (다음 sprint)
-- **JSON-LD (`schema.php`)**: `OfficeBuilding`+`RealEstateListing`+`FAQPage`+`BreadcrumbList`, `seller.identifier`(중개업 등록번호) 전부 미구현. **이 프로젝트 최우선 목표(SEO/GEO/AIO)라 다음 sprint 1순위**
-- **AIO 요약 3종 화면 미출력**: `building_transportation_summary`/`building_feature_summary`/`building_recommended_tenant_summary`는 ACF엔 있는데 템플릿·JSON-LD 어디서도 안 씀 (저장만 되는 죽은 데이터). JSON-LD 작업과 같이 배치하는 게 자연스러움
+- **`seller.identifier`(중개업 등록번호)**: `schema.php`/`schema-home.php` 모두 미구현
 - 필터 UI(`region`/`dong`/`area_min`/`area_max`/`budget_min`/`budget_max`)는 **의도적으로 쿼리 미연결 상태** — 아카이브/허브 스펙에 "이번 단계는 UI만" 명시, 로드맵 ③검색→④필터 단계에서 실제 쿼리 연결 예정
 - `listing_feature` taxonomy 기반 특징 태그 UI 연동
 - 커스텀 갤러리 메타박스(지금은 번호형 Image 필드로 대체 중)

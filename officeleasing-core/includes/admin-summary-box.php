@@ -34,8 +34,6 @@ function ol_render_building_summary_box($post) {
     $area_range = ( $min_area || $max_area )
         ? number_format((float) $min_area, 0) . ' ~ ' . number_format((float) $max_area, 0) . ' 평'
         : '-';
-    $generation_labels = ['auto_generated' => '자동 생성', 'human_written' => '직접 작성'];
-    $generation_status = get_field('aio_generation_status', $post->ID);
 
     // building_min_rent는 building-cache.php에서 "데이터 없음"을 0이 아니라 -1로 저장한다(0원은
     // 실제 유효값일 수 있어서). 다만 이 필드가 아직 한 번도 쓰인 적 없는 빌딩(신규 빌딩에 매물이
@@ -52,8 +50,6 @@ function ol_render_building_summary_box($post) {
         '활성 매물 수' => (int) get_field('building_active_listing_count', $post->ID) . '건',
         '전용면적 범위' => $area_range,
         '최저 임대료' => $min_rent_label,
-        // 검수 상태는 위쪽 필드(aio_review_status)에서 직접 바꿀 수 있으므로 여기선 참고용 읽기전용 표시만.
-        'AIO 입지요약 생성방식' => $generation_labels[$generation_status] ?? '-',
     ]);
 }
 

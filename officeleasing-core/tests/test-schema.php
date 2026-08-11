@@ -87,10 +87,11 @@ $GLOBALS['__fields'][100] = [
     'building_address_road' => '테헤란로 521',
     'building_lat' => 37.5089,
     'building_lng' => 127.0632,
-    'building_location_summary' => '파르나스타워는 삼성동에 위치한 업무시설입니다.',
     'building_ground_floors' => 40,
     'building_parking' => '지하 4~7층 총 320대',
     'building_elevator_count' => 12,
+    'building_usage_type' => '업무시설',
+    'building_hvac_type' => '개별 냉난방(EHP)',
 ];
 $GLOBALS['__terms'][100] = [
     (object) ['term_id' => 1, 'parent' => 0, 'name' => '강남사무실임대'],
@@ -101,22 +102,13 @@ $GLOBALS['__terms'][100] = [
 $node = ol_schema_office_building_node(100, 'https://officeleasing.co.kr/강남사무실임대/삼성동/파르나스타워/');
 check('OfficeBuilding @type', $node['@type'], 'OfficeBuilding');
 check('OfficeBuilding @id는 permalink 기반', $node['@id'], 'https://officeleasing.co.kr/강남사무실임대/삼성동/파르나스타워/#building');
-check('description은 편집된 location_summary 사용(자동초안 아님)', $node['description'], '파르나스타워는 삼성동에 위치한 업무시설입니다.');
+// [listing-detail-ux-pass3] "Leasing Point" 섹션 삭제로 building_location_summary 필드 자체가
+// 없어졌다 - description은 이제 어떤 소스도 없어 항상 미포함이다(SEO 트레이드오프, README-ACF.md 참고).
+check('description 필드 자체가 없어 항상 미포함', isset($node['description']), false);
 check('address.addressLocality는 자식 term(삼성동)', $node['address']['addressLocality'], '삼성동');
 check('geo 좌표 포함', $node['geo'], ['@type' => 'GeoCoordinates', 'latitude' => 37.5089, 'longitude' => 127.0632]);
-
-// ── 2. 자동생성 + 검수대기(pending)면 description을 빼야 한다(중복콘텐츠 방지) ──
-$GLOBALS['__fields'][100]['aio_generation_status'] = 'auto_generated';
-$GLOBALS['__fields'][100]['aio_review_status'] = 'pending';
-$node_draft = ol_schema_office_building_node(100, 'https://officeleasing.co.kr/x/');
-check('자동생성+검수대기면 description 없음', isset($node_draft['description']), false);
-
-// ── 2b. [3-6 핵심] 자동생성이어도 관리자가 검수완료로 승인했으면 description을 포함해야 한다.
-// 예전(_ol_aio_draft 단일 불리언) 방식으로는 이 조합 자체를 표현할 수 없었다.
-$GLOBALS['__fields'][100]['aio_review_status'] = 'reviewed';
-$node_reviewed_draft = ol_schema_office_building_node(100, 'https://officeleasing.co.kr/x/');
-check('자동생성+검수완료면 description 포함(초안 승인 시나리오)', isset($node_reviewed_draft['description']), true);
-unset($GLOBALS['__fields'][100]['aio_generation_status'], $GLOBALS['__fields'][100]['aio_review_status']);
+check('additionalProperty에 용도 포함(화면 임대정보 섹션과 동일 소스)', $node['additionalProperty'][3], ['@type' => 'PropertyValue', 'name' => '용도', 'value' => '업무시설']);
+check('additionalProperty에 냉난방방식 포함', $node['additionalProperty'][4], ['@type' => 'PropertyValue', 'name' => '냉난방방식', 'value' => '개별 냉난방(EHP)']);
 
 // ── 3. 좌표가 없으면 geo 자체를 넣지 않는다(값이 없는데 0,0으로 지어내지 않음) ──
 $GLOBALS['__fields'][101] = ['building_address_road' => '', 'building_lat' => 0, 'building_lng' => 0];

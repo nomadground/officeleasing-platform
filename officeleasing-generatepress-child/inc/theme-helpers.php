@@ -374,6 +374,39 @@ function olt_floor_range( $min, $max ) {
 }
 
 /**
+ * [listing-detail-ux-pass3] 매물 상세 Hero의 층수 표기를 정확한 층 번호 대신 "고층/중층/저층" 3단계로
+ * 단순화한다(요청: "층수도 고층 중층 저층 정도면 문제 없을것 같에") - 지상층을 총 층수 대비 위치로
+ * 3등분한다(상위 1/3=고층, 중간 1/3=중층, 하위 1/3=저층). 지하층은 등급 구분 없이 "지하"로 통일.
+ * floor_display는 매물 관리자가 자유 입력하는 텍스트(예: "17층")라 ol_extract_floor_number()(Core,
+ * anchored 파서)로 먼저 숫자를 뽑는다 - 파싱이 안 되거나(범위 표기 등) 총 층수를 모르면 tier 계산이
+ * 불가능하므로 원문을 그대로 돌려준다(추측으로 등급을 잘못 매기지 않기 위한 안전한 폴백).
+ */
+function olt_floor_tier( $floor_display, $total_floors ) {
+	if ( ! function_exists( 'ol_extract_floor_number' ) ) {
+		return $floor_display;
+	}
+	$floor = ol_extract_floor_number( $floor_display );
+	if ( null === $floor ) {
+		return $floor_display;
+	}
+	if ( $floor < 0 ) {
+		return '지하';
+	}
+	$total_floors = (int) $total_floors;
+	if ( $total_floors <= 0 ) {
+		return $floor_display;
+	}
+	$ratio = $floor / $total_floors;
+	if ( $ratio > 2 / 3 ) {
+		return '고층';
+	}
+	if ( $ratio > 1 / 3 ) {
+		return '중층';
+	}
+	return '저층';
+}
+
+/**
  * slug로 페이지를 찾아, "지금 이 사이트 방문자에게 실제로 보여줘도 되는" 상태일 때만 permalink를 반환.
  * contact-cta.php(contact/insight)와 single-building.php(checklist)가 각자 get_page_by_path()만
  * 호출하던 것을 여기로 모았다 - 페이지가 draft/private/비밀번호 보호 상태여도 "존재는 한다"는 이유로

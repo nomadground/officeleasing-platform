@@ -100,6 +100,8 @@ officeleasing-generatepress-child/
 - **ACF 연결 점검**: `single-building.php`의 모든 `get_field()` 호출을 실제 ACF 필드명과 대조 검증 — 불일치 없음(연결 정상).
 - **JSON-LD**: 이 템플릿엔 원래 JSON-LD가 없었다(스키마 자체는 3-5 범위). 이번 라운드에서 정리한 대표 매물 선정 로직·AIO 필드가 3-5의 `schema.php`가 그대로 가져다 쓸 데이터 소스가 된다.
 
+> **[listing-detail-ux-pass3, 이후 라운드] 위 "AIO 요약 3종 미출력 해소" 항목은 다시 삭제됨** — "Leasing Point"(`#building-summary`, "AT A GLANCE") 섹션 자체를 요청에 따라 완전히 제거했고, `building_location_summary`/`building_transportation_summary`/`building_feature_summary`/`building_recommended_tenant_summary`/`aio_generation_status`/`aio_review_status` ACF 필드도 함께 삭제했다(Core `group_ol_building.json`, README-ACF.md 참고). `schema.php`의 `description`(JSON-LD)도 이 필드에 의존했던 터라 함께 빠졌다 — SEO 설명문 손실이 이번 변경의 트레이드오프다.
+
 ## Home V1 (front-page.php)
 
 ### 설치 후 필요한 WordPress 설정
@@ -143,8 +145,7 @@ CSS `overflow-x` + `scroll-snap`이 본체이고, `home-slider.js`는 좌우 버
 `front-page.php`의 Hero 직후에 `do_action( 'olt_home_after_hero' )` 훅이 있습니다. `add_action('olt_home_after_hero', ...)`로 섹션을 주입하면 Home 구조를 다시 쓰지 않고 OFFICE CHECKLIST / AI OFFICE FINDER를 넣을 수 있습니다. Contact CTA 안에는 기존 `olt_contact_lead_slot` 훅이 그대로 있습니다.
 
 ## 아직 안 들어간 것 / 다음 sprint
-- **JSON-LD 구조화 데이터는 이 테마에 없습니다.** 플러그인 `officeleasing-core/includes/schema.php`에서 `wp_head`로 출력 예정(목업 `<head>`의 @graph를 ACF 기반으로 동적 생성). **다음 sprint 1순위.**
-- **AIO 요약 3종 미출력**: `building_transportation_summary`/`building_feature_summary`/`building_recommended_tenant_summary`가 ACF엔 있지만 어느 템플릿에서도 안 씀. JSON-LD 작업과 함께 배치 예정.
+- **JSON-LD 구조화 데이터는 이 테마에 없습니다.** 플러그인 `officeleasing-core/includes/schema.php`에서 `wp_head`로 출력합니다(목업 `<head>`의 @graph를 ACF 기반으로 동적 생성) — 이미 구현됨(Sprint 01.5 3-5).
 - **title/description/canonical/OG 메타**: 테마에서 하드코딩하지 않았습니다. Rank Math가 `wp_head()`에서 담당합니다(스택 원칙). `add_theme_support('title-tag')`만 켜둠.
 - **한글 계층 URL 적용 완료(Sprint 01.5 3-1)**: `/강남사무실임대/삼성동/파르나스타워/` 형태가 플러그인 `officeleasing-core/includes/permalinks.php`에서 `post_type_link`/`term_link` 필터로 동작함. 이 테마 쪽은 애초 설계대로 `get_term_link()`/`get_permalink()`만 써왔기 때문에 **템플릿 수정이 전혀 필요 없었음** — URL이 필터를 통해 자동으로 바뀜. 카드 컴포넌트의 권역 뱃지만 term 이름이 길어진 것에 대응해 `olt_region_short_code()`로 짧은 코드 표시를 유지하도록 수정함.
 - **필터 쿼리 미연결**: `filter-bar.php`는 UI만, `region`/`area_min`/`area_max`/`budget_min`/`budget_max` 파라미터는 아직 실제 쿼리에 안 붙음 — 의도된 상태(다음 단계 ③검색→④필터에서 연결).

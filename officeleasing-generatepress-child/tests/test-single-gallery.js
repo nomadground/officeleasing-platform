@@ -81,12 +81,9 @@ function runScenario(withSource, label) {
         makeElement({ 'data-full': t.full, 'data-full-alt': t.alt }, i === 0 ? ['is-active'] : [])
     );
 
-    const indexEl = makeElement({});
-
     const selectorMap = {
         '.olx-gallery-main img': mainImg,
         '.olx-gallery-main picture source': sourceEl,
-        '.olx-image-index': indexEl,
     };
 
     const fakeDocument = {
@@ -132,7 +129,6 @@ function runScenario(withSource, label) {
                 check(`[${label}] 썸네일 ${i + 1} 클릭 - 나머지(${j + 1}) active 해제`, other.classList.contains('is-active'), false);
             }
         });
-        check(`[${label}] 썸네일 ${i + 1} 클릭 - 인덱스 라벨 갱신`, indexEl.textContent, `0${i + 1} / 04`);
     });
 }
 

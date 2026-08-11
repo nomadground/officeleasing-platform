@@ -35,9 +35,6 @@ $ol_hidden_calculated_fields = [
     'building_max_exclusive_area_pyeong',
     'building_min_rent',
     'building_last_verified_at',
-    // AIO 생성방식: ol_sync_aio_status()가 매 저장마다 자동 판정해서 채우는 값이라 폼에서 숨긴다.
-    // aio_review_status는 반대로 관리자가 직접 조작해야 하는 필드라 여기 넣지 않는다(폼에 그대로 노출).
-    'aio_generation_status',
 ];
 
 foreach ($ol_hidden_calculated_fields as $ol_field_name) {

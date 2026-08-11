@@ -40,12 +40,13 @@ function ol_building_writable_fields() {
         'building_completion_date', 'building_basement_floors', 'building_ground_floors',
         'building_total_area_sqm', 'building_standard_floor_area_sqm',
         'building_exclusive_ratio', 'building_parking', 'building_orientation',
+        // [listing-detail-ux-pass3] 임대정보 섹션에 새로 노출한 건물 속성(단순 텍스트 - 방향/주차와
+        // 같은 성격이라 이 화이트리스트에도 나란히 둔다).
+        'building_usage_type', 'building_hvac_type',
         'building_elevator_count',
         'building_subway1_line', 'building_subway1_station',
         'building_subway2_line', 'building_subway2_station',
         'building_nearby_infra',
-        'building_location_summary', 'building_transportation_summary',
-        'building_feature_summary', 'building_recommended_tenant_summary',
     ];
     for ($i = 1; $i <= 8; $i++) {
         $fields[] = 'building_image_' . $i;

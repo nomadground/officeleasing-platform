@@ -34,6 +34,5 @@ function ol_handle_building_save($post_id) {
         return;
     }
     ol_calculate_building_fields($post_id);
-    ol_sync_aio_status($post_id);
     ol_cascade_region_to_listings($post_id);
 }
