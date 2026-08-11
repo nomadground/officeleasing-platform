@@ -45,6 +45,28 @@ function olt_pyeong_price( $won ) {
 	return number_format( (float) $won / 10000, 1 ) . '만원';
 }
 
+/**
+ * [building-card.php 전용] olt_won()/olt_format_money_range()가 만든 "252,250만원" 또는
+ * "252,250만원 ~ 300,000만원" 문자열을 받아, 숫자와 "만원" 단위를 별도 <span>으로 감싼 HTML을 반환한다.
+ * 포맷 로직(반올림 등) 자체는 olt_won()에게 그대로 맡기고(재구현하지 않음) 이 함수는 화면 표기(span 분리)만
+ * 담당한다 - Schema(schema.php)와 관리자 요약박스는 여전히 ol_format_manwon()/올t_won()의 plain string을
+ * 그대로 쓰므로 이 헬퍼를 추가해도 그쪽 출력엔 영향이 없다.
+ * 반환값은 이미 각 부분이 esc_html() 처리된 HTML이므로, 호출부는 esc_html() 없이 그대로 echo하면 된다.
+ */
+function olt_won_html( $formatted ) {
+	$parts      = explode( ' ~ ', (string) $formatted );
+	$html_parts = array();
+	foreach ( $parts as $part ) {
+		if ( preg_match( '/^([\d,]+)(만원)$/u', trim( $part ), $m ) ) {
+			$html_parts[] = '<span class="olx-money-num">' . esc_html( $m[1] ) . '</span><span class="olx-money-unit">' . esc_html( $m[2] ) . '</span>';
+		} else {
+			// 예상 밖 형식(빈 문자열 등)이면 새 마크업을 만들지 않고 안전하게 그대로 이스케이프해서 반환.
+			$html_parts[] = esc_html( $part );
+		}
+	}
+	return implode( ' ~ ', $html_parts );
+}
+
 /** ㎡ 표기: 1081.0㎡ */
 function olt_sqm( $value ) {
 	return $value ? number_format( (float) $value, 1 ) . '㎡' : '';
@@ -255,6 +277,31 @@ function olt_format_range( $min, $max, callable $formatter ) {
 		return call_user_func( $formatter, $min ) . ' ~ ' . call_user_func( $formatter, $max );
 	}
 	return call_user_func( $formatter, $max > 0 ? $max : $min );
+}
+
+/**
+ * [building-card.php 전용] 빌딩 캐시의 평 min/max 하나를 ㎡ 주표기 + 평 보조표기 한 쌍으로 만든다.
+ * 캐시엔 평 min/max만 있으므로(building-cache.php), ol_calc_sqm_from_pyeong()(Core, 순수 변환 함수)로
+ * 렌더 시점에 ㎡를 환산한다 - 새 building_min/max_*_sqm 캐시 필드를 추가하지 않는다(단순 단위 변환이라
+ * min/max 관계가 sqm으로 바꿔도 그대로 유지되므로 안전, 매물 재쿼리도 없음).
+ * 내부적으로 기존 olt_format_range()(면적 전용, 0=데이터 없음)를 그대로 재사용한다 - 이 함수를 수정하면
+ * building-card.php 밖의 다른 호출부에 영향을 줄 수 있어 손대지 않고 그 위에 새로 얹는다.
+ *
+ * @return array{sqm: string, pyeong: string} 데이터가 없으면 두 값 모두 빈 문자열.
+ */
+function olt_format_area_sqm_pyeong( $min_pyeong, $max_pyeong ) {
+	$sqm_plain    = function ( $v ) {
+		return number_format( (float) $v, 1 ) . '㎡';
+	};
+	$pyeong_paren = function ( $v ) {
+		return '(' . number_format( (float) $v ) . '평)';
+	};
+	$min_pyeong = (float) $min_pyeong;
+	$max_pyeong = (float) $max_pyeong;
+	return array(
+		'sqm'    => olt_format_range( ol_calc_sqm_from_pyeong( $min_pyeong ), ol_calc_sqm_from_pyeong( $max_pyeong ), $sqm_plain ),
+		'pyeong' => olt_format_range( $min_pyeong, $max_pyeong, $pyeong_paren ),
+	);
 }
 
 /**

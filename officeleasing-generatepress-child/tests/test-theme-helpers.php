@@ -14,6 +14,17 @@
  */
 
 define('ABSPATH', __DIR__ . '/');
+// olt_won_html()이 WP 코어 함수 esc_html()을 쓰는데, 이 테스트는 WP 부트스트랩 없이 theme-helpers.php를
+// 단독 로드하므로 최소 폴백을 직접 정의한다(실제 사이트에선 항상 진짜 esc_html()이 로드되어 있다 -
+// 여기 htmlspecialchars(ENT_QUOTES)는 이 파일에서 검증하는 순수 숫자/한글 문자열엔 동작이 동일하다).
+if (!function_exists('esc_html')) {
+    function esc_html($text) {
+        return htmlspecialchars((string) $text, ENT_QUOTES);
+    }
+}
+// olt_format_area_sqm_pyeong()이 Core의 ol_calc_sqm_from_pyeong()(순수 계산 함수, ABSPATH 가드 없음)을
+// 호출하므로 theme-helpers.php보다 먼저 requires - test-schema.php가 schema.php를 위해 하는 것과 동일 이유.
+require __DIR__ . '/../../officeleasing-core/includes/helpers.php';
 require __DIR__ . '/../inc/theme-helpers.php';
 
 $pass = 0;
@@ -49,6 +60,30 @@ check('money range - 0/500000 -> 범위에 0원 포함', olt_format_money_range(
 check('money range - 500000/500000 -> 단일값', olt_format_money_range(500000, 500000, $won), '50만원');
 check('money range - 500000/1000000 -> 정상 범위', olt_format_money_range(500000, 1000000, $won), '50만원 ~ 100만원');
 check('money range - min만 없음(하나만 결측이어도 데이터 없음 처리)', olt_format_money_range(null, 500000, $won), '');
+
+// ── olt_format_area_sqm_pyeong() - building-card.php 전용, ㎡ 주표기 + 평 보조표기 ──
+$r = olt_format_area_sqm_pyeong(0, 0);
+check('area sqm+pyeong - 둘 다 0(데이터 없음) - sqm', $r['sqm'], '');
+check('area sqm+pyeong - 둘 다 0(데이터 없음) - pyeong', $r['pyeong'], '');
+$r = olt_format_area_sqm_pyeong(327, 327);
+check('area sqm+pyeong - 단일값 - sqm(327평→㎡ 환산)', $r['sqm'], '1,081.0㎡');
+check('area sqm+pyeong - 단일값 - pyeong(보조표기)', $r['pyeong'], '(327평)');
+$r = olt_format_area_sqm_pyeong(298, 342);
+check('area sqm+pyeong - 범위 - sqm', $r['sqm'], '985.1㎡ ~ 1,130.6㎡');
+check('area sqm+pyeong - 범위 - pyeong', $r['pyeong'], '(298평) ~ (342평)');
+
+// ── olt_won_html() - building-card.php 전용, 숫자/단위 span 분리 (각 부분 esc_html 처리됨) ──
+check(
+    'won html - 단일값 - 숫자와 만원을 별도 span으로',
+    olt_won_html('252,250만원'),
+    '<span class="olx-money-num">252,250</span><span class="olx-money-unit">만원</span>'
+);
+check(
+    'won html - 범위 - 양쪽 다 span 분리, 구분자는 그대로',
+    olt_won_html('50만원 ~ 100만원'),
+    '<span class="olx-money-num">50</span><span class="olx-money-unit">만원</span> ~ <span class="olx-money-num">100</span><span class="olx-money-unit">만원</span>'
+);
+check('won html - 빈 문자열(데이터 없음) - 그대로 빈 문자열', olt_won_html(''), '');
 
 // ── olt_floor_range() / olt_floor_label() ──
 check('floor - 단일 지상층', olt_floor_range(17, 17), '17층');
