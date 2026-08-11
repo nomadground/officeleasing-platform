@@ -285,16 +285,16 @@ function olt_format_range( $min, $max, callable $formatter ) {
 }
 
 /**
- * [building-card.php 전용] 빌딩 캐시의 평 min/max 하나를 ㎡ 주표기 + 평 보조표기 한 쌍으로 만든다.
+ * [building-card.php 전용] 빌딩 캐시의 평 min/max 하나로 ㎡ 표기와 평 표기 한 쌍을 만든다.
  * 캐시엔 평 min/max만 있으므로(building-cache.php), ol_calc_sqm_from_pyeong()(Core, 순수 변환 함수)로
  * 렌더 시점에 ㎡를 환산한다 - 새 building_min/max_*_sqm 캐시 필드를 추가하지 않는다(단순 단위 변환이라
  * min/max 관계가 sqm으로 바꿔도 그대로 유지되므로 안전, 매물 재쿼리도 없음).
  * 내부적으로 기존 olt_format_range()(면적 전용, 0=데이터 없음)를 그대로 재사용한다 - 이 함수를 수정하면
  * building-card.php 밖의 다른 호출부에 영향을 줄 수 있어 손대지 않고 그 위에 새로 얹는다.
  *
- * 평 보조표기는 값 하나당 괄호를 따로 씌우지 않는다 - 범위일 때 "(298평) ~ (342평)"처럼 괄호가 두 번
- * 나오면 "괄호 안에 범위 전체가 있다"는 시각적 규칙이 깨진다. 대신 "298평 ~ 342평" 범위 전체를 만들고
- * 그 결과 하나를 괄호 하나로 감싼다 - "(298평 ~ 342평)". min이 최소값, max가 매물 중 최댓값이다.
+ * 두 값 모두 괄호 없이 반환한다("298평 ~ 342평", "985.1㎡ ~ 1,130.6㎡") - 어느 쪽을 주표기(큰 글씨)로,
+ * 어느 쪽을 보조표기(괄호 안 작은 글씨)로 쓸지는 호출부(building-card.php)가 정한다. 괄호를 여기서
+ * 미리 씌우면 호출부가 주/보조를 바꿀 때마다 이 함수를 또 고쳐야 해서, 표기 순서는 호출부 책임으로 둔다.
  *
  * @return array{sqm: string, pyeong: string} 데이터가 없으면 두 값 모두 빈 문자열.
  */
@@ -307,10 +307,9 @@ function olt_format_area_sqm_pyeong( $min_pyeong, $max_pyeong ) {
 	};
 	$min_pyeong = (float) $min_pyeong;
 	$max_pyeong = (float) $max_pyeong;
-	$pyeong_range = olt_format_range( $min_pyeong, $max_pyeong, $pyeong_plain );
 	return array(
 		'sqm'    => olt_format_range( ol_calc_sqm_from_pyeong( $min_pyeong ), ol_calc_sqm_from_pyeong( $max_pyeong ), $sqm_plain ),
-		'pyeong' => ( '' !== $pyeong_range ) ? '(' . $pyeong_range . ')' : '',
+		'pyeong' => olt_format_range( $min_pyeong, $max_pyeong, $pyeong_plain ),
 	);
 }
 

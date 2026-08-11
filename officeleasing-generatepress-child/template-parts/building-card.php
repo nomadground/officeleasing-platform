@@ -38,12 +38,14 @@ $img    = $images[0] ?? null;
 
 $active_count = (int) get_field( 'building_active_listing_count', $building_id );
 
-// 층수는 이 카드에서 빼기로 했다(빌딩 카드는 매물 여러 건의 "집계"라 층수 범위가 넓어질수록
-// 정보 가치가 낮고, 그 자리를 비우면 임대/전용면적이 3등분 대신 2등분으로 더 넓게 나온다 -
-// 특히 모바일에서 "661.2㎡ ~ 1,200.0㎡" 같은 긴 범위가 줄바꿈 없이 들어갈 여유가 생긴다).
-// 개별 매물의 정확한 층수는 single-building.php/listing-card.php에서 계속 보여준다.
+// 개별 매물 층수 범위("3~7층" 등)는 이 카드에서 빼기로 했다(빌딩 카드는 매물 여러 건의 "집계"라
+// 범위가 넓어질수록 정보 가치가 낮음 - 개별 매물의 정확한 층수는 single-building.php/listing-card.php에서
+// 계속 보여준다). 대신 건물명 옆 남는 자리에 건물 총 층수만 작게 보여준다 - building_ground_floors는
+// 빌딩 자체 필드라 매물 재쿼리 없이 바로 읽을 수 있다.
+$total_floors = (int) get_field( 'building_ground_floors', $building_id );
 
-// 임대/전용면적은 listing-card.php와 동일하게 ㎡(큰 숫자) + 평(괄호, 보조) 둘 다 보여준다.
+// 임대/전용면적은 평(큰 숫자, 주표기) + ㎡(괄호, 보조) 둘 다 보여준다 - 평 쪽 숫자가 ㎡보다 짧아서
+// (예: "534평" vs "1,765.3㎡") 카드 폭을 덜 잡아먹는다.
 // 캐시엔 평 min/max만 있으므로, 렌더 시점에 olt_format_area_sqm_pyeong()(theme-helpers.php)이
 // ol_calc_sqm_from_pyeong()(Core, 순수 변환 함수)으로 ㎡를 환산해준다 - 별도 building_min/max_*_sqm
 // 캐시 필드를 새로 만들지 않는다(단순 단위 변환이라 캐시 시점의 min/max 관계가 sqm으로 바꿔도 그대로
@@ -128,27 +130,30 @@ $noc_range = olt_format_money_range(
 				<span class="olx-card-transit"><i style="background:<?php echo esc_attr( olt_line_color( $line ) ); ?>"><?php echo esc_html( olt_line_badge( $line ) ); ?></i><?php echo esc_html( $station ); ?></span>
 			<?php endif; ?>
 		</small>
-		<h3><?php echo esc_html( $building_name ); ?></h3>
-		<?php if ( $lease_areas['sqm'] || $exclusive_areas['sqm'] ) : ?>
+		<h3>
+			<?php echo esc_html( $building_name ); ?>
+			<?php if ( $total_floors ) : ?><span class="olx-card-floors-total"><?php echo esc_html( (string) $total_floors ); ?>F</span><?php endif; ?>
+		</h3>
+		<?php if ( $address ) : ?>
+			<p><?php echo esc_html( $address ); ?></p>
+		<?php endif; ?>
+		<?php if ( $lease_areas['pyeong'] || $exclusive_areas['pyeong'] ) : ?>
 			<div class="olx-card-areas olx-card-areas--building">
-				<?php if ( $lease_areas['sqm'] ) : ?>
+				<?php if ( $lease_areas['pyeong'] ) : ?>
 					<span>
 						<b>임대</b>
-						<strong><?php echo esc_html( $lease_areas['sqm'] ); ?></strong>
-						<?php if ( $lease_areas['pyeong'] ) : ?><small><?php echo esc_html( $lease_areas['pyeong'] ); ?></small><?php endif; ?>
+						<strong><?php echo esc_html( $lease_areas['pyeong'] ); ?></strong>
+						<?php if ( $lease_areas['sqm'] ) : ?><small>(<?php echo esc_html( $lease_areas['sqm'] ); ?>)</small><?php endif; ?>
 					</span>
 				<?php endif; ?>
-				<?php if ( $exclusive_areas['sqm'] ) : ?>
+				<?php if ( $exclusive_areas['pyeong'] ) : ?>
 					<span>
 						<b>전용</b>
-						<strong><?php echo esc_html( $exclusive_areas['sqm'] ); ?></strong>
-						<?php if ( $exclusive_areas['pyeong'] ) : ?><small><?php echo esc_html( $exclusive_areas['pyeong'] ); ?></small><?php endif; ?>
+						<strong><?php echo esc_html( $exclusive_areas['pyeong'] ); ?></strong>
+						<?php if ( $exclusive_areas['sqm'] ) : ?><small>(<?php echo esc_html( $exclusive_areas['sqm'] ); ?>)</small><?php endif; ?>
 					</span>
 				<?php endif; ?>
 			</div>
-		<?php endif; ?>
-		<?php if ( $address ) : ?>
-			<p><?php echo esc_html( $address ); ?></p>
 		<?php endif; ?>
 		<?php if ( $deposit_range || $rent_range || $maintenance_range ) : ?>
 			<div class="olx-card-prices olx-card-prices--building">

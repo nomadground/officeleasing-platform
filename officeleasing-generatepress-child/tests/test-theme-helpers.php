@@ -61,16 +61,16 @@ check('money range - 500000/500000 -> 단일값', olt_format_money_range(500000,
 check('money range - 500000/1000000 -> 정상 범위', olt_format_money_range(500000, 1000000, $won), '50만원 ~ 100만원');
 check('money range - min만 없음(하나만 결측이어도 데이터 없음 처리)', olt_format_money_range(null, 500000, $won), '');
 
-// ── olt_format_area_sqm_pyeong() - building-card.php 전용, ㎡ 주표기 + 평 보조표기 ──
+// ── olt_format_area_sqm_pyeong() - building-card.php 전용, 괄호 없는 sqm/pyeong 한 쌍 (주/보조는 호출부 책임) ──
 $r = olt_format_area_sqm_pyeong(0, 0);
 check('area sqm+pyeong - 둘 다 0(데이터 없음) - sqm', $r['sqm'], '');
 check('area sqm+pyeong - 둘 다 0(데이터 없음) - pyeong', $r['pyeong'], '');
 $r = olt_format_area_sqm_pyeong(327, 327);
 check('area sqm+pyeong - 단일값 - sqm(327평→㎡ 환산)', $r['sqm'], '1,081.0㎡');
-check('area sqm+pyeong - 단일값 - pyeong(보조표기)', $r['pyeong'], '(327평)');
+check('area sqm+pyeong - 단일값 - pyeong(괄호 없음)', $r['pyeong'], '327평');
 $r = olt_format_area_sqm_pyeong(298, 342);
-check('area sqm+pyeong - 범위 - sqm', $r['sqm'], '985.1㎡ ~ 1,130.6㎡');
-check('area sqm+pyeong - 범위 - pyeong(괄호 하나로 범위 전체를 감쌈, min~max)', $r['pyeong'], '(298평 ~ 342평)');
+check('area sqm+pyeong - 범위 - sqm(괄호 없음)', $r['sqm'], '985.1㎡ ~ 1,130.6㎡');
+check('area sqm+pyeong - 범위 - pyeong(괄호 없음, min~max)', $r['pyeong'], '298평 ~ 342평');
 
 // ── olt_won_html() - building-card.php 전용, 숫자/단위 span 분리 (각 부분 esc_html 처리됨) ──
 check(
