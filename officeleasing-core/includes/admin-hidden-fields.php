@@ -22,6 +22,10 @@ $ol_hidden_calculated_fields = [
     'maintenance_per_lease_pyeong',
     'noc_per_exclusive_pyeong',
     'deposit_per_exclusive_pyeong',
+    // [listing-detail-ux-pass2 리뷰 지적, 실제 누락 확인] 새로 추가한 자동계산 필드가 이 목록에서
+    // 빠지면 readonly ACF 필드가 관리자 메인 입력폼에 그대로 노출된다(readonly는 UI 표시만 막고
+    // 이 필터가 실제로 폼에서 감춘다 - 파일 상단 주석 참고).
+    'deposit_per_lease_pyeong',
     // building - ㎡가 원본 입력이라 자동계산되는 평 값을 숨긴다 (sqm은 손대지 않음)
     'building_total_area_pyeong',
     'building_standard_floor_area_pyeong',

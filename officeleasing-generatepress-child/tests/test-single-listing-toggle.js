@@ -6,6 +6,17 @@
  * (2) 클릭한 버튼만 is-active가 되고, (3) 하단 "임대 정보" 섹션의 매물 카드도 같은 인덱스만
  * is-active가 되는지 - 이 세 가지가 서버 재쿼리 없이 미리 임베드된 JSON 데이터만으로 동기화되는지.
  *
+ * [리뷰 지적, 실제 버그였음] "해당층 / 총층" 칸은 실제 마크업에서
+ * <strong><span data-toggle-field="floor">3층</span> / 40F</strong> 구조다(single-building.php) -
+ * "/ 40F"는 빌딩 고정값이라 span 밖 정적 텍스트로 둬야 한다. 예전엔 data-toggle-field가 <strong>
+ * 자체에 붙어 있어서, 클릭 시 textContent를 통째로 갈아치우면 "/ 40F"가 함께 사라졌다.
+ * 이 fixture는 각 필드를 독립된 fake 엘리먼트로 다루기 때문에(진짜 부모/자식 DOM 트리를 흉내내지
+ * 않음) "부모의 다른 텍스트가 안 지워진다"는 것 자체를 여기서 직접 재현하지는 못한다 - 그 보장은
+ * span으로 감싸는 것 자체가 DOM 구조상 자동으로 성립한다(형제 텍스트 노드는 별도 노드라 JS가
+ * el.textContent를 span에만 할당하면 절대 못 건드림). 이 테스트가 실질적으로 확인하는 건 JS가
+ * "floor" 필드에 넣는 값 자체가 매물별로 정확한지(아래) - 마크업이 실제로 값만 span으로 감쌌는지는
+ * single-building.php 코드 리뷰로 별도 확인했다(grep 'data-toggle-field="floor"').
+ *
  * 실행: node tests/test-single-listing-toggle.js
  */
 

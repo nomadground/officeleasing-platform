@@ -243,7 +243,13 @@ $gallery_captions = array( '외관', '오피스', '라운지', '회의실', '', 
 			<div class="olx-specs3" id="olx-toggle-specs">
 				<div>
 					<span>해당층 / 총층</span>
-					<strong data-toggle-field="floor"><?php echo esc_html( $t0['floor'] ); ?><?php echo $total_floors ? ' / ' . esc_html( $total_floors ) . 'F' : ''; ?></strong>
+					<?php
+					// [GPT 리뷰 지적, 실제 버그 확인] "/ 40F"는 빌딩 고정값이라 매물마다 안 바뀌는데,
+					// 예전엔 이 <strong> 하나에 동적 층수 + 정적 "/ 40F"가 같이 있어서 JS가
+					// textContent를 통째로 갈아치우면 "/ 40F"가 사라졌다. 동적으로 바뀌는 부분만
+					// 안쪽 <span data-toggle-field>로 감싸고, "/ 40F"는 바깥에 정적 텍스트로 둔다.
+					?>
+					<strong><span data-toggle-field="floor"><?php echo esc_html( $t0['floor'] ); ?></span><?php echo $total_floors ? ' / ' . esc_html( $total_floors ) . 'F' : ''; ?></strong>
 				</div>
 				<div>
 					<span>임대면적</span>
