@@ -38,6 +38,33 @@ $basement_floors = get_field( 'building_basement_floors', $building_id );
 $ground_floors   = get_field( 'building_ground_floors', $building_id );
 $total_floors  = $ground_floors; // "해당층/총층" 등 기존 표기에서 총층은 지상층수를 가리킨다
 
+// 매물 2~3건일 때만 쓰는 "면적 버튼 토글"용 데이터. 4건 이상은 기존 카드 그리드를 그대로 쓴다
+// (버튼이 4개 이상이면 한눈에 비교하기보다 오히려 산만해진다는 판단, 확정 임계값).
+// Hero(.olx-side)와 아래쪽 "임대 정보" 섹션 둘 다 이 배열을 쓰므로 여기서 한 번만 계산해둔다 -
+// 매물 재쿼리 금지 원칙을 지키면서, 전환 시 서버 재쿼리 없이 클라이언트 JS가 이 값들 사이를
+// 오갈 수 있도록 각 매물의 표시용 값을 미리 문자열로 포맷해 배열에 담는다(값 계산 로직 자체는
+// 기존 함수(olt_sqm/olt_pyeong/olt_won/olt_pyeong_price)를 그대로 재사용).
+$toggle_listings = array();
+if ( $count >= 2 && $count <= 3 ) {
+	foreach ( $listings as $l ) {
+		$lid = $l->ID;
+		$toggle_listings[] = array(
+			'id'                          => $lid,
+			'floor'                       => get_field( 'floor_display', $lid ),
+			'lease_pyeong'                => olt_pyeong( get_field( 'lease_area_pyeong', $lid ) ),
+			'lease_sqm'                   => olt_sqm( get_field( 'lease_area_sqm', $lid ) ),
+			'exclusive_pyeong'            => olt_pyeong( get_field( 'exclusive_area_pyeong', $lid ) ),
+			'exclusive_sqm'               => olt_sqm( get_field( 'exclusive_area_sqm', $lid ) ),
+			'deposit'                     => olt_won( get_field( 'deposit_amount', $lid ) ),
+			'deposit_per_lease_pyeong'    => olt_pyeong_price( get_field( 'deposit_per_lease_pyeong', $lid ) ),
+			'rent'                        => olt_won( get_field( 'monthly_rent', $lid ) ),
+			'rent_per_lease_pyeong'       => olt_pyeong_price( get_field( 'rent_per_lease_pyeong', $lid ) ),
+			'maintenance'                 => olt_won( get_field( 'maintenance_fee', $lid ) ),
+			'maintenance_per_lease_pyeong' => olt_pyeong_price( get_field( 'maintenance_per_lease_pyeong', $lid ) ),
+		);
+	}
+}
+
 // 갤러리: 매물 사진 우선(1개 매물 케이스), 없으면 빌딩 사진.
 // 'ol-interior'(600x400)는 썸네일 스트립(olx-gallery-thumbs)용 크기 - 대표 Hero 이미지는
 // 'id'로 별도 조회해 ol-hero-desktop/mobile 반응형 <picture>를 구성한다(아래 Hero 마크업 참고).
@@ -185,20 +212,20 @@ $gallery_captions = array( '외관', '오피스', '라운지', '회의실', '', 
 				</div>
 				<div>
 					<span>임대면적</span>
-					<strong><?php echo esc_html( olt_sqm( get_field( 'lease_area_sqm', $primary_id ) ) ); ?></strong>
-					<small><?php echo esc_html( olt_pyeong( get_field( 'lease_area_pyeong', $primary_id ) ) ); ?></small>
+					<strong><?php echo esc_html( olt_pyeong( get_field( 'lease_area_pyeong', $primary_id ) ) ); ?></strong>
+					<small><?php echo esc_html( olt_sqm( get_field( 'lease_area_sqm', $primary_id ) ) ); ?></small>
 				</div>
 				<div>
 					<span>전용면적</span>
-					<strong><?php echo esc_html( olt_sqm( get_field( 'exclusive_area_sqm', $primary_id ) ) ); ?></strong>
-					<small><?php echo esc_html( olt_pyeong( get_field( 'exclusive_area_pyeong', $primary_id ) ) ); ?></small>
+					<strong><?php echo esc_html( olt_pyeong( get_field( 'exclusive_area_pyeong', $primary_id ) ) ); ?></strong>
+					<small><?php echo esc_html( olt_sqm( get_field( 'exclusive_area_sqm', $primary_id ) ) ); ?></small>
 				</div>
 			</div>
 			<div class="olx-price">
 				<div>
 					<span>보증금</span>
 					<strong><?php echo esc_html( olt_won( get_field( 'deposit_amount', $primary_id ) ) ); ?></strong>
-					<em>전용평당 <?php echo esc_html( olt_pyeong_price( get_field( 'deposit_per_exclusive_pyeong', $primary_id ) ) ); ?></em>
+					<em>임대평당 <?php echo esc_html( olt_pyeong_price( get_field( 'deposit_per_lease_pyeong', $primary_id ) ) ); ?></em>
 				</div>
 				<div>
 					<span>임대료</span>
@@ -211,6 +238,57 @@ $gallery_captions = array( '외관', '오피스', '라운지', '회의실', '', 
 					<em>공급평당 <?php echo esc_html( olt_pyeong_price( get_field( 'maintenance_per_lease_pyeong', $primary_id ) ) ); ?></em>
 				</div>
 			</div>
+		<?php elseif ( $count >= 2 && $count <= 3 ) : ?>
+			<?php $t0 = $toggle_listings[0]; ?>
+			<div class="olx-specs3" id="olx-toggle-specs">
+				<div>
+					<span>해당층 / 총층</span>
+					<strong data-toggle-field="floor"><?php echo esc_html( $t0['floor'] ); ?><?php echo $total_floors ? ' / ' . esc_html( $total_floors ) . 'F' : ''; ?></strong>
+				</div>
+				<div>
+					<span>임대면적</span>
+					<strong data-toggle-field="lease_pyeong"><?php echo esc_html( $t0['lease_pyeong'] ); ?></strong>
+					<small data-toggle-field="lease_sqm"><?php echo esc_html( $t0['lease_sqm'] ); ?></small>
+				</div>
+				<div>
+					<span>전용면적</span>
+					<strong data-toggle-field="exclusive_pyeong"><?php echo esc_html( $t0['exclusive_pyeong'] ); ?></strong>
+					<small data-toggle-field="exclusive_sqm"><?php echo esc_html( $t0['exclusive_sqm'] ); ?></small>
+				</div>
+			</div>
+			<div class="olx-price">
+				<div>
+					<span>보증금</span>
+					<strong data-toggle-field="deposit"><?php echo esc_html( $t0['deposit'] ); ?></strong>
+					<em>임대평당 <span data-toggle-field="deposit_per_lease_pyeong"><?php echo esc_html( $t0['deposit_per_lease_pyeong'] ); ?></span></em>
+				</div>
+				<div>
+					<span>임대료</span>
+					<strong data-toggle-field="rent"><?php echo esc_html( $t0['rent'] ); ?></strong>
+					<em>공급평당 <span data-toggle-field="rent_per_lease_pyeong"><?php echo esc_html( $t0['rent_per_lease_pyeong'] ); ?></span></em>
+				</div>
+				<div>
+					<span>관리비</span>
+					<strong data-toggle-field="maintenance"><?php echo esc_html( $t0['maintenance'] ); ?></strong>
+					<em>공급평당 <span data-toggle-field="maintenance_per_lease_pyeong"><?php echo esc_html( $t0['maintenance_per_lease_pyeong'] ); ?></span></em>
+				</div>
+			</div>
+			<div class="olx-listing-toggle" role="tablist" aria-label="매물 선택(면적으로 비교)">
+				<?php foreach ( $toggle_listings as $i => $tl ) : ?>
+					<button type="button" class="<?php echo 0 === $i ? 'is-active' : ''; ?>"
+						role="tab" aria-selected="<?php echo 0 === $i ? 'true' : 'false'; ?>"
+						data-listing-index="<?php echo esc_attr( (string) $i ); ?>">
+						<span><?php echo esc_html( $tl['floor'] ?: ( $i + 1 ) . '번 매물' ); ?></span>
+						<b><?php echo esc_html( $tl['lease_pyeong'] ); ?> / <?php echo esc_html( $tl['exclusive_pyeong'] ); ?></b>
+					</button>
+				<?php endforeach; ?>
+			</div>
+			<?php
+			// JSON_HEX_TAG: floor_display 등은 관리자가 자유 입력하는 텍스트 필드라, 이론상 "</script>"
+			// 같은 문자열이 들어가면 HTML 파서가 이 스크립트 블록을 조기 종료시킬 수 있다 - <, >를
+			// <, >로 이스케이프해 <script> 안에 안전하게 JSON을 넣는 표준 패턴.
+			?>
+			<script type="application/json" id="olx-toggle-data"><?php echo wp_json_encode( $toggle_listings, JSON_HEX_TAG | JSON_HEX_AMP ); ?></script>
 		<?php else : ?>
 			<div class="olx-specs3">
 				<div><span>총 층수</span><strong><?php echo esc_html( $total_floors ); ?>F</strong></div>
@@ -223,7 +301,6 @@ $gallery_captions = array( '외관', '오피스', '라운지', '회의실', '', 
 			<a class="olx-btn olx-btn-call" href="tel:<?php echo esc_attr( olt_tel_href() ); ?>">유선 문의</a>
 			<a class="olx-btn olx-btn-online" href="#contact">온라인 문의</a>
 		</div>
-		<p class="olx-cta-note">공실 현황 · 조건 협의 · 면적 분할/확장까지 전문 중개사가 확인합니다.</p>
 	</div>
 </section>
 
@@ -346,39 +423,6 @@ if ( ! empty( $key_points ) ) : ?>
 	</div>
 </section>
 
-<?php
-// ── AIO 요약(입지/교통/특징/추천 입주업종): ACF엔 있지만 지금까지 어느 템플릿에서도 안 쓰던
-// 필드였다(저장만 되는 죽은 데이터). 비어있는 항목은 렌더하지 않는다.
-$aio_blocks = array(
-	'입지'         => get_field( 'building_location_summary', $building_id ),
-	'교통'         => get_field( 'building_transportation_summary', $building_id ),
-	'특징'         => get_field( 'building_feature_summary', $building_id ),
-	'추천 입주업종' => get_field( 'building_recommended_tenant_summary', $building_id ),
-);
-$aio_blocks = array_filter( $aio_blocks );
-if ( ! empty( $aio_blocks ) ) : ?>
-	<section class="olx-section" id="building-summary">
-		<div class="olx-section-head">
-			<div><p class="olx-eyebrow">AT A GLANCE</p><h2><?php echo esc_html( $building_name ); ?> 한눈에 보기</h2></div>
-		</div>
-		<div class="olx-specs">
-			<?php foreach ( $aio_blocks as $label => $text ) : ?>
-				<div class="row"><span><?php echo esc_html( $label ); ?></span><b><?php echo esc_html( $text ); ?></b></div>
-			<?php endforeach; ?>
-		</div>
-		<?php
-		// 체크리스트 페이지는 아직 별도로 만들어지지 않았다(PROJECT_OVERVIEW.md의 Insight 콘텐츠 계획 참고).
-		// 관리자가 나중에 slug "checklist"로 공개(publish) 페이지를 만들면 이 버튼이 자동으로 나타난다 -
-		// draft/private/비밀번호 보호 상태일 때는 olt_get_public_page_url()이 숨겨준다.
-		$checklist_url = olt_get_public_page_url( 'checklist' );
-		if ( $checklist_url ) : ?>
-			<a class="olx-inline-link" href="<?php echo esc_url( $checklist_url ); ?>">
-				사무실 임대 체크리스트 보기 <span>→</span>
-			</a>
-		<?php endif; ?>
-	</section>
-<?php endif; ?>
-
 <?php if ( 1 === $count ) : ?>
 	<section class="olx-section" id="lease-info">
 		<div class="olx-section-head">
@@ -390,15 +434,29 @@ if ( ! empty( $aio_blocks ) ) : ?>
 			<div class="row"><span>입주가능일</span><b><?php
 				echo esc_html( olt_format_move_in( get_field( 'move_in_type', $primary_id ), get_field( 'move_in_date', $primary_id ) ) );
 			?></b></div>
-			<div class="row"><span>임대면적</span><b><?php echo esc_html( olt_sqm( get_field( 'lease_area_sqm', $primary_id ) ) . ' ' . olt_pyeong( get_field( 'lease_area_pyeong', $primary_id ) ) ); ?></b></div>
-			<div class="row"><span>전용면적</span><b><?php echo esc_html( olt_sqm( get_field( 'exclusive_area_sqm', $primary_id ) ) . ' ' . olt_pyeong( get_field( 'exclusive_area_pyeong', $primary_id ) ) ); ?></b></div>
-			<div class="row"><span>보증금</span><b class="accent"><?php echo esc_html( olt_won( get_field( 'deposit_amount', $primary_id ) ) ); ?> <small>전용평당 <?php echo esc_html( olt_pyeong_price( get_field( 'deposit_per_exclusive_pyeong', $primary_id ) ) ); ?></small></b></div>
+			<div class="row"><span>임대면적</span><b><?php echo esc_html( olt_pyeong( get_field( 'lease_area_pyeong', $primary_id ) ) . ' ' . olt_sqm( get_field( 'lease_area_sqm', $primary_id ) ) ); ?></b></div>
+			<div class="row"><span>전용면적</span><b><?php echo esc_html( olt_pyeong( get_field( 'exclusive_area_pyeong', $primary_id ) ) . ' ' . olt_sqm( get_field( 'exclusive_area_sqm', $primary_id ) ) ); ?></b></div>
+			<div class="row"><span>보증금</span><b class="accent"><?php echo esc_html( olt_won( get_field( 'deposit_amount', $primary_id ) ) ); ?> <small>임대평당 <?php echo esc_html( olt_pyeong_price( get_field( 'deposit_per_lease_pyeong', $primary_id ) ) ); ?></small></b></div>
 			<div class="row"><span>임대료</span><b class="accent"><?php echo esc_html( olt_won( get_field( 'monthly_rent', $primary_id ) ) ); ?> <small>임대평당 <?php echo esc_html( olt_pyeong_price( get_field( 'rent_per_lease_pyeong', $primary_id ) ) ); ?></small></b></div>
 			<div class="row"><span>관리비</span><b class="accent"><?php echo esc_html( olt_won( get_field( 'maintenance_fee', $primary_id ) ) ); ?> <small>임대평당 <?php echo esc_html( olt_pyeong_price( get_field( 'maintenance_per_lease_pyeong', $primary_id ) ) ); ?></small></b></div>
 			<div class="row"><span>환산임대료</span><b>전용평당 <?php echo esc_html( olt_pyeong_price( get_field( 'noc_per_exclusive_pyeong', $primary_id ) ) ); ?> <small>NOC</small></b></div>
 		</div>
 	</section>
-<?php elseif ( $count > 1 ) : ?>
+<?php elseif ( $count >= 2 && $count <= 3 ) : ?>
+	<section class="olx-section" id="lease-info">
+		<div class="olx-section-head">
+			<div><p class="olx-eyebrow">LEASING INFO</p><h2>임대 가능 매물 <?php echo esc_html( (string) $count ); ?>건</h2></div>
+			<p>위에서 매물을 선택하면 조건이 함께 바뀝니다.</p>
+		</div>
+		<div class="olx-rel" id="olx-toggle-cards">
+			<?php foreach ( $listings as $i => $l ) : ?>
+				<div class="olx-toggle-card <?php echo 0 === $i ? 'is-active' : ''; ?>" data-listing-index="<?php echo esc_attr( (string) $i ); ?>">
+					<?php get_template_part( 'template-parts/listing-card', null, array( 'listing_id' => $l->ID ) ); ?>
+				</div>
+			<?php endforeach; ?>
+		</div>
+	</section>
+<?php elseif ( $count > 3 ) : ?>
 	<section class="olx-section" id="lease-info">
 		<div class="olx-section-head">
 			<div><p class="olx-eyebrow">LEASING INFO</p><h2>임대 가능 매물 <?php echo esc_html( (string) $count ); ?>건</h2></div>
@@ -416,6 +474,39 @@ if ( ! empty( $aio_blocks ) ) : ?>
 			<div><p class="olx-eyebrow">LEASING INFO</p><h2>임대 정보</h2></div>
 		</div>
 		<p class="olx-search-message">현재 임대 가능한 매물이 없습니다. 유사 빌딩을 아래에서 확인하시거나 문의해 주세요.</p>
+	</section>
+<?php endif; ?>
+
+<?php
+// ── AIO 요약(입지/교통/특징/추천 입주업종): ACF엔 있지만 지금까지 어느 템플릿에서도 안 쓰던
+// 필드였다(저장만 되는 죽은 데이터). 비어있는 항목은 렌더하지 않는다.
+$aio_blocks = array(
+	'입지'         => get_field( 'building_location_summary', $building_id ),
+	'교통'         => get_field( 'building_transportation_summary', $building_id ),
+	'특징'         => get_field( 'building_feature_summary', $building_id ),
+	'추천 입주업종' => get_field( 'building_recommended_tenant_summary', $building_id ),
+);
+$aio_blocks = array_filter( $aio_blocks );
+if ( ! empty( $aio_blocks ) ) : ?>
+	<section class="olx-section" id="building-summary">
+		<div class="olx-section-head">
+			<div><p class="olx-eyebrow">AT A GLANCE</p><h2><?php echo esc_html( $building_name ); ?> Leasing Point</h2></div>
+		</div>
+		<div class="olx-specs">
+			<?php foreach ( $aio_blocks as $label => $text ) : ?>
+				<div class="row"><span><?php echo esc_html( $label ); ?></span><b><?php echo esc_html( $text ); ?></b></div>
+			<?php endforeach; ?>
+		</div>
+		<?php
+		// 체크리스트 페이지는 아직 별도로 만들어지지 않았다(PROJECT_OVERVIEW.md의 Insight 콘텐츠 계획 참고).
+		// 관리자가 나중에 slug "checklist"로 공개(publish) 페이지를 만들면 이 버튼이 자동으로 나타난다 -
+		// draft/private/비밀번호 보호 상태일 때는 olt_get_public_page_url()이 숨겨준다.
+		$checklist_url = olt_get_public_page_url( 'checklist' );
+		if ( $checklist_url ) : ?>
+			<a class="olx-inline-link" href="<?php echo esc_url( $checklist_url ); ?>">
+				사무실 임대 체크리스트 보기 <span>→</span>
+			</a>
+		<?php endif; ?>
 	</section>
 <?php endif; ?>
 

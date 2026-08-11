@@ -36,6 +36,11 @@ $fail += !ol_assert('공급평당 임대료(원)', ol_calc_per_pyeong($rent, 616
 $fail += !ol_assert('공급평당 관리비(원)', ol_calc_per_pyeong($fee, 616), 59058, 50) ? 1 : 0;
 $fail += !ol_assert('전용평당 NOC(원)', ol_calc_per_pyeong($total, 327), 510948, 200) ? 1 : 0;
 $fail += !ol_assert('전용평당 보증금(원)', ol_calc_per_pyeong($deposit, 327), 4796269, 0) ? 1 : 0;
+// [단가 기준 통일] single-building.php 공개 페이지의 보증금 평당가를 임대료/관리비와 같은
+// "임대(공급)평당" 기준으로 맞춘 값 - deposit_per_exclusive_pyeong(관리자 화면 전용)과는 별개로
+// deposit_per_lease_pyeong을 추가했다. 같은 ol_calc_per_pyeong()을 lease_pyeong(616)에 적용할 뿐이라
+// 새 순수 함수는 없다.
+$fail += !ol_assert('임대평당 보증금(원)', ol_calc_per_pyeong($deposit, 616), 2546071, 0) ? 1 : 0;
 
 // 방어 로직: 0/음수/비정상값
 $fail += !ol_assert('0평 나눗셈 방어', ol_calc_per_pyeong(1000000, 0), 0, 0) ? 1 : 0;

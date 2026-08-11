@@ -38,17 +38,23 @@ if ( ! $online_url ) {
 	}
 }
 
-// 인사이트(체크리스트/가이드) 페이지도 아직 만들어지지 않았을 수 있다 - checklist 버튼과 동일하게
-// slug "insight" 페이지가 실제 공개 상태일 때만 버튼을 노출한다.
+// 인사이트(체크리스트/가이드) 페이지도 아직 만들어지지 않았을 수 있다 - slug "insight" 페이지가
+// 실제 공개 상태일 때만 버튼을 노출한다.
 $insight_url = olt_get_public_page_url( 'insight' );
+// 체크리스트 페이지도 동일한 패턴 - slug "checklist"가 공개 상태일 때만(single-building.php의
+// AT A GLANCE 섹션이 쓰는 것과 같은 헬퍼, 같은 slug).
+$checklist_url = olt_get_public_page_url( 'checklist' );
 
 $district_link = $args['district_link'] ?? null;
 $region_link   = $args['region_link'] ?? null;
 
-// 렌더될 버튼 개수(전화는 항상 1개 + 온라인문의/인사이트 조건부)에 맞춰 grid 열 수를 고른다.
-// olt_contact_lead_slot 액션으로 나중에 버튼이 더 붙을 수 있지만, 지금은 아무것도 렌더하지 않으므로
-// 이 카운트에 포함하지 않는다 - 그 훅으로 실제 버튼을 추가하게 되면 이 카운트도 함께 늘려야 한다.
-$actions_count = 1 + ( $online_url ? 1 : 0 ) + ( $insight_url ? 1 : 0 );
+// 버튼을 두 그룹으로 나눈다 - "전화/온라인"(주요 CTA)은 항상 50:50 한 줄로, "인사이트/체크리스트"
+// (보조 정보 링크)는 있는 만큼만 그 아래 별도 줄로. 기존엔 이 넷을 한 grid에 다 넣어서 인사이트까지
+// 있으면 3등분이 되어 전화/온라인이 33%씩으로 눌렸다 - 이제 전화/온라인은 항상 50:50이 보장된다.
+// 그리드 열 수 자체는 기존 --1/--2 modifier(officeleasing.css)를 그대로 재사용한다(둘 다 최대 2개라
+// --3은 이제 이 컴포넌트에서는 안 쓰지만, 다른 곳에서 쓸 수 있어 CSS는 그대로 둔다).
+$primary_count = 1 + ( $online_url ? 1 : 0 );
+$secondary_count = ( $insight_url ? 1 : 0 ) + ( $checklist_url ? 1 : 0 );
 ?>
 <section class="olx-contact" id="contact" aria-labelledby="contact-title">
 	<div>
@@ -57,7 +63,17 @@ $actions_count = 1 + ( $online_url ? 1 : 0 ) + ( $insight_url ? 1 : 0 );
 		<span><?php echo esc_html( $desc ); ?></span>
 	</div>
 	<div>
-		<div class="olx-contact-actions olx-contact-actions--<?php echo esc_attr( (string) $actions_count ); ?>">
+		<?php if ( $district_link || $region_link ) : ?>
+			<div class="olx-contact-links">
+				<?php if ( $district_link ) : ?>
+					<a href="<?php echo esc_url( $district_link['url'] ); ?>"><?php echo esc_html( $district_link['label'] ); ?></a>
+				<?php endif; ?>
+				<?php if ( $region_link ) : ?>
+					<a href="<?php echo esc_url( $region_link['url'] ); ?>"><?php echo esc_html( $region_link['label'] ); ?></a>
+				<?php endif; ?>
+			</div>
+		<?php endif; ?>
+		<div class="olx-contact-actions olx-contact-actions--<?php echo esc_attr( (string) $primary_count ); ?>">
 			<a class="olx-contact-action olx-contact-action--phone" href="tel:<?php echo esc_attr( $tel ); ?>">
 				<b>전화 상담 · <?php echo esc_html( $phone ); ?></b>
 			</a>
@@ -67,30 +83,30 @@ $actions_count = 1 + ( $online_url ? 1 : 0 ) + ( $insight_url ? 1 : 0 );
 					<small><?php echo esc_html( $online_note ); ?></small>
 				</a>
 			<?php endif; ?>
-			<?php if ( $insight_url ) : ?>
-				<a class="olx-contact-action olx-contact-action--insight" href="<?php echo esc_url( $insight_url ); ?>">
-					<b>인사이트</b>
-					<small>임대 가이드·체크리스트</small>
-				</a>
-			<?php endif; ?>
 			<?php
 			/**
 			 * 추후 Lead(AI 선택형 대화창) 진입점 슬롯.
 			 * 별도 플러그인/파일에서 add_action('olt_contact_lead_slot', ...)로 버튼을 주입한다.
 			 * 지금은 아무것도 렌더하지 않으므로 디자인에 영향 없음. 실제로 버튼을 주입하게 되면
-			 * 그 버튼에도 olx-contact-action(+역할별 색상 클래스)을 붙이고 위 $actions_count 계산에
-			 * 포함시켜야 grid 열 수와 어긋나지 않는다.
+			 * 그 버튼에도 olx-contact-action(+역할별 색상 클래스)을 붙이고 위 $primary_count 계산에
+			 * 포함시켜야 grid 열 수와 어긋나지 않는다(전화/온라인과 같은 "주요 CTA" 그룹에 속한다고 판단).
 			 */
 			do_action( 'olt_contact_lead_slot' );
 			?>
 		</div>
-		<?php if ( $district_link || $region_link ) : ?>
-			<div class="olx-contact-links">
-				<?php if ( $district_link ) : ?>
-					<a href="<?php echo esc_url( $district_link['url'] ); ?>"><?php echo esc_html( $district_link['label'] ); ?></a>
+		<?php if ( $secondary_count > 0 ) : ?>
+			<div class="olx-contact-actions olx-contact-actions--<?php echo esc_attr( (string) $secondary_count ); ?>">
+				<?php if ( $insight_url ) : ?>
+					<a class="olx-contact-action olx-contact-action--insight" href="<?php echo esc_url( $insight_url ); ?>">
+						<b>인사이트</b>
+						<small>임대 가이드·체크리스트</small>
+					</a>
 				<?php endif; ?>
-				<?php if ( $region_link ) : ?>
-					<a href="<?php echo esc_url( $region_link['url'] ); ?>"><?php echo esc_html( $region_link['label'] ); ?></a>
+				<?php if ( $checklist_url ) : ?>
+					<a class="olx-contact-action olx-contact-action--checklist" href="<?php echo esc_url( $checklist_url ); ?>">
+						<b>Office Leasing Checklist</b>
+						<small>임대 체크리스트 보기</small>
+					</a>
 				<?php endif; ?>
 			</div>
 		<?php endif; ?>

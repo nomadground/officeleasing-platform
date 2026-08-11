@@ -30,7 +30,13 @@ function ol_calculate_listing_fields($post_id) {
     update_field('rent_per_lease_pyeong', ol_calc_per_pyeong($monthly_rent, $lease_pyeong), $post_id);
     update_field('maintenance_per_lease_pyeong', ol_calc_per_pyeong($maintenance_fee, $lease_pyeong), $post_id);
     update_field('noc_per_exclusive_pyeong', ol_calc_per_pyeong($monthly_total_cost, $exclusive_pyeong), $post_id);
+    // deposit_per_exclusive_pyeong은 관리자 화면(admin-summary-box.php "전용평당 보증금")이 계속 쓰므로
+    // 그대로 유지한다 - 공개 페이지(single-building.php) 표시가 임대평당 기준으로 바뀌는 것과는 별개다.
     update_field('deposit_per_exclusive_pyeong', ol_calc_per_pyeong($deposit_amount, $exclusive_pyeong), $post_id);
+    // [단가 기준 통일] 공개 페이지의 보증금 평당가를 임대료/관리비와 같은 "임대평당" 기준으로 맞춘다 -
+    // 기존엔 보증금만 전용평당, 임대료/관리비는 임대(공급)평당이라 세 값의 분모가 서로 달라 나란히
+    // 놓고 비교하기 어려웠다. rent_per_lease_pyeong/maintenance_per_lease_pyeong과 동일한 패턴.
+    update_field('deposit_per_lease_pyeong', ol_calc_per_pyeong($deposit_amount, $lease_pyeong), $post_id);
 }
 
 function ol_calculate_building_fields($post_id) {
@@ -59,15 +65,16 @@ function ol_sync_aio_status($post_id) {
     if (empty($summary)) {
         $name = get_the_title($post_id);
         $address = get_field('building_address_road', $post_id);
-        $station = get_field('building_subway1_station', $post_id);
         $standard_area = get_field('building_standard_floor_area_pyeong', $post_id);
         $ratio = get_field('building_exclusive_ratio', $post_id);
 
+        // [listing-detail-ux-pass2] "{인접역}과 인접해 있으며" 절을 뺐다 - 이 정보는 single-building.php의
+        // "빌딩 정보" 섹션 "교통" 행(building_subway1/2_station)에 이미 별도로 표시되고 있어 중복이었다.
+        // 지번 주소 전환/랜드마크 필드 신설 등 다른 문장 구조 변경은 이번 범위가 아니다(요청 범위 확인됨).
         $draft = sprintf(
-            '%1$s은 %2$s에 위치한 업무시설입니다. %3$s와 인접해 있으며, 기준층 임대면적은 %4$s평, 전용률은 %5$s%%입니다.',
+            '%1$s은 %2$s에 위치한 업무시설입니다. 기준층 임대면적은 %3$s평, 전용률은 %4$s%%입니다.',
             $name ?: '{건물명}',
             $address ?: '{도로명주소}',
-            $station ?: '{가장 가까운 지하철역}',
             $standard_area ?: '{기준층면적}',
             $ratio ?: '{전용률}'
         );

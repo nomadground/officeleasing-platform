@@ -100,6 +100,12 @@ function runScenario(withSource, label) {
             }
             return [];
         },
+        // single.js는 로드 시 initListingToggle()도 함께 실행한다(매물 2~3건 빌딩 전용) - 이 페이지엔
+        // 해당 요소가 없으므로 getElementById가 null을 반환해 조용히 early-return해야 한다(실제 DOM과
+        // 동일한 동작). 이 메서드가 없으면 vm.runInContext가 TypeError로 전체 스크립트를 멈춘다.
+        getElementById() {
+            return null;
+        },
         addEventListener() {
             /* DOMContentLoaded 안 씀(readyState=complete) */
         },

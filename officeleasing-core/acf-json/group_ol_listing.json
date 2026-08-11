@@ -486,6 +486,27 @@
             "placeholder": ""
         },
         {
+            "key": "field_ol_lst_deposit_per_lease_pyeong",
+            "label": "임대평당 보증금 (자동계산)",
+            "name": "deposit_per_lease_pyeong",
+            "type": "number",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "min": "",
+            "max": "",
+            "step": "",
+            "readonly": 1,
+            "prepend": "",
+            "append": "",
+            "placeholder": ""
+        },
+        {
             "key": "field_ol_lst_image_1",
             "label": "매물 사진 1",
             "name": "listing_image_1",
