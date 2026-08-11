@@ -38,19 +38,10 @@ $img    = $images[0] ?? null;
 
 $active_count = (int) get_field( 'building_active_listing_count', $building_id );
 
-// 아래 값들은 모두 building-cache.php가 매물 저장/상태변경 시 미리 계산해둔 캐시 필드다.
-// 카드 렌더 시 매물을 재쿼리하지 않는다는 원칙(상단 주석)을 지키기 위해, 매물이 여러 건이어도
-// 이 캐시 min/max만으로 "3~7층" 같은 범위 표기를 만든다(olt_floor_range/olt_format_range 참고).
-$floor_display = olt_floor_range(
-	get_field( 'building_min_floor', $building_id ),
-	get_field( 'building_max_floor', $building_id )
-);
-// listing-card.php의 "해당층 / 총층F" 표기와 동일하게, 건물 총 지상층수를 뒤에 붙인다.
-// building_ground_floors는 빌딩 자체 필드라 매물 재쿼리 없이 바로 읽을 수 있다.
-$total_floors = (int) get_field( 'building_ground_floors', $building_id );
-if ( $floor_display && $total_floors ) {
-	$floor_display .= ' / ' . $total_floors . 'F';
-}
+// 층수는 이 카드에서 빼기로 했다(빌딩 카드는 매물 여러 건의 "집계"라 층수 범위가 넓어질수록
+// 정보 가치가 낮고, 그 자리를 비우면 임대/전용면적이 3등분 대신 2등분으로 더 넓게 나온다 -
+// 특히 모바일에서 "661.2㎡ ~ 1,200.0㎡" 같은 긴 범위가 줄바꿈 없이 들어갈 여유가 생긴다).
+// 개별 매물의 정확한 층수는 single-building.php/listing-card.php에서 계속 보여준다.
 
 // 임대/전용면적은 listing-card.php와 동일하게 ㎡(큰 숫자) + 평(괄호, 보조) 둘 다 보여준다.
 // 캐시엔 평 min/max만 있으므로, 렌더 시점에 olt_format_area_sqm_pyeong()(theme-helpers.php)이
@@ -138,11 +129,8 @@ $noc_range = olt_format_money_range(
 			<?php endif; ?>
 		</small>
 		<h3><?php echo esc_html( $building_name ); ?></h3>
-		<?php if ( $floor_display || $lease_areas['sqm'] || $exclusive_areas['sqm'] ) : ?>
+		<?php if ( $lease_areas['sqm'] || $exclusive_areas['sqm'] ) : ?>
 			<div class="olx-card-areas olx-card-areas--building">
-				<?php if ( $floor_display ) : ?>
-					<span class="olx-card-floor"><?php echo esc_html( $floor_display ); ?></span>
-				<?php endif; ?>
 				<?php if ( $lease_areas['sqm'] ) : ?>
 					<span>
 						<b>임대</b>
