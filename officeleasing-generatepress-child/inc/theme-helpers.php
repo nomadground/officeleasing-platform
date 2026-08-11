@@ -292,20 +292,25 @@ function olt_format_range( $min, $max, callable $formatter ) {
  * 내부적으로 기존 olt_format_range()(면적 전용, 0=데이터 없음)를 그대로 재사용한다 - 이 함수를 수정하면
  * building-card.php 밖의 다른 호출부에 영향을 줄 수 있어 손대지 않고 그 위에 새로 얹는다.
  *
+ * 평 보조표기는 값 하나당 괄호를 따로 씌우지 않는다 - 범위일 때 "(298평) ~ (342평)"처럼 괄호가 두 번
+ * 나오면 "괄호 안에 범위 전체가 있다"는 시각적 규칙이 깨진다. 대신 "298평 ~ 342평" 범위 전체를 만들고
+ * 그 결과 하나를 괄호 하나로 감싼다 - "(298평 ~ 342평)". min이 최소값, max가 매물 중 최댓값이다.
+ *
  * @return array{sqm: string, pyeong: string} 데이터가 없으면 두 값 모두 빈 문자열.
  */
 function olt_format_area_sqm_pyeong( $min_pyeong, $max_pyeong ) {
 	$sqm_plain    = function ( $v ) {
 		return number_format( (float) $v, 1 ) . '㎡';
 	};
-	$pyeong_paren = function ( $v ) {
-		return '(' . number_format( (float) $v ) . '평)';
+	$pyeong_plain = function ( $v ) {
+		return number_format( (float) $v ) . '평';
 	};
 	$min_pyeong = (float) $min_pyeong;
 	$max_pyeong = (float) $max_pyeong;
+	$pyeong_range = olt_format_range( $min_pyeong, $max_pyeong, $pyeong_plain );
 	return array(
 		'sqm'    => olt_format_range( ol_calc_sqm_from_pyeong( $min_pyeong ), ol_calc_sqm_from_pyeong( $max_pyeong ), $sqm_plain ),
-		'pyeong' => olt_format_range( $min_pyeong, $max_pyeong, $pyeong_paren ),
+		'pyeong' => ( '' !== $pyeong_range ) ? '(' . $pyeong_range . ')' : '',
 	);
 }
 

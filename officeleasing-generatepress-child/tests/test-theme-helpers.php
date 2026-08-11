@@ -70,7 +70,7 @@ check('area sqm+pyeong - 단일값 - sqm(327평→㎡ 환산)', $r['sqm'], '1,08
 check('area sqm+pyeong - 단일값 - pyeong(보조표기)', $r['pyeong'], '(327평)');
 $r = olt_format_area_sqm_pyeong(298, 342);
 check('area sqm+pyeong - 범위 - sqm', $r['sqm'], '985.1㎡ ~ 1,130.6㎡');
-check('area sqm+pyeong - 범위 - pyeong', $r['pyeong'], '(298평) ~ (342평)');
+check('area sqm+pyeong - 범위 - pyeong(괄호 하나로 범위 전체를 감쌈, min~max)', $r['pyeong'], '(298평 ~ 342평)');
 
 // ── olt_won_html() - building-card.php 전용, 숫자/단위 span 분리 (각 부분 esc_html 처리됨) ──
 check(
