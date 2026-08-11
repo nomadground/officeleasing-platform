@@ -74,14 +74,14 @@ check('area sqm+pyeong - 범위 - pyeong', $r['pyeong'], '(298평) ~ (342평)');
 
 // ── olt_won_html() - building-card.php 전용, 숫자/단위 span 분리 (각 부분 esc_html 처리됨) ──
 check(
-    'won html - 단일값 - 숫자와 만원을 별도 span으로',
+    'won html - 단일값 - 숫자와 만원을 별도 span으로, pair로 감쌈(줄바꿈은 ~에서만)',
     olt_won_html('252,250만원'),
-    '<span class="olx-money-num">252,250</span><span class="olx-money-unit">만원</span>'
+    '<span class="olx-money-pair"><span class="olx-money-num">252,250</span><span class="olx-money-unit">만원</span></span>'
 );
 check(
-    'won html - 범위 - 양쪽 다 span 분리, 구분자는 그대로',
+    'won html - 범위 - 양쪽 다 pair로 분리, 구분자는 그대로(pair 밖에 있어야 그 자리서 줄바꿈 가능)',
     olt_won_html('50만원 ~ 100만원'),
-    '<span class="olx-money-num">50</span><span class="olx-money-unit">만원</span> ~ <span class="olx-money-num">100</span><span class="olx-money-unit">만원</span>'
+    '<span class="olx-money-pair"><span class="olx-money-num">50</span><span class="olx-money-unit">만원</span></span> ~ <span class="olx-money-pair"><span class="olx-money-num">100</span><span class="olx-money-unit">만원</span></span>'
 );
 check('won html - 빈 문자열(데이터 없음) - 그대로 빈 문자열', olt_won_html(''), '');
 

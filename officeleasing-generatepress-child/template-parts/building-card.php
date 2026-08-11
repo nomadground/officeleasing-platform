@@ -164,9 +164,9 @@ $noc_range = olt_format_money_range(
 		<?php endif; ?>
 		<?php if ( $deposit_range || $rent_range || $maintenance_range ) : ?>
 			<div class="olx-card-prices olx-card-prices--building">
-				<?php if ( $deposit_range ) : ?><span><i class="chip-deposit">보</i><?php echo olt_won_html( $deposit_range ); ?></span><?php endif; ?>
-				<?php if ( $rent_range ) : ?><span><i class="chip-rent">월</i><?php echo olt_won_html( $rent_range ); ?></span><?php endif; ?>
-				<?php if ( $maintenance_range ) : ?><span><i class="chip-maintenance">관</i><?php echo olt_won_html( $maintenance_range ); ?></span><?php endif; ?>
+				<?php if ( $deposit_range ) : ?><span><i class="chip-deposit">보</i><span class="olx-money-group"><?php echo olt_won_html( $deposit_range ); ?></span></span><?php endif; ?>
+				<?php if ( $rent_range ) : ?><span><i class="chip-rent">월</i><span class="olx-money-group"><?php echo olt_won_html( $rent_range ); ?></span></span><?php endif; ?>
+				<?php if ( $maintenance_range ) : ?><span><i class="chip-maintenance">관</i><span class="olx-money-group"><?php echo olt_won_html( $maintenance_range ); ?></span></span><?php endif; ?>
 			</div>
 		<?php endif; ?>
 		<?php if ( $noc_range ) : ?>

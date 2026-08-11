@@ -51,6 +51,11 @@ function olt_pyeong_price( $won ) {
  * 포맷 로직(반올림 등) 자체는 olt_won()에게 그대로 맡기고(재구현하지 않음) 이 함수는 화면 표기(span 분리)만
  * 담당한다 - Schema(schema.php)와 관리자 요약박스는 여전히 ol_format_manwon()/올t_won()의 plain string을
  * 그대로 쓰므로 이 헬퍼를 추가해도 그쪽 출력엔 영향이 없다.
+ *
+ * 범위값("A만원 ~ B만원")은 "숫자+단위" 한 쌍을 .olx-money-pair 하나로 더 감싼다 - 좁은 모바일 카드에서
+ * 긴 범위가 줄바꿈될 때, 줄바꿈이 항상 " ~ " 자리에서만 일어나고 숫자와 "만원" 사이에서 끊기지 않게 하기
+ * 위함(CSS의 .olx-money-pair{white-space:nowrap}과 짝).
+ *
  * 반환값은 이미 각 부분이 esc_html() 처리된 HTML이므로, 호출부는 esc_html() 없이 그대로 echo하면 된다.
  */
 function olt_won_html( $formatted ) {
@@ -58,7 +63,7 @@ function olt_won_html( $formatted ) {
 	$html_parts = array();
 	foreach ( $parts as $part ) {
 		if ( preg_match( '/^([\d,]+)(만원)$/u', trim( $part ), $m ) ) {
-			$html_parts[] = '<span class="olx-money-num">' . esc_html( $m[1] ) . '</span><span class="olx-money-unit">' . esc_html( $m[2] ) . '</span>';
+			$html_parts[] = '<span class="olx-money-pair"><span class="olx-money-num">' . esc_html( $m[1] ) . '</span><span class="olx-money-unit">' . esc_html( $m[2] ) . '</span></span>';
 		} else {
 			// 예상 밖 형식(빈 문자열 등)이면 새 마크업을 만들지 않고 안전하게 그대로 이스케이프해서 반환.
 			$html_parts[] = esc_html( $part );
