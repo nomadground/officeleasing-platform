@@ -26,6 +26,14 @@ function ol_rebuild_all_building_cache() {
 // 배포 이전부터 있던 매물은 다시 저장(수정)되기 전까지 그 필드가 비어있는 채로 남는다.
 // 위 rebuild-cache는 building 집계만 재계산할 뿐 이 문제를 해결하지 못한다 - listing 자체의
 // 파생 필드를 다시 계산하는 별도 진입점이 필요하다.
+//
+// [2차 리뷰 지적, 실제 데이터 정합성 문제 확인] building-cache.php는 raw 필드만 읽는 게 아니라
+// exclusive_area_pyeong/lease_area_pyeong/noc_per_exclusive_pyeong - 이 함수가 방금 재계산하는
+// listing 파생 필드 자체 - 를 그대로 읽어서 building_min/max_exclusive_area_pyeong 등을 만든다
+// (아래 building 캐시 주석 "raw 필드만 읽는다"는 옛 설명은 틀렸었다 - 정정). 그래서 listing 파생값이
+// 바뀌었는데 building 캐시를 안 갱신하면, 빌딩 카드의 면적/NOC 범위가 옛 값으로 남을 수 있다.
+// 이 함수 하나가 항상 "listing 재계산 -> 그 값을 읽는 building 캐시까지 재계산"을 함께 보장하도록
+// 묶는다 - 호출부(WP-CLI든 관리자 버튼이든)가 "전체 재계산 끝났다"고 오해하지 않게 하기 위함.
 function ol_rebuild_all_listing_fields() {
     $listing_ids = get_posts([
         'post_type' => 'listing',
@@ -37,6 +45,9 @@ function ol_rebuild_all_listing_fields() {
     foreach ($listing_ids as $id) {
         ol_calculate_listing_fields($id);
     }
+    // listing 파생값을 소비하는 building 캐시까지 이어서 동기화한다(위 주석 참고) - 여러 번 실행해도
+    // 결과가 같으므로(멱등) 안전하다.
+    ol_rebuild_all_building_cache();
     return count($listing_ids);
 }
 
@@ -48,11 +59,11 @@ if (defined('WP_CLI') && WP_CLI) {
     });
     // WP-CLI: wp officeleasing rebuild-listing-fields
     // 새 파생 필드를 추가한 배포 직후 1회 실행 권장(이번 deposit_per_lease_pyeong이 첫 사례).
-    // building 캐시는 원본 raw 필드(deposit_amount/monthly_rent 등)만 읽으므로, 이 명령이 그 값
-    // 자체를 바꾸는 경우는 거의 없지만 두 명령을 함께 실행해도 안전하다(멱등 - 여러 번 실행해도 결과 동일).
+    // ol_rebuild_all_listing_fields()가 내부적으로 building 캐시까지 재계산하므로, 이 명령 하나로
+    // listing 파생값 + building 캐시가 서로 일치하는 상태까지 끝난다(따로 rebuild-cache를 또 안 돌려도 됨).
     WP_CLI::add_command('officeleasing rebuild-listing-fields', function () {
         $count = ol_rebuild_all_listing_fields();
-        WP_CLI::success("{$count}개 매물의 파생 필드(평 환산·평당가 등)를 재계산했습니다.");
+        WP_CLI::success("{$count}개 매물의 파생 필드(평 환산·평당가 등)를 재계산하고, 그 값을 읽는 빌딩 집계 캐시도 함께 동기화했습니다.");
     });
 }
 
@@ -128,7 +139,7 @@ function ol_render_rebuild_listing_fields_notice() {
     }
     if (isset($_GET['ol_listing_fields_rebuilt'])) {
         printf(
-            '<div class="notice notice-success is-dismissible"><p>%d개 매물의 파생 필드를 재계산했습니다.</p></div>',
+            '<div class="notice notice-success is-dismissible"><p>%d개 매물의 파생 필드를 재계산하고, 그 값을 읽는 빌딩 집계 캐시도 함께 동기화했습니다.</p></div>',
             (int) $_GET['ol_listing_fields_rebuilt']
         );
         return;
@@ -136,7 +147,8 @@ function ol_render_rebuild_listing_fields_notice() {
     $url = wp_nonce_url(admin_url('admin-post.php?action=ol_rebuild_listing_fields'), 'ol_rebuild_listing_fields');
     printf(
         '<div class="notice notice-info"><p>매물 파생 필드(평 환산·평당가 등)가 실제 값과 안 맞아 보이면 '
-            . '<a href="%s">지금 전체 재계산</a>할 수 있습니다. 새 자동계산 필드를 추가한 배포 직후 1회 실행을 권장합니다.</p></div>',
+            . '<a href="%s">지금 전체 재계산</a>할 수 있습니다(빌딩 집계 캐시도 함께 갱신됩니다). '
+            . '새 자동계산 필드를 추가한 배포 직후 1회 실행을 권장합니다.</p></div>',
         esc_url($url)
     );
 }
