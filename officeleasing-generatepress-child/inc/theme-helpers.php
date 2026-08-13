@@ -417,19 +417,17 @@ function olt_floor_tier( $floor_display, $total_floors ) {
  * 색깔 다르게, 마우스오버나 클릭, 터치시 그에 맞는 층수/보증금/임대료/관리비로 전환".
  * [pass5 추가 요청] 왼쪽에 "임대면적"/"전용면적" 축 라벨 추가 - 각 점 위/아래 값이 무엇을 뜻하는지
  * 색깔만으로 구분하지 않고 텍스트로도 명확히.
+ * [listing-detail-ux-pass6 3차 피드백] "최소면적/최대면적 텍스트는 없어도 괜찮다" - 트랙 양 끝의
+ * .olx-area-slider-end 라벨을 완전히 뺐다(매물 1건/여러 건 구분 없이 항상 없음).
  *
  * single.js의 initListingToggle()이 이미 구현한 select(index) 메커니즘을 그대로 재사용한다 -
  * 이 함수는 그 트리거 역할을 하던 기존 "칩" 버튼 행을 대체하는 새 마크업만 만든다
  * (.olx-area-slider-dot에 동일한 data-listing-index를 붙여서, JS 쪽 변경 없이 셀렉터만
  * 넓히면 된다). 매물이 1건이면 점도 하나뿐이라 실질적 토글 동작은 없지만, Hero/임대정보 양쪽에서
- * 같은 시각 언어를 쓰기 위해 단일 점 형태로도 렌더한다(비교 대상이 없다는 표시로 최소/최대 라벨은 뺀다).
+ * 같은 시각 언어를 쓰기 위해 단일 점 형태로도 렌더한다.
  *
  * 점 간격은 실제 면적 비율에 비례하지 않고 균등 배치한다(단순 스텝퍼) - 면적 차이가 작은 매물들이
  * 한 점에 겹쳐 보이는 문제를 피하기 위한 의도적 단순화.
- *
- * 연결선(.olx-area-slider-dots:before)은 최소/최대 라벨(.olx-area-slider-end)과 겹치지 않도록
- * 점들만 감싼 별도 래퍼(.olx-area-slider-dots)에만 그린다 - 축 라벨(.olx-area-slider-axis)도
- * 그 바깥의 형제 요소라 선이 라벨 위로 지나가지 않는다.
  *
  * @param array $stops 임대면적 오름차순으로 이미 정렬된 [ ['index'=>원본 $toggle_listings 인덱스,
  *                      'lease_pyeong'=>, 'lease_sqm'=>, 'exclusive_pyeong'=>, 'exclusive_sqm'=> ], ... ].
@@ -451,7 +449,6 @@ function olt_area_slider( $stops, $default_index ) {
 			<span class="olx-area-slider-axis-exclusive">전용면적</span>
 		</div>
 		<div class="olx-area-slider-line" role="tablist" aria-label="면적으로 매물 비교">
-			<?php if ( $multi ) : ?><span class="olx-area-slider-end">최소면적</span><?php endif; ?>
 			<div class="olx-area-slider-dots">
 				<?php foreach ( $stops as $stop ) :
 					$i         = (int) $stop['index'];
@@ -466,7 +463,6 @@ function olt_area_slider( $stops, $default_index ) {
 					</button>
 				<?php endforeach; ?>
 			</div>
-			<?php if ( $multi ) : ?><span class="olx-area-slider-end">최대면적</span><?php endif; ?>
 		</div>
 	</div>
 	<?php

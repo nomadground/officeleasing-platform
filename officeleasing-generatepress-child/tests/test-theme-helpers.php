@@ -123,12 +123,13 @@ $single_stop = array( array(
 ) );
 $single_html = olt_area_slider($single_stop, 0);
 check('area slider - 매물 1건은 --single 수정자 클래스', str_contains($single_html, 'olx-area-slider--single'), true);
-check('area slider - 매물 1건은 최소/최대 라벨 없음(비교 대상 없음)', str_contains($single_html, 'olx-area-slider-end'), false);
 check('area slider - 매물 1건짜리 점도 기본 active', str_contains($single_html, 'olx-area-slider-dot is-active'), true);
 check('area slider - 임대면적 값 포함', str_contains($single_html, '363평'), true);
 check('area slider - 전용면적 값 포함', str_contains($single_html, '227평'), true);
-// [listing-detail-ux-pass5] "좌측 상단 임대면적, 좌측하단 전용면적" 축 라벨 요청 - 매물 1건이어도(비교
-// 대상이 없어 최소/최대 라벨은 빠지지만) 축 라벨은 항상 나온다.
+// [listing-detail-ux-pass5] "좌측 상단 임대면적, 좌측하단 전용면적" 축 라벨 요청 - 매물 1건이어도
+// 축 라벨은 항상 나온다.
+// [listing-detail-ux-pass6 3차] "최소면적/최대면적 텍스트는 없어도 괜찮다" - olx-area-slider-end 라벨
+// 자체를 완전히 뺐으므로(매물 수와 무관) 더 이상 이 라벨의 유무를 검증하지 않는다.
 check('area slider - 축 라벨(임대면적) 항상 포함', str_contains($single_html, 'olx-area-slider-axis-lease">임대면적'), true);
 check('area slider - 축 라벨(전용면적) 항상 포함', str_contains($single_html, 'olx-area-slider-axis-exclusive">전용면적'), true);
 
@@ -138,7 +139,6 @@ $multi_stops = array(
 	array('index' => 0, 'lease_pyeong' => '363평', 'lease_sqm' => '1,200.0㎡', 'exclusive_pyeong' => '227평', 'exclusive_sqm' => '750.4㎡'),
 );
 $multi_html = olt_area_slider($multi_stops, 1);
-check('area slider - 매물 2건 이상은 최소/최대 라벨 있음', substr_count($multi_html, 'olx-area-slider-end'), 2);
 check('area slider - --single 클래스 없음', str_contains($multi_html, 'olx-area-slider--single'), false);
 // 정렬은 호출부 책임(이 함수는 넘겨받은 순서 그대로 그린다) - index=1(두 번째 넘긴 stop)이 기본 활성.
 check('area slider - 넘겨받은 순서 그대로 렌더(정렬은 호출부 책임) - 첫 번째 점의 인덱스',

@@ -5,9 +5,22 @@
  * [listing-detail-ux-pass5] "차라리 네모난 직사각형을 하나의 배너로, 각 섹션 클릭하면 이동하게" 요청으로
  * 전면 재구성했다 - 이전엔 좌측에 제목+설명 텍스트, 우측에 버튼 묶음이 분리된 2단 레이아웃이었는데,
  * 이제 제목/체크리스트/지역링크/전화/온라인/인사이트를 전부 같은 격자(grid)의 셀로 통일해서 하나의
- * 배너처럼 보이게 한다(참고 이미지: 좌측 열은 제목 위/체크리스트 아래로 2칸, 우측은 2열×N행 버튼).
- * 설명 문구($desc)는 이 배너에 들어갈 자리가 없어 완전히 뺐다(요청: "그냥 Office Leasing CheckList
- * 버튼 추가").
+ * 배너처럼 보이게 한다. 설명 문구($desc)는 이 배너에 들어갈 자리가 없어 완전히 뺐다(요청: "그냥
+ * Office Leasing CheckList 버튼 추가").
+ *
+ * [listing-detail-ux-pass6 4차, HTML 시안으로 먼저 맞춘 뒤 포팅] 다시 한번 재구성:
+ *  - 여백/테두리를 전부 없애고(요청: "위아래왼쪽오른쪽 여백 아예 없이") 배너가 .olx-contact 섹션을
+ *    그대로 꽉 채운다 - 그래서 .olx-contact-banner 자체엔 더 이상 배경/테두리/둥근모서리가 없다
+ *    (뒤에 있는 .olx-contact의 브랜드 색이 그대로 비친다).
+ *  - 좌측 열: 예전엔 제목(h2)과 "OFFICE LEASING CHECKLIST" 버튼이 위/아래로 분리돼 있었는데, 이제
+ *    좌측 전체가 체크리스트 페이지로 가는 버튼 하나다(요청: "좌측이... 체크리스트 버튼으로") - 체크리스트
+ *    페이지가 아직 공개 안 됐으면(olt_get_public_page_url()이 빈 값) 클릭 불가능한 일반 텍스트로
+ *    대체한다(가짜 링크를 만들지 않는다는 이 파일의 기존 원칙과 동일).
+ *  - 우측 열: $action_cells 배열/2열 그리드 로직은 그대로 재사용한다 - district_link/region_link를
+ *    넘기는 페이지(현재는 single-building.php)는 자연히 [지역 2개 위 / 전화·온라인 아래]인 2열 2행이
+ *    되고, 안 넘기는 페이지는 예전처럼 전화·온라인만 있는 1행, 인사이트까지 있으면 홀수라 마지막 셀이
+ *    전체 폭으로 펼쳐지는 기존 동작을 그대로 유지한다(요청 그림은 building 상세 페이지의 4셀 케이스를
+ *    가리킨 것이라 이 로직 자체를 바꿀 필요가 없었다).
  *
  * $args: [
  *   'title' => 상담 제목, 'phone' => 전화번호, 'kakao_url' => 카카오 채널 URL,
@@ -107,16 +120,16 @@ $action_count = count( $action_cells );
 ?>
 <section class="olx-contact" id="contact" aria-labelledby="contact-title">
 	<div class="olx-contact-banner">
-		<div class="olx-contact-banner-left">
-			<div class="olx-contact-banner-title">
+		<?php if ( $checklist_url ) : ?>
+			<a class="olx-contact-banner-checklist" href="<?php echo esc_url( $checklist_url ); ?>">
+				<span class="olx-contact-banner-eyebrow">Check List</span>
+				<h2 id="contact-title"><?php echo esc_html( $title ); ?></h2>
+			</a>
+		<?php else : ?>
+			<div class="olx-contact-banner-checklist">
 				<h2 id="contact-title"><?php echo esc_html( $title ); ?></h2>
 			</div>
-			<?php if ( $checklist_url ) : ?>
-				<a class="olx-contact-banner-cell olx-contact-banner-cell--checklist" href="<?php echo esc_url( $checklist_url ); ?>">
-					<b>OFFICE LEASING CHECKLIST</b>
-				</a>
-			<?php endif; ?>
-		</div>
+		<?php endif; ?>
 		<div class="olx-contact-banner-right">
 			<?php foreach ( $action_cells as $i => $cell ) :
 				$is_trailing_odd = ( $i === $action_count - 1 ) && ( 1 === $action_count % 2 );

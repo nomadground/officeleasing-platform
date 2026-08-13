@@ -109,19 +109,10 @@ if ( ! empty( $toggle_listings ) ) {
 	}
 }
 
-// [listing-detail-ux-pass4] 매물 1건일 때는 비교 대상이 없어 실제 토글은 못 하지만, Hero/임대정보
-// 양쪽에서 매물 2~3건일 때와 동일한 "점 하나짜리" 슬라이더 시각 언어로 통일한다(요청: "면적에
-// 대한 부분만 이런 방식이 좋을것 같아").
-$area_slider_stop_single = array();
-if ( 1 === $count ) {
-	$area_slider_stop_single = array( array(
-		'index'            => 0,
-		'lease_pyeong'     => olt_pyeong( get_field( 'lease_area_pyeong', $primary_id ) ),
-		'lease_sqm'        => olt_sqm( get_field( 'lease_area_sqm', $primary_id ) ),
-		'exclusive_pyeong' => olt_pyeong( get_field( 'exclusive_area_pyeong', $primary_id ) ),
-		'exclusive_sqm'    => olt_sqm( get_field( 'exclusive_area_sqm', $primary_id ) ),
-	) );
-}
+// [listing-detail-ux-pass4] 매물 1건일 때는 Hero/임대정보 양쪽에서 "점 하나짜리" 슬라이더 시각 언어로
+// 통일했었으나, [listing-detail-ux-pass6] "매물 1개일 때에는 슬라이드 대신 그냥 표만" 요청으로 되돌아가
+// 이제 $area_slider_stop_single(단일 스톱용 데이터)은 더 쓰지 않는다 - Hero/임대정보 모두 count===1
+// 분기에서 get_field()를 직접 읽어 .olx-area-facts / .row로 표시한다.
 
 // 갤러리: 매물 사진 우선(1개 매물 케이스), 없으면 빌딩 사진.
 // 'ol-interior'(600x400)는 썸네일 스트립(olx-gallery-thumbs)용 크기 - 대표 Hero 이미지는
@@ -262,9 +253,13 @@ $gallery_captions = array( '외관', '오피스', '라운지', '회의실', '', 
 			// 고를 대상이 없는데도 슬라이더 시각 언어를 억지로 맞추던 것을 그만두고, 단순한 라벨+값
 			// 표시로 되돌린다(평/㎡ 한 줄 표기는 슬라이더와 동일 규칙).
 			?>
+			<?php
+			// [listing-detail-ux-pass6 3차] "임대면적/전용면적 텍스트 색상을 슬라이더와 통일" - 면적
+			// 슬라이더(.olx-area-slider-lease/exclusive)와 동일하게 임대=브랜드 파랑, 전용=서브 주황.
+			?>
 			<div class="olx-area-facts">
-				<div class="olx-area-fact"><span>임대면적</span><b><?php echo esc_html( olt_pyeong( get_field( 'lease_area_pyeong', $primary_id ) ) ); ?></b><small><?php echo esc_html( olt_sqm( get_field( 'lease_area_sqm', $primary_id ) ) ); ?></small></div>
-				<div class="olx-area-fact"><span>전용면적</span><b><?php echo esc_html( olt_pyeong( get_field( 'exclusive_area_pyeong', $primary_id ) ) ); ?></b><small><?php echo esc_html( olt_sqm( get_field( 'exclusive_area_sqm', $primary_id ) ) ); ?></small></div>
+				<div class="olx-area-fact lease"><span>임대면적</span><b><?php echo esc_html( olt_pyeong( get_field( 'lease_area_pyeong', $primary_id ) ) ); ?></b><small><?php echo esc_html( olt_sqm( get_field( 'lease_area_sqm', $primary_id ) ) ); ?></small></div>
+				<div class="olx-area-fact excl"><span>전용면적</span><b><?php echo esc_html( olt_pyeong( get_field( 'exclusive_area_pyeong', $primary_id ) ) ); ?></b><small><?php echo esc_html( olt_sqm( get_field( 'exclusive_area_sqm', $primary_id ) ) ); ?></small></div>
 			</div>
 			<div class="olx-price">
 				<div>
@@ -377,15 +372,16 @@ if ( ! empty( $key_points ) ) : ?>
 	<div class="olx-bldinfo">
 		<div class="olx-specs olx-bldinfo-specs">
 			<?php
-			// [listing-detail-ux-pass6] 표기 순서: 주소·건물명 / 권역·교통 / 건물규모·연면적 / 사용승인일·
-			// 기준층면적 / 엘리베이터·주차 / 방향·주변인프라. 주소는 grid-column:1/-1로 전체 폭을 쓴다.
-			// [경위] 한 라운드 전엔 "2열 6행 페어링" 요청으로 주소도 다른 항목과 반씩 나눠 쓰게(약
-			// 260px) 바꾸면서 라벨 폭만 좁히는 미봉책을 같이 넣었는데, 실제로는 여전히 2줄로 넘어간다는
-			// 피드백을 받았다 - 그래서 이번엔 다시 전체 폭 방식으로 되돌린다(이 방식만 어떤 주소든
-			// 한 줄 보장이 됨을 이미 확인했다). 이후 항목들의 좌/우 짝이 한 칸씩 밀리는 트레이드오프는
-			// (건물명·권역이 한 행, 교통·건물규모가 한 행...) 감수한다 - 전체 읽는 순서 자체는 그대로.
+			// [listing-detail-ux-pass6 3차] 표기 순서: 주소·건물명 / 권역·교통 / 건물규모·연면적 / 사용승인일·
+			// 기준층면적 / 엘리베이터·주차 / 방향·주변인프라.
+			// [경위] 주소를 grid-column:1/-1로 전체 폭에 걸쳐 표시한 적도 있었고("2열 6행 페어링" 시도가
+			// 여전히 줄바꿈된다는 피드백에 대한 대응이었다), 그다음엔 주소만 라벨을 더 좁히고 글자도
+			// 줄여 전체 폭 없이 2열 안에서 한 줄로 넣어본 적도 있었다 - 이번엔 "주소와 건물명이 각각
+			// 2열에 나오게" 요청으로, 애초에 전체 폭이나 폰트 축소 없이도 $address_road 자체가 동/건물명
+			// 괄호 없는 순수 도로명주소라 일반 2열 짝(다른 행들과 동일한 폭)에서도 한 줄로 들어간다 -
+			// 그래서 grid-column 오버라이드 없이 건물명과 자연스럽게 한 행을 이룬다.
 			?>
-			<div class="row row-address"><span>주소</span><b><?php echo esc_html( $address_road ); ?></b></div>
+			<div class="row"><span>주소</span><b><?php echo esc_html( $address_road ); ?></b></div>
 			<div class="row"><span>건물명</span><b><?php echo esc_html( $building_name ); ?></b></div>
 			<div class="row"><span>권역</span><b><?php echo esc_html( trim( olt_region_label( $region_code ) . ( $district ? ' · ' . $district : '' ) ) ); ?></b></div>
 			<div class="row"><span>교통</span><b class="olx-transit">
@@ -521,11 +517,14 @@ if ( ! empty( $key_points ) ) : ?>
 				echo esc_html( olt_format_move_in( get_field( 'move_in_type', $primary_id ), get_field( 'move_in_date', $primary_id ) ) );
 			?></b></div>
 			<?php
-			// [listing-detail-ux-pass4] 임대면적/전용면적 두 행을 Hero와 같은 면적 슬라이더로 교체
-			// (요청: "임대정보 섹션에서도 임대면적과 전용면적에 ㅇㅡㅇㅡㅇ 구조 평수 슬라이드").
-			// 매물 1건이라 실제 토글 대상은 없어 점 하나만 표시되지만, Hero와 동일한 시각 언어를 쓴다.
+			// [listing-detail-ux-pass4] 임대면적/전용면적 두 행을 Hero와 같은 면적 슬라이더로 바꿨었으나,
+			// [listing-detail-ux-pass6] "매물 1개일 때에는 슬라이드 대신 그냥 표만 나와도 괜찮아" 요청으로
+			// Hero의 .olx-area-facts와 동일하게 다시 단순 라벨+값 행으로 되돌린다(고를 대상이 없는 매물
+			// 1건에 슬라이더 시각 언어를 억지로 맞추지 않는다). 색상은 면적 슬라이더와 동일하게 임대=파랑,
+			// 전용=주황(요청: "임대면적 전용면적 텍스트 색상 위와 같이 통일해줘").
 			?>
-			<div class="olx-lease-area-slider"><?php echo olt_area_slider( $area_slider_stop_single, 0 ); ?></div>
+			<div class="row"><span>임대면적</span><b class="accent"><?php echo esc_html( olt_pyeong( get_field( 'lease_area_pyeong', $primary_id ) ) ); ?> <small><?php echo esc_html( olt_sqm( get_field( 'lease_area_sqm', $primary_id ) ) ); ?></small></b></div>
+			<div class="row"><span>전용면적</span><b class="accent-excl"><?php echo esc_html( olt_pyeong( get_field( 'exclusive_area_pyeong', $primary_id ) ) ); ?> <small><?php echo esc_html( olt_sqm( get_field( 'exclusive_area_sqm', $primary_id ) ) ); ?></small></b></div>
 			<div class="row"><span>보증금</span><b class="accent"><?php echo esc_html( olt_won( get_field( 'deposit_amount', $primary_id ) ) ); ?> <small>임대평당 <?php echo esc_html( olt_pyeong_price( get_field( 'deposit_per_lease_pyeong', $primary_id ) ) ); ?></small></b></div>
 			<div class="row"><span>임대료</span><b class="accent"><?php echo esc_html( olt_won( get_field( 'monthly_rent', $primary_id ) ) ); ?> <small>임대평당 <?php echo esc_html( olt_pyeong_price( get_field( 'rent_per_lease_pyeong', $primary_id ) ) ); ?></small></b></div>
 			<div class="row"><span>관리비</span><b class="accent"><?php echo esc_html( olt_won( get_field( 'maintenance_fee', $primary_id ) ) ); ?> <small>임대평당 <?php echo esc_html( olt_pyeong_price( get_field( 'maintenance_per_lease_pyeong', $primary_id ) ) ); ?></small></b></div>
@@ -657,8 +656,8 @@ $region_link = $parent_term ? array(
 ) : null;
 
 get_template_part( 'template-parts/contact-cta', null, array(
-	// [listing-detail-ux-pass5] 배너형 재구성과 함께 문구도 새로 요청됨(참고 이미지).
-	'title'         => '사무실 임대차, 한번 더 확인하세요!',
+	// [listing-detail-ux-pass6 4차] 좌측이 통째로 체크리스트 버튼이 되면서 문구도 다시 요청됨.
+	'title'         => '사무실 임대, 계약 전 꼭! 확인하세요.',
 	'district_link' => $district_link,
 	'region_link'   => $region_link,
 ) );
