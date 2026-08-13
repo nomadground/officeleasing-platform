@@ -65,6 +65,10 @@ if ( $count >= 2 && $count <= 3 ) {
 			'rent_per_lease_pyeong'       => olt_pyeong_price( get_field( 'rent_per_lease_pyeong', $lid ) ),
 			'maintenance'                 => olt_won( get_field( 'maintenance_fee', $lid ) ),
 			'maintenance_per_lease_pyeong' => olt_pyeong_price( get_field( 'maintenance_per_lease_pyeong', $lid ) ),
+			// [listing-detail-ux-pass6] "당연히 층수, 보증금, 임대료, 관리비, NOC도 함께 변동되야겠지?"
+			// 요청 - NOC(환산임대료)는 지금까지 임대정보 표(count===1)에만 있고 Hero/토글 데이터엔
+			// 없었다 - 여기 추가해서 면적 슬라이더로 매물을 바꿀 때 NOC도 함께 갱신되게 한다.
+			'noc_per_exclusive_pyeong'    => olt_pyeong_price( get_field( 'noc_per_exclusive_pyeong', $lid ) ),
 		);
 	}
 }
@@ -254,11 +258,14 @@ $gallery_captions = array( '외관', '오피스', '라운지', '회의실', '', 
 
 		<?php if ( 1 === $count ) : ?>
 			<?php
-			// [listing-detail-ux-pass5] 층수 표시 칸 삭제 요청 - 면적(임대/전용)만 면적 슬라이더로 보여준다.
-			// 매물이 1건이라 실제로 고를 대상은 없지만, Hero/임대정보 두 군데가 같은 시각 언어를 쓰도록
-			// 점 하나짜리 슬라이더를 그대로 재사용한다(olt_area_slider()가 1건이면 최소/최대 라벨을 뺀다).
-			echo olt_area_slider( $area_slider_stop_single, 0 );
+			// [listing-detail-ux-pass6] "매물 1개일 때에는 슬라이드 대신 그냥 표만 나와도 괜찮아" 요청 -
+			// 고를 대상이 없는데도 슬라이더 시각 언어를 억지로 맞추던 것을 그만두고, 단순한 라벨+값
+			// 표시로 되돌린다(평/㎡ 한 줄 표기는 슬라이더와 동일 규칙).
 			?>
+			<div class="olx-area-facts">
+				<div class="olx-area-fact"><span>임대면적</span><b><?php echo esc_html( olt_pyeong( get_field( 'lease_area_pyeong', $primary_id ) ) ); ?></b><small><?php echo esc_html( olt_sqm( get_field( 'lease_area_sqm', $primary_id ) ) ); ?></small></div>
+				<div class="olx-area-fact"><span>전용면적</span><b><?php echo esc_html( olt_pyeong( get_field( 'exclusive_area_pyeong', $primary_id ) ) ); ?></b><small><?php echo esc_html( olt_sqm( get_field( 'exclusive_area_sqm', $primary_id ) ) ); ?></small></div>
+			</div>
 			<div class="olx-price">
 				<div>
 					<span>보증금</span>
@@ -275,12 +282,17 @@ $gallery_captions = array( '외관', '오피스', '라운지', '회의실', '', 
 					<strong><?php echo esc_html( olt_won( get_field( 'maintenance_fee', $primary_id ) ) ); ?></strong>
 					<em>공급평당 <?php echo esc_html( olt_pyeong_price( get_field( 'maintenance_per_lease_pyeong', $primary_id ) ) ); ?></em>
 				</div>
+				<div>
+					<span>환산임대료</span>
+					<strong><?php echo esc_html( olt_pyeong_price( get_field( 'noc_per_exclusive_pyeong', $primary_id ) ) ); ?></strong>
+					<em>전용평당 NOC</em>
+				</div>
 			</div>
 		<?php elseif ( $count >= 2 && $count <= 3 ) : ?>
 			<?php
 			$t0 = $toggle_listings[ $area_slider_default_index ];
 			// [listing-detail-ux-pass5] 층수 표시 칸 삭제 요청. 아래 면적 슬라이더가 여전히 매물 선택
-			// 트리거 역할을 한다 - 점 클릭/hover 시 select(index)가 보증금/임대료/관리비를 갱신한다.
+			// 트리거 역할을 한다 - 점 클릭/hover 시 select(index)가 보증금/임대료/관리비/NOC를 갱신한다.
 			echo olt_area_slider( $area_slider_stops, $area_slider_default_index );
 			?>
 			<div class="olx-price">
@@ -298,6 +310,11 @@ $gallery_captions = array( '외관', '오피스', '라운지', '회의실', '', 
 					<span>관리비</span>
 					<strong data-toggle-field="maintenance"><?php echo esc_html( $t0['maintenance'] ); ?></strong>
 					<em>공급평당 <span data-toggle-field="maintenance_per_lease_pyeong"><?php echo esc_html( $t0['maintenance_per_lease_pyeong'] ); ?></span></em>
+				</div>
+				<div>
+					<span>환산임대료</span>
+					<strong data-toggle-field="noc_per_exclusive_pyeong"><?php echo esc_html( $t0['noc_per_exclusive_pyeong'] ); ?></strong>
+					<em>전용평당 NOC</em>
 				</div>
 			</div>
 			<?php
@@ -360,14 +377,13 @@ if ( ! empty( $key_points ) ) : ?>
 	<div class="olx-bldinfo">
 		<div class="olx-specs olx-bldinfo-specs">
 			<?php
-			// [listing-detail-ux-pass4, 요청 재조정] 표기 순서: 주소·건물명 / 권역·교통 / 건물규모·연면적 /
-			// 사용승인일·기준층면적 / 엘리베이터·주차 / 방향·주변인프라(정확히 2열 6행). 지난 라운드엔
-			// 주소가 좁은 칸(약 260px)에서 줄바꿈되는 문제를 grid-column:1/-1(전체 폭)로 풀었는데,
-			// 이번엔 "전체적으로 한 칸씩 땡겨서 2열 6행"으로 되돌려 달라는 요청이라 정상적인 짝(주소+
-			// 건물명 한 행)으로 복귀한다 - 대신 줄바꿈 문제는 이 행(row-address)만 라벨 폭을 좁히고
-			// (82px -> 44px) 값 글자를 살짝 줄여서 완화한다(officeleasing.css). 다만 이건 근본적으로
-			// "칸 폭 안에서 최대한 줄이는" 미봉책이라, 매우 긴 도로명주소는 여전히 2줄로 넘어갈 수
-			// 있다 - 완전한 보장은 지난 라운드의 전체 폭 방식뿐이었다는 점을 명확히 알려드린다.
+			// [listing-detail-ux-pass6] 표기 순서: 주소·건물명 / 권역·교통 / 건물규모·연면적 / 사용승인일·
+			// 기준층면적 / 엘리베이터·주차 / 방향·주변인프라. 주소는 grid-column:1/-1로 전체 폭을 쓴다.
+			// [경위] 한 라운드 전엔 "2열 6행 페어링" 요청으로 주소도 다른 항목과 반씩 나눠 쓰게(약
+			// 260px) 바꾸면서 라벨 폭만 좁히는 미봉책을 같이 넣었는데, 실제로는 여전히 2줄로 넘어간다는
+			// 피드백을 받았다 - 그래서 이번엔 다시 전체 폭 방식으로 되돌린다(이 방식만 어떤 주소든
+			// 한 줄 보장이 됨을 이미 확인했다). 이후 항목들의 좌/우 짝이 한 칸씩 밀리는 트레이드오프는
+			// (건물명·권역이 한 행, 교통·건물규모가 한 행...) 감수한다 - 전체 읽는 순서 자체는 그대로.
 			?>
 			<div class="row row-address"><span>주소</span><b><?php echo esc_html( $address_road ); ?></b></div>
 			<div class="row"><span>건물명</span><b><?php echo esc_html( $building_name ); ?></b></div>

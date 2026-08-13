@@ -83,6 +83,7 @@ const listingsData = [
         deposit: '150,000만원', deposit_per_lease_pyeong: '413.2만원',
         rent: '15,000만원', rent_per_lease_pyeong: '41.3만원',
         maintenance: '3,500만원', maintenance_per_lease_pyeong: '9.6만원',
+        noc_per_exclusive_pyeong: '68.1만원',
     },
     {
         id: 102, lease_pyeong: '280평', lease_sqm: '925.6㎡',
@@ -90,6 +91,7 @@ const listingsData = [
         deposit: '110,000만원', deposit_per_lease_pyeong: '392.9만원',
         rent: '11,000만원', rent_per_lease_pyeong: '39.3만원',
         maintenance: '2,600만원', maintenance_per_lease_pyeong: '9.3만원',
+        noc_per_exclusive_pyeong: '64.5만원',
     },
     {
         id: 103, lease_pyeong: '200평', lease_sqm: '661.2㎡',
@@ -97,6 +99,7 @@ const listingsData = [
         deposit: '80,000만원', deposit_per_lease_pyeong: '400.0만원',
         rent: '8,000만원', rent_per_lease_pyeong: '40.0만원',
         maintenance: '2,000만원', maintenance_per_lease_pyeong: '10.0만원',
+        noc_per_exclusive_pyeong: '66.7만원',
     },
 ];
 
@@ -106,7 +109,7 @@ function run() {
     const fields = {};
     ['lease_pyeong', 'lease_sqm', 'exclusive_pyeong', 'exclusive_sqm',
         'deposit', 'deposit_per_lease_pyeong', 'rent', 'rent_per_lease_pyeong',
-        'maintenance', 'maintenance_per_lease_pyeong'].forEach((f) => {
+        'maintenance', 'maintenance_per_lease_pyeong', 'noc_per_exclusive_pyeong'].forEach((f) => {
         fields[f] = makeElement({ 'data-toggle-field': f });
     });
     const fieldEls = Object.values(fields);
