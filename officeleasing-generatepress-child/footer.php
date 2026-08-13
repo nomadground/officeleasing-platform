@@ -14,12 +14,11 @@ $tel   = olt_tel_href( $phone );
 <footer class="olx-footer">
 	<div class="olx-wrap">
 		<div class="olx-footer-brand">
-			<b><?php echo esc_html( olt_company( 'brand' ) ); ?></b>
+			<a href="<?php echo esc_url( home_url( '/' ) ); ?>"><?php echo esc_html( olt_company( 'brand' ) ); ?></a>
 		</div>
 		<div>
 			<p><?php echo esc_html( olt_company( 'legal_name' ) ); ?></p>
 			<p><?php echo esc_html( olt_company( 'address_full' ) ); ?></p>
-			<p>대표전화 <?php echo esc_html( $phone ); ?></p>
 			<p>중개업 등록번호 <?php echo esc_html( olt_company( 'license_number' ) ); ?></p>
 		</div>
 		<div class="olx-footer-contact">

@@ -93,28 +93,99 @@
 
 	function init() {
 		var sliders = document.querySelectorAll( '[data-olx-slider]' );
-		if ( ! sliders.length ) {
+		if ( sliders.length ) {
+			var resyncers = [];
+			sliders.forEach( function ( slider ) {
+				var resync = initSlider( slider );
+				if ( resync ) {
+					resyncers.push( resync );
+				}
+			} );
+
+			// 리사이즈로 노출 카드 수가 바뀌면 버튼 상태도 다시 계산해야 한다(디바운스).
+			var resizeTimer = null;
+			window.addEventListener( 'resize', function () {
+				window.clearTimeout( resizeTimer );
+				resizeTimer = window.setTimeout( function () {
+					resyncers.forEach( function ( fn ) {
+						fn();
+					} );
+				}, 150 );
+			} );
+		}
+
+		initHeroTypeIntro();
+	}
+
+	/**
+	 * Hero 제목 타이핑 인트로 - 순수 개선(progressive enhancement).
+	 * template-parts/home-hero.php가 #olx-hero-type에 이미 "완성된 최종 모습"을 서버에서 렌더해뒀으므로
+	 * (JS가 없거나 실패해도 방문자는 완성 문장을 그대로 본다), 이 함수는 그 내용을 지우고 문자 단위로
+	 * 다시 그려 넣기만 한다. 문구 자체(data-full/data-mark)는 PHP가 유일한 소스라 여기엔 하드코딩하지 않는다.
+	 * prefers-reduced-motion이면 아무것도 하지 않고 서버 렌더 그대로 둔다.
+	 */
+	function initHeroTypeIntro() {
+		var el = document.getElementById( 'olx-hero-type' );
+		if ( ! el ) {
+			return;
+		}
+		if ( window.matchMedia && window.matchMedia( '(prefers-reduced-motion: reduce)' ).matches ) {
 			return;
 		}
 
-		var resyncers = [];
-		sliders.forEach( function ( slider ) {
-			var resync = initSlider( slider );
-			if ( resync ) {
-				resyncers.push( resync );
-			}
-		} );
+		var full = el.getAttribute( 'data-full' ) || '';
+		var markWord = el.getAttribute( 'data-mark' ) || '';
+		if ( ! full ) {
+			return;
+		}
+		var markStart = markWord ? full.indexOf( markWord ) : -1;
+		var markEnd = markStart >= 0 ? markStart + markWord.length : -1;
+		var caret = document.getElementById( 'olx-hero-caret' );
 
-		// 리사이즈로 노출 카드 수가 바뀌면 버튼 상태도 다시 계산해야 한다(디바운스).
-		var resizeTimer = null;
-		window.addEventListener( 'resize', function () {
-			window.clearTimeout( resizeTimer );
-			resizeTimer = window.setTimeout( function () {
-				resyncers.forEach( function ( fn ) {
-					fn();
-				} );
-			}, 150 );
-		} );
+		function escapeHtml( s ) {
+			return s.replace( /&/g, '&amp;' ).replace( /</g, '&lt;' ).replace( />/g, '&gt;' );
+		}
+
+		function render( n ) {
+			if ( markStart < 0 ) {
+				el.innerHTML = escapeHtml( full.slice( 0, n ) );
+				return;
+			}
+			var before = full.slice( 0, Math.min( n, markStart ) );
+			var mid = n > markStart ? full.slice( markStart, Math.min( n, markEnd ) ) : '';
+			var after = n > markEnd ? full.slice( markEnd, n ) : '';
+			var html = escapeHtml( before );
+			if ( mid ) {
+				html += '<span class="hl">' + escapeHtml( mid ) + '</span>';
+			}
+			html += escapeHtml( after );
+			el.innerHTML = html;
+		}
+
+		el.innerHTML = '';
+		if ( caret ) {
+			caret.classList.add( 'is-typing' );
+		}
+
+		var i = 0;
+		function tick() {
+			i++;
+			render( i );
+			if ( i < full.length ) {
+				window.setTimeout( tick, 55 );
+			} else {
+				window.setTimeout( function () {
+					var hl = el.querySelector( '.hl' );
+					if ( hl ) {
+						hl.classList.add( 'is-done' );
+					}
+					if ( caret ) {
+						caret.classList.remove( 'is-typing' );
+					}
+				}, 220 );
+			}
+		}
+		tick();
 	}
 
 	if ( document.readyState === 'loading' ) {

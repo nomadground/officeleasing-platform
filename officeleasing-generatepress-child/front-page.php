@@ -33,9 +33,8 @@ if ( olt_core_active() && function_exists( 'ol_get_home_region_buildings' ) ) {
 	$parents = olt_home_region_parents();
 
 	if ( ! empty( $parents ) ) {
-		// 배경 교차(흰색 -> 브랜드 틴트 -> 흰색 -> 웜그레이)로 반복감만 줄인다. 권역별로 다른 디자인을 만들지 않는다.
-		$variants = array( '', 'is-tint', '', 'is-warm' );
-
+		// 배경/배지 색은 이제 home-region-section.php가 권역 코드(GBD/CBD/YBD/ETC)로 직접 정한다 -
+		// 등장 순서 기반 교차 방식은 우연히 특정 권역들이 같은(또는 배경 없는) 스타일을 받는 문제가 있었다.
 		foreach ( $parents as $index => $parent_term ) {
 			$building_ids = ol_get_home_region_buildings( (int) $parent_term->term_id, 8 );
 
@@ -45,7 +44,6 @@ if ( olt_core_active() && function_exists( 'ol_get_home_region_buildings' ) ) {
 				array(
 					'term'         => $parent_term,
 					'building_ids' => $building_ids,
-					'variant'      => $variants[ $index % count( $variants ) ],
 					// 첫 권역의 데스크탑 첫 화면(4장)만 즉시 로드 - 나머지는 lazy
 					'eager_count'  => ( 0 === $index ) ? 4 : 0,
 				)
@@ -61,8 +59,8 @@ get_template_part(
 	'template-parts/contact-cta',
 	null,
 	array(
-		'title' => '찾는 조건에 맞는 사무실이 보이지 않으신가요?',
-		'desc'  => '희망 지역, 전용면적, 예산, 입주시기를 알려주시면 전문 중개사가 적합한 빌딩과 공실을 확인해 드립니다.',
+		// [Home 시안 라운드] 매물 상세페이지 Contact 배너와 같은 문구로 통일.
+		'title' => '사무실 임대, 계약 전 꼭! 확인하세요',
 	)
 );
 

@@ -57,7 +57,17 @@ defined( 'ABSPATH' ) || exit;
 				$contact_page = get_page_by_path( 'contact' );
 				if ( $contact_page ) {
 					$gnb['CONTACT'] = get_permalink( $contact_page );
-				} elseif ( is_front_page() ) {
+				} elseif (
+					// [Home 시안 라운드] "상세페이지 헤더에 FOR LEASE만 나온다" 피드백 - #contact 앵커
+					// 폴백이 is_front_page()에만 걸려 있어서, 실제로는 Contact 배너(id="contact")가 항상
+					// 있는 매물 상세/아카이브/권역 페이지에서도 CONTACT 메뉴 자체가 사라졌었다. 이 폴백은
+					// template-parts/contact-cta.php를 실제로 렌더하는 템플릿에서만 켠다 - 그 섹션이
+					// 없는 일반 페이지(page.php)에서는 여전히 앵커를 만들지 않는다(깨진 링크 방지 원칙 유지).
+					is_front_page()
+					|| is_singular( 'building' )
+					|| is_post_type_archive( 'building' )
+					|| is_tax( 'office_region' )
+				) {
 					$gnb['CONTACT'] = '#contact';
 				}
 

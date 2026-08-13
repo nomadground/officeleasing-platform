@@ -134,7 +134,7 @@ function ol_is_real_save($post_id, $post_type) {
  */
 function ol_company_info() {
     $info = [
-        'legal_name'      => '힌트부동산중개법인',
+        'legal_name'      => '주식회사 힌트부동산중개법인',
         'brand'           => 'OFFICE LEASING',
         'tagline'         => '서울 프라임 오피스 임대 플랫폼',
         'phone'           => '02-553-5988',

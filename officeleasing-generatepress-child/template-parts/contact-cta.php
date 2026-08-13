@@ -22,6 +22,16 @@
  *    전체 폭으로 펼쳐지는 기존 동작을 그대로 유지한다(요청 그림은 building 상세 페이지의 4셀 케이스를
  *    가리킨 것이라 이 로직 자체를 바꿀 필요가 없었다).
  *
+ * [Home 시안 라운드, 이 컴포넌트가 front-page.php 하단에도 재사용되면서 추가 요청] :
+ *  - 좌측 eyebrow "Check List" -> "Office Leasing"으로, 제목 끝에 화살표 + "Check List"를 붙이는 걸로
+ *    자리를 바꿨다(체크리스트로 실제로 이동 가능할 때만 - 페이지가 없어 클릭 불가능한 정적 상태에서는
+ *    갈 곳 없는 "Check List" 안내를 보여주지 않는다). "Check List" 글자는 은은한 pulse 효과로 눈에
+ *    띄게 한다(문자 그대로 On/Off 깜빡이는 blink는 접근성상 권장하지 않아 채택하지 않음).
+ *  - 우측 셀이 정확히 2개(district_link/region_link를 안 넘기는 호출부 - 지금은 Home)일 때는
+ *    바깥 그리드를 1.1:2 대신 1:1로 좁혀서 체크리스트 50% : 나머지 두 칸 각 25%가 되게 한다
+ *    (요청: "CheckList 50% + 전화상담 25% + 온라인문의 25%"). 셀이 4개인 building 상세 페이지의
+ *    2열 2행 비율(1.1:2)은 그대로 둔다 - .olx-contact-banner.is-compact 수정자로 분리.
+ *
  * $args: [
  *   'title' => 상담 제목, 'phone' => 전화번호, 'kakao_url' => 카카오 채널 URL,
  *   'district_link' => [ 'label' => ..., 'url' => ... ] (선택, 세부지역 사무실임대 링크),
@@ -117,13 +127,16 @@ if ( $insight_url ) {
 	);
 }
 $action_count = count( $action_cells );
+// 우측이 지역 링크 없이 전화/온라인 2칸뿐일 때만(=Home처럼 district/region 컨텍스트가 없는 호출부)
+// 체크리스트:나머지를 1:1로 좁힌다 - building 상세 페이지의 4셀(2열 2행)에는 영향 없음.
+$banner_class = 'olx-contact-banner' . ( $action_count <= 2 ? ' is-compact' : '' );
 ?>
 <section class="olx-contact" id="contact" aria-labelledby="contact-title">
-	<div class="olx-contact-banner">
+	<div class="<?php echo esc_attr( $banner_class ); ?>">
 		<?php if ( $checklist_url ) : ?>
 			<a class="olx-contact-banner-checklist" href="<?php echo esc_url( $checklist_url ); ?>">
-				<span class="olx-contact-banner-eyebrow">Check List</span>
-				<h2 id="contact-title"><?php echo esc_html( $title ); ?></h2>
+				<span class="olx-contact-banner-eyebrow">Office Leasing</span>
+				<h2 id="contact-title"><?php echo esc_html( $title ); ?> <span class="olx-contact-banner-pulse">→ Check List</span></h2>
 			</a>
 		<?php else : ?>
 			<div class="olx-contact-banner-checklist">

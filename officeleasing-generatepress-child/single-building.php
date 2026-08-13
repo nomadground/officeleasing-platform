@@ -656,8 +656,9 @@ $region_link = $parent_term ? array(
 ) : null;
 
 get_template_part( 'template-parts/contact-cta', null, array(
-	// [listing-detail-ux-pass6 4차] 좌측이 통째로 체크리스트 버튼이 되면서 문구도 다시 요청됨.
-	'title'         => '사무실 임대, 계약 전 꼭! 확인하세요.',
+	// [listing-detail-ux-pass6 4차, Home 시안 라운드에서 마침표 삭제] 좌측이 통째로 체크리스트 버튼이
+	// 되면서 문구도 다시 요청됨. 끝에 "→ Check List"가 구조적으로 붙으므로(contact-cta.php) 마침표를 뺐다.
+	'title'         => '사무실 임대, 계약 전 꼭! 확인하세요',
 	'district_link' => $district_link,
 	'region_link'   => $region_link,
 ) );
