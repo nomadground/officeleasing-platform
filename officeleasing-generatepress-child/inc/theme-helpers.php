@@ -72,6 +72,28 @@ function olt_won_html( $formatted ) {
 	return implode( ' ~ ', $html_parts );
 }
 
+/**
+ * [building-card.php 전용] "만원 만원 만원 같은 열로 정렬해줘, 지금은 줄이 안 맞아서 이상해" 요청 -
+ * olt_won_html()은 "A만원 ~ B만원" 전체를 하나의 문자열로 반환해서, 보증금/임대료/관리비 세 행의
+ * 자릿수가 서로 다르면(예: "178,734~252,250" vs "3,936~6,155") 오른쪽 정렬 텍스트 블록의 폭 자체가
+ * 행마다 달라져 "만원" 위치가 들쭉날쭉해 보였다. 이 함수는 최소값/물결표/최대값을 각각 별도 값으로
+ * 쪼개 반환한다 - 호출부(building-card.php)가 이 세 값을 그리드의 같은 열에 나란히 놓으면, 행마다
+ * 자릿수가 달라도 "만원" 위치가 항상 같은 세로줄에 맞는다.
+ *
+ * 범위가 아니라 값 하나뿐이면(최소=최대) 물결표 칸은 비우고 값 자체는 "최대값" 자리에 넣는다 - 그래야
+ * 매물이 1건이라 범위가 없는 빌딩도 다른 행들의 마지막 숫자와 같은 오른쪽 세로줄에 맞는다.
+ *
+ * @return array{0:string,1:string,2:string} [최소값 HTML, "~" 또는 빈 문자열, 최대값 HTML] - 전부 이미
+ *                                            esc_html() 처리됨(olt_won_html()에게 위임).
+ */
+function olt_won_html_cells( $formatted ) {
+	$parts = explode( ' ~ ', (string) $formatted );
+	if ( isset( $parts[1] ) && '' !== $parts[1] ) {
+		return array( olt_won_html( $parts[0] ), '~', olt_won_html( $parts[1] ) );
+	}
+	return array( '', '', isset( $parts[0] ) ? olt_won_html( $parts[0] ) : '' );
+}
+
 /** ㎡ 표기: 1081.0㎡ */
 function olt_sqm( $value ) {
 	return $value ? number_format( (float) $value, 1 ) . '㎡' : '';

@@ -91,6 +91,29 @@ check(
 );
 check('won html - 빈 문자열(데이터 없음) - 그대로 빈 문자열', olt_won_html(''), '');
 
+// ── olt_won_html_cells() - building-card.php 전용, 그리드 정렬용 3칸 분리 ──
+// [Home 시안 라운드] "만원 만원 만원 같은 열로 정렬해줘" - 보증금/임대료/관리비 세 행이 자릿수가
+// 달라도 같은 세로줄에 맞도록, 최소값/물결표/최대값을 각각 별도 그리드 셀 값으로 반환한다.
+check(
+    'won html cells - 범위 - [최소값, 물결표, 최대값] 3칸으로 분리',
+    olt_won_html_cells('178,734만원 ~ 252,250만원'),
+    array(
+        '<span class="olx-money-pair"><span class="olx-money-num">178,734</span><span class="olx-money-unit">만원</span></span>',
+        '~',
+        '<span class="olx-money-pair"><span class="olx-money-num">252,250</span><span class="olx-money-unit">만원</span></span>',
+    )
+);
+check(
+    'won html cells - 단일값(최소=최대) - 다른 행의 최대값과 같은 열에 맞도록 마지막 칸에 배치',
+    olt_won_html_cells('252,250만원'),
+    array(
+        '',
+        '',
+        '<span class="olx-money-pair"><span class="olx-money-num">252,250</span><span class="olx-money-unit">만원</span></span>',
+    )
+);
+check('won html cells - 빈 문자열(데이터 없음) - 3칸 모두 빈 문자열', olt_won_html_cells(''), array('', '', ''));
+
 // ── olt_floor_range() / olt_floor_label() ──
 check('floor - 단일 지상층', olt_floor_range(17, 17), '17층');
 check('floor - 단일 지하층', olt_floor_range(-2, -2), '지하2층');

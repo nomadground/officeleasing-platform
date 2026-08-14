@@ -76,15 +76,9 @@ $maintenance_range = olt_format_money_range(
 	get_field( 'building_max_maintenance_fee', $building_id ),
 	'olt_won'
 );
-// NOC(전용평당 환산임대료)는 임대료·관리비를 합쳐 면적당으로 정규화한 "비교 지표"라 보증금/임대료/
-// 관리비(실제 비용 항목)와 성격이 다르다 - 같은 칩 줄에 나란히 놓으면 "네 번째 비용"처럼 보여
-// 오해를 살 수 있어, 가격 칩 아래 별도의 보조 지표 줄로 분리한다. olt_won() 대신 올림평당가 표기
-// (olt_pyeong_price, "51.1만원" 형식)를 쓴다 - single-building.php 임대정보표의 "환산임대료" 표기와 동일.
-$noc_range = olt_format_money_range(
-	get_field( 'building_min_noc', $building_id ),
-	get_field( 'building_max_noc', $building_id ),
-	'olt_pyeong_price'
-);
+// [Home 시안 라운드] "전용평당 NOC는 매물카드에서는 삭제해줘" 요청으로 이 카드(빌딩 집계 카드)에서는
+// NOC 줄 자체를 뺐다 - building_min_noc/max_noc 필드 조회도 함께 제거(더 이상 이 카드에서 안 쓰임).
+// single-building.php 상세페이지의 NOC 표시는 이 요청과 무관해 그대로 유지된다.
 ?>
 <a class="<?php echo esc_attr( $card_class ); ?>" href="<?php echo esc_url( $building_link ); ?>">
 	<div class="olx-card-img">
@@ -138,32 +132,63 @@ $noc_range = olt_format_money_range(
 			<p><?php echo esc_html( $address ); ?></p>
 		<?php endif; ?>
 		<?php if ( $lease_areas['pyeong'] || $exclusive_areas['pyeong'] ) : ?>
+			<?php
+			// [Home 시안 라운드] "임대/전용 텍스트 색상을 매물 상세페이지 색상이랑 맞추고, 가로직사각형
+			// 박스 아이콘 안에 흰색 글씨로 넣어줘" - single-building.php의 면적 슬라이더/표(임대=브랜드
+			// 파랑, 전용=서브 주황)와 같은 색 규칙을 쓰고, 라벨은 보증금/임대료/관리비 칩(<i>)과 같은
+			// 패턴의 사각 배지로 바꾼다(정사각형 아이콘 대신 2글자가 들어가는 가로로 넓은 배지).
+			?>
 			<div class="olx-card-areas olx-card-areas--building">
 				<?php if ( $lease_areas['pyeong'] ) : ?>
 					<span>
-						<b>임대</b>
-						<strong><?php echo esc_html( $lease_areas['pyeong'] ); ?></strong>
+						<i class="olx-area-chip-lease">임대</i>
+						<strong class="olx-area-lease"><?php echo esc_html( $lease_areas['pyeong'] ); ?></strong>
 						<?php if ( $lease_areas['sqm'] ) : ?><small>(<?php echo esc_html( $lease_areas['sqm'] ); ?>)</small><?php endif; ?>
 					</span>
 				<?php endif; ?>
 				<?php if ( $exclusive_areas['pyeong'] ) : ?>
 					<span>
-						<b>전용</b>
-						<strong><?php echo esc_html( $exclusive_areas['pyeong'] ); ?></strong>
+						<i class="olx-area-chip-excl">전용</i>
+						<strong class="olx-area-excl"><?php echo esc_html( $exclusive_areas['pyeong'] ); ?></strong>
 						<?php if ( $exclusive_areas['sqm'] ) : ?><small>(<?php echo esc_html( $exclusive_areas['sqm'] ); ?>)</small><?php endif; ?>
 					</span>
 				<?php endif; ?>
 			</div>
 		<?php endif; ?>
 		<?php if ( $deposit_range || $rent_range || $maintenance_range ) : ?>
+			<?php
+			// [Home 시안 라운드] "만원 만원 만원 같은 열로 정렬해줘, 지금은 줄이 안 맞아서 이상해" -
+			// 보증금/임대료/관리비 세 행이 하나의 CSS 그리드(4열: 아이콘/최소값/물결표/최대값)를 공유해서,
+			// 행마다 자릿수가 달라도 "만원" 위치가 항상 같은 세로줄에 맞는다(olt_won_html_cells() 참고).
+			?>
 			<div class="olx-card-prices olx-card-prices--building">
-				<?php if ( $deposit_range ) : ?><span><i class="chip-deposit">보</i><span class="olx-money-group"><?php echo olt_won_html( $deposit_range ); ?></span></span><?php endif; ?>
-				<?php if ( $rent_range ) : ?><span><i class="chip-rent">월</i><span class="olx-money-group"><?php echo olt_won_html( $rent_range ); ?></span></span><?php endif; ?>
-				<?php if ( $maintenance_range ) : ?><span><i class="chip-maintenance">관</i><span class="olx-money-group"><?php echo olt_won_html( $maintenance_range ); ?></span></span><?php endif; ?>
+				<?php if ( $deposit_range ) :
+					list( $deposit_min, $deposit_tilde, $deposit_max ) = olt_won_html_cells( $deposit_range );
+					?>
+					<i class="chip-deposit">보</i>
+					<span class="olx-money-min"><?php echo $deposit_min; ?></span>
+					<span class="olx-money-tilde"><?php echo esc_html( $deposit_tilde ); ?></span>
+					<span class="olx-money-max"><?php echo $deposit_max; ?></span>
+				<?php endif; ?>
+				<?php if ( $rent_range ) :
+					list( $rent_min, $rent_tilde, $rent_max ) = olt_won_html_cells( $rent_range );
+					?>
+					<i class="chip-rent">월</i>
+					<span class="olx-money-min"><?php echo $rent_min; ?></span>
+					<span class="olx-money-tilde"><?php echo esc_html( $rent_tilde ); ?></span>
+					<span class="olx-money-max"><?php echo $rent_max; ?></span>
+				<?php endif; ?>
+				<?php if ( $maintenance_range ) :
+					list( $maintenance_min, $maintenance_tilde, $maintenance_max ) = olt_won_html_cells( $maintenance_range );
+					?>
+					<i class="chip-maintenance">관</i>
+					<span class="olx-money-min"><?php echo $maintenance_min; ?></span>
+					<span class="olx-money-tilde"><?php echo esc_html( $maintenance_tilde ); ?></span>
+					<span class="olx-money-max"><?php echo $maintenance_max; ?></span>
+				<?php endif; ?>
 			</div>
 		<?php endif; ?>
-		<?php if ( $noc_range ) : ?>
-			<p class="olx-card-noc">전용평당 NOC <b><?php echo esc_html( $noc_range ); ?></b></p>
-		<?php endif; ?>
+		<?php // [Home 시안 라운드] "전용평당 NOC는 매물카드에서는 삭제해줘" - 이 카드(빌딩 집계 카드)에서만
+		// 뺀다. single-building.php 상세페이지의 NOC 표시는 이 요청과 무관해 그대로 둔다. ?>
 	</div>
 </a>
